@@ -1,0 +1,41 @@
+{
+  "name": "stacks-explorer-api",
+  "version": "1.0.0",
+  "description": "An API for explorer-related APIs.",
+  "main": "server.js",
+  "license": "MIT",
+  "scripts": {
+    "prod": "NODE_ENV=production node server.js",
+    "dev": "NODE_ENV=development nodemon server.js",
+    "test": "NODE_ENV=test jest --verbose=false --ci",
+    "test-watch": "NODE_ENV=test jest --verbose=false --ci --watch"
+  },
+  "devDependencies": {
+    "eslint": "^5.7.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jest": "^22.0.0"
+  },
+  "dependencies": {
+    "@awaitjs/express": "^0.1.4",
+    "@sentry/node": "^4.3.0",
+    "accounting": "^0.4.1",
+    "bigi": "^1.4.2",
+    "bitcoinjs-lib": "^4.0.2",
+    "blockstack": "^18.1.0",
+    "bluebird": "^3.5.2",
+    "c32check": "^0.0.6",
+    "cors": "^2.8.4",
+    "express": "^4.16.4",
+    "fs-extra": "^7.0.0",
+    "lodash": "^4.17.11",
+    "moment": "^2.22.2",
+    "morgan": "^1.9.1",
+    "multi-progress": "^2.0.0",
+    "ora": "^3.0.0",
+    "progress": "^2.0.1",
+    "redis": "^2.8.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2"
+  }
+}
