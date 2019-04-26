@@ -77,7 +77,7 @@ const run = async () => {
   const tx = await useFaucet(address);
   let confirms = await getConfirms(tx);
   while (confirms < 1) {
-    confirms = await getConfirms(tx);
+    confirms = await getConfirms(tx); // eslint-disable-line
   }
   const balance = await getBalance(address);
   console.log(balance);

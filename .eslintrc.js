@@ -24,7 +24,8 @@ module.exports = {
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
     "import/prefer-default-export": "off",
-    "max-len": [1, { code: 120 }]
+    "max-len": [1, { code: 120 }],
+    "@typescript-eslint/no-var-requires": [1]
   },
   settings: {
     "import/resolver": {
