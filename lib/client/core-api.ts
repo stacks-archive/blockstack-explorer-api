@@ -1,7 +1,11 @@
-const request = require('request-promise');
-const moment = require('moment');
-const blockstack = require('blockstack');
-const Promise = require('bluebird');
+import request from 'request-promise';
+import moment from 'moment';
+import blockstack from 'blockstack';
+import { Transaction } from 'bitcoinjs-lib';
+import RPCClient from 'bitcoin-core';
+import { getTX } from '../bitcore-db/queries';
+import { decodeTx } from '../btc-tx-decoder';
+
 
 moment.updateLocale('en', {
   relativeTime: {
@@ -26,8 +30,17 @@ const coreApi = process.env.CORE_API_URL || 'https://core.blockstack.org';
 // const explorerApi = 'https://insight.blockstack.systems/insight-api';
 const explorerApi = 'https://insight.bitpay.com/api';
 const blockchainInfoApi = 'https://blockchain.info';
+const bitcoreApi = process.env.BITCORE_URL;
 
 const PUBLIC_TESTNET_HOST = 'testnet.blockstack.org';
+
+const rpcClient = new RPCClient({
+  host: process.env.BITCOIND_HOST,
+  username: process.env.BITCOIND_USERNAME,
+  password: process.env.BITCOIND_PASSWORD,
+  port: process.env.BITCOIND_PORT,
+  // ssl: true
+});
 
 let configData = {
   blockstackAPIUrl: 'https://core.blockstack.org',
@@ -72,10 +85,10 @@ if (process.env.USE_TESTNET) {
 const network = new blockstack.network.LocalRegtest(
   configData.blockstackAPIUrl, configData.broadcastServiceUrl,
   new blockstack.network.BitcoindAPI(configData.utxoServiceUrl,
-    { username: 'blockstack', password: 'blockstacksystem' }),
+                                     { username: 'blockstack', password: 'blockstacksystem' }),
 );
 
-const fetchJSON = async (uri) => {
+const fetchJSON = async (uri: string) => {
   try {
     const response = await request({
       uri,
@@ -99,16 +112,16 @@ const fetchJSON = async (uri) => {
 /**
  * Addresses
  */
-const fetchAddressCore = (address) => {
+export const fetchAddressCore = (address: string) => {
   const url = `${coreApi}/v1/addresses/bitcoin/${address}`;
   return fetchJSON(url);
 };
 
-const fetchAddressInfo = (address, limit = 10, offset = 0) => fetchJSON(`${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`);
+export const fetchAddressInfo = (address: string, limit = 10, offset = 0) => fetchJSON(`${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`);
 
 // const fetchAddressInsight = address => fetchJSON(`${explorerApi}/addr/${address}`);
 
-const fetchAddress = async (address, limit = 0, offset = 0) => {
+export const fetchAddress = async (address: string, limit = 0, offset = 0) => {
   const [coreData, insightData] = await Promise.all([
     fetchAddressCore(address),
     fetchAddressInfo(address, limit, offset),
@@ -125,13 +138,13 @@ const fetchAddress = async (address, limit = 0, offset = 0) => {
 /**
  * Names
  */
-const fetchName = async (name) => {
+export const fetchName = async (name: string) => {
   const url = `${coreApi}/v2/users/${name}`;
   const data = await fetchJSON(url);
   return data ? data[name] : data;
 };
 
-const fetchNameOperations = async (blockHeight) => {
+export const fetchNameOperations = async (blockHeight: string) => {
   const url = `${coreApi}/v1/blockchains/bitcoin/operations/${blockHeight}`;
   const result = await fetchJSON(url);
   if (!result) {
@@ -140,7 +153,7 @@ const fetchNameOperations = async (blockHeight) => {
   return result;
 };
 
-const fetchNameRecord = async (name, page = 0) => {
+export const fetchNameRecord = async (name, page = 0) => {
   const data = await fetchJSON(`${coreApi}/v1/names/${name}/history?page=${page}`);
   const nameops = Object.values(data)
     .map(op => op[0])
@@ -151,7 +164,7 @@ const fetchNameRecord = async (name, page = 0) => {
   };
 };
 
-const convertTx = (tx) => {
+export const convertTx = (tx) => {
   const value = tx.out.reduce(((accumulator, current) => accumulator + current.value * 10e-9), 0);
   const vout = tx.out.map(output => ({
     ...output,
@@ -178,16 +191,28 @@ const convertTx = (tx) => {
 /**
  * Transactions
  */
-const fetchTX = async (hash) => {
-  const tx = await fetchJSON(`${blockchainInfoApi}/rawtx/${hash}`);
-  return convertTx(tx);
+
+export const fetchRawTxInfo = async (hash: string) => {
+  const txRaw = await rpcClient.getRawTransaction(hash);
+  return txRaw;
+};
+
+
+export const fetchTX = async (hash: string) => {
+  // const tx = await fetchJSON(`${blockchainInfoApi}/rawtx/${hash}`);
+  // return convertTx(tx);
+  const tx = await getTX(hash);
+  const rawTx = await fetchRawTxInfo(hash);
+  const decodedTx = Transaction.fromHex(<string>rawTx);
+  // console.log(decodedTx);
+  return decodeTx(decodedTx, tx);
 };
 
 /**
  * Blocks
  */
 
-const fetchBlocks = async (date) => {
+export const fetchBlocks = async (date: string) => {
   const mom = date ? moment(date) : moment();
   const endOfDay = mom.utc().endOf('day').valueOf();
   const url = `${blockchainInfoApi}/blocks/${endOfDay}?format=json`;
@@ -195,19 +220,19 @@ const fetchBlocks = async (date) => {
   return blocks;
 };
 
-const fetchBlockHash = async (height) => {
+export const fetchBlockHash = async (height: number) => {
   const data = await fetchJSON(`${explorerApi}/block-index/${height}`);
   return data.blockHash;
 };
 
-const fetchBlockInfo = hash => fetchJSON(`${blockchainInfoApi}/rawblock/${hash}`);
+export const fetchBlockInfo = (hash: string) => fetchJSON(`${blockchainInfoApi}/rawblock/${hash}`);
 
-const fetchBlock = async (hashOrHeight) => {
+export const fetchBlock = async (hashOrHeight: string | number) => {
   let hash = hashOrHeight;
   if (hashOrHeight.toString().length < 10) {
-    hash = await fetchBlockHash(hashOrHeight);
+    hash = await fetchBlockHash(<number>hashOrHeight);
   }
-  const block = await fetchBlockInfo(hash);
+  const block = await fetchBlockInfo(<string>hash);
   if (!block) {
     return null;
   }
@@ -220,32 +245,24 @@ const fetchBlock = async (hashOrHeight) => {
   };
 };
 
-const fetchNamespaceNameCount = (namespace) => {
+export const fetchNamespaceNameCount = (namespace: string) => {
   const url = `${coreApi}/v1/blockchains/bitcoin/name_count?all=1&id=${namespace}`;
   return fetchJSON(url);
 };
 
-const fetchNamespaces = () => fetchJSON(`${coreApi}/v1/namespaces`);
+export const fetchNamespaces = () => fetchJSON(`${coreApi}/v1/namespaces`);
 
-const fetchNames = page => fetchJSON(`${coreApi}/v1/names?page=${page}`);
+export const fetchNames = (page: number) => fetchJSON(`${coreApi}/v1/names?page=${page}`);
 
-const fetchNamespaceNames = (namespace, page) => fetchJSON(`${coreApi}/v1/namespaces/${namespace}/names?page=${page}`);
+export const fetchNamespaceNames = (namespace: string, page: number) => fetchJSON(`${coreApi}/v1/namespaces/${namespace}/names?page=${page}`);
 
-const fetchTransactionSubdomains = txid => fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
+export const fetchTransactionSubdomains = (txid: string) => fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
 
-const fetchTotalNames = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/name_count`);
-const fetchTotalSubdomains = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/subdomains_count`);
+export const fetchTotalNames = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/name_count`);
+export const fetchTotalSubdomains = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/subdomains_count`);
 
-const fetchRawTxInfo = async (hash) => {
-  const url = `https://blockchain.info/rawtx/${hash}?format=hex`;
-  try {
-    return request(url);
-  } catch (error) {
-    return null;
-  }
-};
 
-module.exports = {
+export default {
   fetchName,
   fetchAddress,
   fetchTX,

@@ -1,6 +1,11 @@
-const getApp = require('./app');
+// const getApp = require('./app');
+import dotenv from 'dotenv';
 
-const port = parseInt(process.env.PORT, 10) || 4000;
+import getApp from './app';
+
+dotenv.config();
+
+const port = parseInt(process.env.PORT || '4000', 10);
 
 getApp().then((app) => {
   app.listen(port, (err) => {
