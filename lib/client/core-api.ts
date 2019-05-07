@@ -144,7 +144,7 @@ export const fetchName = async (name: string) => {
   return data ? data[name] : data;
 };
 
-export const fetchNameOperations = async (blockHeight: string) => {
+export const fetchNameOperations = async (blockHeight: number) => {
   const url = `${coreApi}/v1/blockchains/bitcoin/operations/${blockHeight}`;
   const result = await fetchJSON(url);
   if (!result) {

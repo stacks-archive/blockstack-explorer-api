@@ -3,12 +3,13 @@ import cors from 'cors';
 import morgan from 'morgan';
 import Sentry from '@sentry/node';
 
+import makeAPIController from './controllers/api-controller';
+import V2ApiController from './controllers/v2-controller';
+import { getAccounts } from './lib/addresses';
+
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
-
-const makeAPIController = require('./controllers/api-controller');
-const { getAccounts } = require('./lib/addresses');
 
 const getApp = async () => {
   const Genesis = await getAccounts();
@@ -31,6 +32,7 @@ const getApp = async () => {
   app.use(morgan('combined'));
 
   app.use('/api', makeAPIController(Genesis));
+  app.use('/api/v2', V2ApiController);
 
   // Optional fallthrough error handler
   app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

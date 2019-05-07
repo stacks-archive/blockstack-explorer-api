@@ -1,10 +1,9 @@
 import { MongoClient, Db } from 'mongodb';
 
-const url = process.env.BITCORE_MONGODB_URI;
-
 let DB: Db | null = null;
 
 export const getDB = async (): Promise<Db> => {
+  const url = process.env.BITCORE_MONGODB_URI;
   if (DB) {
     return <Db>DB;
   }

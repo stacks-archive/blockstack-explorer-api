@@ -7,7 +7,7 @@
   "scripts": {
     "prod": "NODE_ENV=production node server.js",
     "dev": "NODE_ENV=development ts-node server.ts",
-    "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts'",
+    "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts' --ignore test/",
     "test": "NODE_ENV=test jest --verbose=false --ci",
     "test-watch": "NODE_ENV=test jest --verbose=false --ci --watch"
   },

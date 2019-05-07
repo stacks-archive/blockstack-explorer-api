@@ -1,7 +1,7 @@
 const redis = require('../redis');
 
 class Aggregator {
-  static key() {
+  static key(...args) {
     return this.name;
   }
 
@@ -9,7 +9,7 @@ class Aggregator {
     // const verbose = this.verbose(...args);
     const key = this.key(...args);
     const value = await this.setter(...args);
-    let setArguments = [key, JSON.stringify(value)];
+    let setArguments: any[] = [key, JSON.stringify(value)];
     const expiry = this.expiry(...args);
     if (expiry) {
       // if (verbose) console.log('Expiry:', expiry);
@@ -28,6 +28,10 @@ class Aggregator {
     return null;
   }
 
+  static async setter(...args): Promise<any> {
+    return null;
+  }
+
   static async fetch(...args) {
     const verbose = this.verbose(...args);
     const key = this.key(...args);
@@ -41,13 +45,13 @@ class Aggregator {
     return this.set(...args);
   }
 
-  static expiry() {
+  static expiry(...args): number | null {
     return null;
   }
 
-  static verbose() {
+  static verbose(...args): boolean {
     return true;
   }
 }
 
-module.exports = Aggregator;
+export default Aggregator;

@@ -38,21 +38,21 @@ class NameOpsAggregator extends Aggregator {
     allNames = sortBy(allNames, name => -name.blockHeight);
 
     return allNames.map((name) => {
-      const date = blockToTime(name.blockHeight);
+      const time = blockToTime(name.blockHeight);
       return {
-        date,
+        time,
         ...name,
       };
     });
 
     // const daysBack = Array(...new Array(2)).map((val, i) => i);
-    // const dates = daysBack.map((x, index) => moment()
+    // const times = daysBack.map((x, index) => moment()
     //   .utc()
     //   .subtract(index, 'days')
     //   .format('YYYY-MM-DD'));
     // const multi = new MultiProgress(process.stderr);
-    // const blocks = flatten(await BluebirdPromise.map(dates, async (date) => {
-    //   const block = await BlocksAggregator.set(date, multi);
+    // const blocks = flatten(await BluebirdPromise.map(times, async (time) => {
+    //   const block = await BlocksAggregator.set(time, multi);
     //   return block;
     // }));
 

@@ -15,7 +15,7 @@ interface Block {
   nextBlockHash: string,
   previousBlockHash: string,
   merkleRoot: string,
-  time: Date,
+  time: number,
   bits: number,
   nonce: number,
   size: number,
@@ -23,6 +23,9 @@ interface Block {
   reward: number,
   height: number,
   hash: string,
+  nameOperations?: any[],
+  txCount: number,
+  transactions?: Transaction[],
 }
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
@@ -41,9 +44,36 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
 
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,
+    time: block.time.getTime() / 1000,
+    txCount: block.transactionCount,
   }));
 
   return blocksResult;
+};
+
+export const getBlock = async (hash: string): Promise<Block> => {
+  const db = await getDB();
+  const collection = db.collection(Collections.Blocks);
+  const blockResult = await collection.findOne({
+    hash,
+  });
+  const block: Block = {
+    ...blockResult,
+    time: blockResult.time.getTime() / 1000,
+    txCount: blockResult.transactionCount,
+  };
+
+  return <Block>block;
+};
+
+export const getBlockTransactions = async (hash: string, page: number = 0): Promise<Transaction[]> => {
+  const db = await getDB();
+  const txCollection = db.collection(Collections.Transactions);
+  const txResults: Transaction[] = await txCollection.find({
+    blockHash: hash,
+  }).limit(10).toArray();
+
+  return txResults;
 };
 
 export interface Transaction {
@@ -67,4 +97,14 @@ export const getTX = async (txid: string): Promise<Transaction> => {
     ...chainQuery,
   });
   return <Transaction>tx;
+};
+
+export const getBlockHash = async (height: string): Promise<string> => {
+  const db = await getDB();
+  const collection = db.collection(Collections.Blocks);
+  const block = await collection.findOne({
+    height: parseInt(height, 10),
+    ...chainQuery,
+  });
+  return block.hash;
 };

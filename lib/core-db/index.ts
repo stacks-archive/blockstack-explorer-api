@@ -1,5 +1,4 @@
 import sqlite, { Database } from 'sqlite3';
-import { Server } from 'tls';
 
 export enum DB {
   Subdomains = 'subdomains',
@@ -20,7 +19,8 @@ export const getDB = (name: DB): Database => {
   if (DBs[name]) {
     return <Database>DBs[name];
   }
-  const newDB = new sqlite.Database(<string>`${process.env.CORE_DB}${name}.db`, sqlite.OPEN_READONLY, (err: Error | null) => {
+  const corePath = <string>`${process.env.CORE_DB}${name}.db`;
+  const newDB = new sqlite.Database(corePath, sqlite.OPEN_READONLY, (err: Error | null) => {
     if (err) {
       throw err;
     }
