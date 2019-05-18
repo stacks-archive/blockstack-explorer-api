@@ -82,11 +82,11 @@ if (process.env.USE_TESTNET) {
   };
 }
 
-const network = new blockstack.network.LocalRegtest(
-  configData.blockstackAPIUrl, configData.broadcastServiceUrl,
-  new blockstack.network.BitcoindAPI(configData.utxoServiceUrl,
-                                     { username: 'blockstack', password: 'blockstacksystem' }),
-);
+// const network = new blockstack.network.LocalRegtest(
+//   configData.blockstackAPIUrl, configData.broadcastServiceUrl,
+//   new blockstack.network.BitcoindAPI(configData.utxoServiceUrl,
+//                                      { username: 'blockstack', password: 'blockstacksystem' }),
+// );
 
 const fetchJSON = async (uri: string) => {
   try {
@@ -279,7 +279,7 @@ export default {
   fetchTransactionSubdomains,
   fetchTotalNames,
   fetchTotalSubdomains,
-  network,
+  // network,
   fetchRawTxInfo,
   convertTx,
 };

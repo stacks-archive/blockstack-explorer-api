@@ -11,7 +11,7 @@ const chainQuery = {
   chain: 'BTC',
 };
 
-interface Block {
+export interface Block {
   nextBlockHash: string,
   previousBlockHash: string,
   merkleRoot: string,
