@@ -1,6 +1,6 @@
 import request from 'request-promise';
 import moment from 'moment';
-import blockstack from 'blockstack';
+import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import RPCClient from 'bitcoin-core';
 import { getTX } from '../bitcore-db/queries';
@@ -82,11 +82,11 @@ if (process.env.USE_TESTNET) {
   };
 }
 
-// const network = new blockstack.network.LocalRegtest(
-//   configData.blockstackAPIUrl, configData.broadcastServiceUrl,
-//   new blockstack.network.BitcoindAPI(configData.utxoServiceUrl,
-//                                      { username: 'blockstack', password: 'blockstacksystem' }),
-// );
+export const network = new BlockstackNetwork.LocalRegtest(
+  configData.blockstackAPIUrl, configData.broadcastServiceUrl,
+  new BlockstackNetwork.BitcoindAPI(configData.utxoServiceUrl,
+                                    { username: 'blockstack', password: 'blockstacksystem' }),
+);
 
 const fetchJSON = async (uri: string) => {
   try {
@@ -279,7 +279,7 @@ export default {
   fetchTransactionSubdomains,
   fetchTotalNames,
   fetchTotalSubdomains,
-  // network,
+  network,
   fetchRawTxInfo,
   convertTx,
 };
