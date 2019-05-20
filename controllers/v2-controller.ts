@@ -3,7 +3,9 @@ import moment from 'moment';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
-import { getBlocks } from '../lib/bitcore-db/queries';
+// import { getBlocks } from '../lib/bitcore-db/queries';
+import { getRecentStacksTransfers } from '../lib/core-db/queries';
+import { blockToTime } from '../lib/utils';
 
 const Controller = express.Router();
 
@@ -29,6 +31,20 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
     // const blocks = await getBlocks(date, parseInt(page, 10));
     const blocks = await BlocksAggregator.setter(date, page ? parseInt(page, 10) : 0);
     res.json({ blocks });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/transactions/stx', async (req: Request, res: Response) => {
+  try {
+    const transactions = await getRecentStacksTransfers(100);
+    const transfers = transactions.map(tx => ({
+      ...tx,
+      timestamp: blockToTime(tx.blockHeight),
+    }));
+    res.json({ transfers });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false });
