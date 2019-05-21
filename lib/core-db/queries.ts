@@ -7,9 +7,9 @@ interface Subdomain {
   [key: string]: any,
 }
 
-export const getRecentSubdomains = async (limit: number): Promise<Subdomain[]> => {
-  const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1;';
-  const params = { $1: limit };
+export const getRecentSubdomains = async (limit: number, page: number = 0): Promise<Subdomain[]> => {
+  const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1 OFFSET $2;';
+  const params = { $1: limit, $2: page * limit };
   const rows = await getAll(DB.Subdomains, sql, params);
   const results: Subdomain[] = rows.map(row => ({
     ...row,
@@ -30,9 +30,9 @@ interface NameRecord {
   [key: string]: any,
 }
 
-export const getRecentNames = async (limit: number): Promise<NameRecord[]> => {
-  const sql = 'select * from name_records ORDER BY block_number DESC LIMIT $1';
-  const params = { $1: limit };
+export const getRecentNames = async (limit: number, page: number = 0): Promise<NameRecord[]> => {
+  const sql = 'select * from name_records ORDER BY block_number DESC LIMIT $1 OFFSET $2';
+  const params = { $1: limit, $2: page * limit };
   const rows = await getAll(DB.Blockstack, sql, params);
   const results: NameRecord[] = rows.map(row => ({
     ...row,
