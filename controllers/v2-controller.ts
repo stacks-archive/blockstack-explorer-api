@@ -55,7 +55,11 @@ Controller.get('/transactions/names', async (req: Request, res: Response) => {
   try {
     const limit = 100;
     const page = req.query.page || '0';
-    const names = await getRecentNames(limit, parseInt(page, 10));
+    const namesResult = await getRecentNames(limit, parseInt(page, 10));
+    const names = namesResult.map(name => ({
+      ...name,
+      timestamp: blockToTime(name.block_number),
+    }));
     res.json({ names });
   } catch (error) {
     console.error(error);
@@ -67,7 +71,11 @@ Controller.get('/transactions/subdomains', async (req: Request, res: Response) =
   try {
     const limit = 100;
     const page = req.query.page || '0';
-    const subdomains = await getRecentSubdomains(limit, parseInt(page, 10));
+    const subdomainsResult = await getRecentSubdomains(limit, parseInt(page, 10));
+    const subdomains = subdomainsResult.map(name => ({
+      ...name,
+      timestamp: blockToTime(name.blockHeight),
+    }));
     res.json({ subdomains });
   } catch (error) {
     console.error(error);
