@@ -61,9 +61,9 @@ interface StacksTransaction {
   [key: string]: any,
 }
 
-export const getRecentStacksTransfers = async (limit: number): Promise<StacksTransaction[]> => {
-  const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1;";
-  const params = { $1: limit };
+export const getRecentStacksTransfers = async (limit: number, page: number = 0): Promise<StacksTransaction[]> => {
+  const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
+  const params = { $1: limit, $2: page * limit };
   const rows = await getAll(DB.Blockstack, sql, params);
   const results: StacksTransaction[] = rows.map((row) => {
     let historyData;

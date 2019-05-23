@@ -39,7 +39,8 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
 
 Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
-    const transactions = await getRecentStacksTransfers(100);
+    const page = req.query.page || '0';
+    const transactions = await getRecentStacksTransfers(10, parseInt(page, 10));
     const transfers = transactions.map(tx => ({
       ...tx,
       timestamp: blockToTime(tx.blockHeight),
