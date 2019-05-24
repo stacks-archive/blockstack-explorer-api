@@ -28,7 +28,6 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
     }
     console.log(date);
     const { page } = req.query;
-    // const blocks = await getBlocks(date, parseInt(page, 10));
     const blocks = await BlocksAggregator.setter(date, page ? parseInt(page, 10) : 0);
     res.json({ blocks });
   } catch (error) {
