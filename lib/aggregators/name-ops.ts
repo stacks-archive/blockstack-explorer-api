@@ -6,7 +6,7 @@ import sortBy from 'lodash/sortBy';
 // import MultiProgress from 'multi-progress';
 
 import Aggregator from './aggregator';
-import { getRecentNames, getRecentSubdomains } from '../core-db/queries';
+import { getRecentNames, getRecentSubdomains } from '../core-db-pg/queries';
 import { blockToTime } from '../utils';
 // import BlocksAggregator from './blocks';
 

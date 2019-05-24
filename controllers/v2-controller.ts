@@ -1,10 +1,13 @@
 import express, { Request, Response } from 'express';
+import * as c32check from 'c32check';
 import moment from 'moment';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
 // import { getBlocks } from '../lib/bitcore-db/queries';
-import { getRecentStacksTransfers, getRecentNames, getRecentSubdomains } from '../lib/core-db/queries';
+import {
+  getRecentStacksTransfers, getRecentNames, getRecentSubdomains, StacksTransaction,
+} from '../lib/core-db-pg/queries';
 import { blockToTime } from '../lib/utils';
 
 const Controller = express.Router();
@@ -39,10 +42,22 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
 Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
     const page = req.query.page || '0';
-    const transactions = await getRecentStacksTransfers(10, parseInt(page, 10));
+    const transactions = await getRecentStacksTransfers(100, parseInt(page, 10));
+    const getStxAddresses = (tx: StacksTransaction) => {
+      if (!tx.historyData) {
+        return {};
+      }
+      if (tx.historyData.sender) {
+        return {
+          senderSTX: c32check.c32address(tx.historyData.sender),
+        };
+      }
+      return {};
+    };
     const transfers = transactions.map(tx => ({
       ...tx,
       timestamp: blockToTime(tx.blockHeight),
+      // ...getStxAddresses(tx),
     }));
     res.json({ transfers });
   } catch (error) {
