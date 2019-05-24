@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import * as c32check from 'c32check';
+import { address, networks } from 'bitcoinjs-lib';
 import moment from 'moment';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
@@ -39,6 +40,16 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
   }
 });
 
+const getSTXAddress = (addr: string) => c32check.b58ToC32(
+  address.fromOutputScript(
+    Buffer.from(
+      addr,
+      'hex',
+    ),
+    networks.bitcoin,
+  ),
+);
+
 Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
     const page = req.query.page || '0';
@@ -49,7 +60,8 @@ Controller.get('/transactions/stx', async (req: Request, res: Response) => {
       }
       if (tx.historyData.sender) {
         return {
-          senderSTX: c32check.c32address(tx.historyData.sender),
+          senderSTX: getSTXAddress(tx.historyData.sender),
+          recipientSTX: getSTXAddress(tx.historyData.recipient),
         };
       }
       return {};
@@ -57,7 +69,7 @@ Controller.get('/transactions/stx', async (req: Request, res: Response) => {
     const transfers = transactions.map(tx => ({
       ...tx,
       timestamp: blockToTime(tx.blockHeight),
-      // ...getStxAddresses(tx),
+      ...getStxAddresses(tx),
     }));
     res.json({ transfers });
   } catch (error) {
