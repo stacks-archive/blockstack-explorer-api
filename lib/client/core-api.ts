@@ -3,9 +3,11 @@ import moment from 'moment';
 import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import RPCClient from 'bitcoin-core';
+import dotenv from 'dotenv';
 import { getTX } from '../bitcore-db/queries';
 import { decodeTx } from '../btc-tx-decoder';
 
+dotenv.config();
 
 moment.updateLocale('en', {
   relativeTime: {
@@ -39,7 +41,7 @@ const rpcClient = new RPCClient({
   username: process.env.BITCOIND_USERNAME,
   password: process.env.BITCOIND_PASSWORD,
   port: process.env.BITCOIND_PORT,
-  // ssl: true
+  ssl: false,
 });
 
 let configData = {
