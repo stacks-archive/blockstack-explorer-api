@@ -66,6 +66,21 @@ export const getBlock = async (hash: string): Promise<Block> => {
   return <Block>block;
 };
 
+export const getBlockByHeight = async (height: number): Promise<Block> => {
+  const db = await getDB();
+  const collection = db.collection(Collections.Blocks);
+  const blockResult = await collection.findOne({
+    height,
+  });
+  const block: Block = {
+    ...blockResult,
+    time: blockResult.time.getTime() / 1000,
+    txCount: blockResult.transactionCount,
+  };
+
+  return <Block>block;
+};
+
 export const getBlockTransactions = async (hash: string, page: number = 0): Promise<Transaction[]> => {
   const db = await getDB();
   const txCollection = db.collection(Collections.Transactions);
