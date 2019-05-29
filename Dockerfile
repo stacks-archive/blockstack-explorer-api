@@ -11,4 +11,4 @@ WORKDIR /usr/src
 ENV NODE_ENV="production"
 COPY --from=base /usr/src .
 EXPOSE 4000
-CMD ["node", "./server"]
+CMD ["yarn", "prod"]
