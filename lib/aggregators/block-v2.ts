@@ -44,7 +44,7 @@ class BlockAggregator extends Aggregator {
       }
     }, { concurrency: 1 });
 
-    block.nameOperations = block.nameOperations.filter(Boolean);
+    block.nameOperations = (<any[]>block.nameOperations).filter(Boolean);
 
     return block;
   }
