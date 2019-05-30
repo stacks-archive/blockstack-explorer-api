@@ -4,7 +4,7 @@ import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import RPCClient from 'bitcoin-core';
 import dotenv from 'dotenv';
-import { getTX } from '../bitcore-db/queries';
+import { getTX, getLatestBlock } from '../bitcore-db/queries';
 import { decodeTx } from '../btc-tx-decoder';
 
 dotenv.config();
@@ -203,11 +203,20 @@ export const fetchRawTxInfo = async (hash: string) => {
 export const fetchTX = async (hash: string) => {
   // const tx = await fetchJSON(`${blockchainInfoApi}/rawtx/${hash}`);
   // return convertTx(tx);
-  const tx = await getTX(hash);
-  const rawTx = await fetchRawTxInfo(hash);
+  const [tx, rawTx, latestBlock] = await Promise.all([
+    getTX(hash),
+    fetchRawTxInfo(hash),
+    getLatestBlock(),
+  ]);
+  // const tx = await getTX(hash);
+  // const rawTx = await fetchRawTxInfo(hash);
   const decodedTx = Transaction.fromHex(<string>rawTx);
   // console.log(decodedTx);
-  return decodeTx(decodedTx, tx);
+  const formattedTX = await decodeTx(decodedTx, tx);
+  return {
+    ...formattedTX,
+    confirmations: latestBlock.height - tx.blockHeight,
+  };
 };
 
 /**
