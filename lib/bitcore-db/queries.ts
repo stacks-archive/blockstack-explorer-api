@@ -123,3 +123,10 @@ export const getBlockHash = async (height: string): Promise<string> => {
   });
   return block.hash;
 };
+
+export const getLatestBlock = async (): Promise<Block> => {
+  const db = await getDB();
+  const collection = db.collection(Collections.Blocks);
+  const block = await collection.findOne({}, { sort: { height: -1 } });
+  return <Block>block;
+};

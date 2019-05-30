@@ -1,12 +1,12 @@
 import moment from 'moment';
 import '../setup';
 import {
-  getBlocks, getTX, getBlock, getBlockHash,
+  getBlocks, getTX, getBlock, getBlockHash, getLatestBlock,
 } from '../../lib/bitcore-db/queries';
 
 test('can fetch blocks', async () => {
   const blocks = await getBlocks('2013-02-01');
-  console.log(blocks[0]);
+  // console.log(blocks[0]);
   const date = moment(blocks[0].time).utc();
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
   const lastDate = moment(blocks[0].time).utc();
@@ -56,4 +56,10 @@ test('fetches block hash from height', async () => {
   expect(hash).toEqual(
     '0000000000000000009c052962ef3f85d174c5989ab86029415ee99bae53277c',
   );
+});
+
+test('fetches latest block', async () => {
+  const block = await getLatestBlock();
+  expect(typeof block.height).toEqual('number');
+  expect(block.height).toBeGreaterThanOrEqual(578544);
 });
