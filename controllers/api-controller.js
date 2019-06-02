@@ -112,7 +112,7 @@ const makeAPIController = (Genesis) => {
         pathname: '/transaction/single',
         as: `/tx/${query}`,
         id: query,
-        data: tx,
+        data: JSON.stringify(tx),
       };
     }
     if (btcAddress) {

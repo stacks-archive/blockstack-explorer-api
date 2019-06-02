@@ -195,28 +195,33 @@ export const convertTx = (tx) => {
  */
 
 export const fetchRawTxInfo = async (hash: string) => {
-  const txRaw = await rpcClient.getRawTransaction(hash);
-  return txRaw;
+  try {
+    const txRaw = await rpcClient.getRawTransaction(hash).catch((err) => {
+      throw err;
+    });
+    return txRaw;
+  } catch (error) {
+    throw error;
+  }
 };
 
 
 export const fetchTX = async (hash: string) => {
-  // const tx = await fetchJSON(`${blockchainInfoApi}/rawtx/${hash}`);
-  // return convertTx(tx);
-  const [tx, rawTx, latestBlock] = await Promise.all([
-    getTX(hash),
-    fetchRawTxInfo(hash),
-    getLatestBlock(),
-  ]);
-  // const tx = await getTX(hash);
-  // const rawTx = await fetchRawTxInfo(hash);
-  const decodedTx = Transaction.fromHex(<string>rawTx);
-  // console.log(decodedTx);
-  const formattedTX = await decodeTx(decodedTx, tx);
-  return {
-    ...formattedTX,
-    confirmations: latestBlock.height - tx.blockHeight,
-  };
+  try {
+    const [tx, rawTx, latestBlock] = await Promise.all([
+      getTX(hash),
+      fetchRawTxInfo(hash),
+      getLatestBlock(),
+    ]);
+    const decodedTx = Transaction.fromHex(<string>rawTx);
+    const formattedTX = await decodeTx(decodedTx, tx);
+    return {
+      ...formattedTX,
+      confirmations: latestBlock.height - tx.blockHeight,
+    };
+  } catch (error) {
+    throw error;
+  }
 };
 
 /**

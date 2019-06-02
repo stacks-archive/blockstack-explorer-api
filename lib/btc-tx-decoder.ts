@@ -29,19 +29,34 @@ interface Input {
 export const decodeTx = async (tx: BTCTransaction, networkData: Transaction) => {
   const fetchVins: Promise<Input>[] = tx.ins.map((input, index) => new Promise(async (resolve) => {
     const txid = input.hash.reverse().toString('hex');
-    const inputTxHash = await fetchRawTxInfo(txid);
-    const inputTx = BTCTransaction.fromHex(<string>inputTxHash);
+    try {
+      const inputTxHash = await fetchRawTxInfo(txid);
+      const inputTx = BTCTransaction.fromHex(<string>inputTxHash);
 
-    return resolve({
-      txid,
-      index,
-      script: script.toASM(input.script),
-      sequence: input.sequence,
-      addr: <string>getAddr(<TxOutput>inputTx.outs[0]),
-      inputTx,
-    });
+      return resolve({
+        txid,
+        index,
+        script: script.toASM(input.script),
+        sequence: input.sequence,
+        addr: <string>getAddr(<TxOutput>inputTx.outs[0]),
+        inputTx,
+      });
+    } catch (error) {
+      return resolve({
+        txid,
+        index,
+        addr: '',
+        // script: input.script ? script.toASM(input.script) : null,
+        sequence: input.sequence,
+      });
+    }
   }));
-  const vin: Input[] = await Promise.all(fetchVins);
+  let vin: Input[] = [];
+  try {
+    vin = await Promise.all(fetchVins);
+  } catch (error) {
+    console.error('error fetching vins', error);
+  }
 
   const format = (out: TxOutput, n: number) => {
     const vout = {
