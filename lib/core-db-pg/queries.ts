@@ -86,3 +86,30 @@ export const getRecentStacksTransfers = async (limit: number, page: number = 0):
   });
   return results;
 };
+
+export const getNameOperationsForBlock = async (blockHeight: number) => {
+  const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
+  const params = [blockHeight];
+  const db = await getDB();
+  const { rows } = await db.query(sql, params);
+  // const results = rows.map(row => ({
+  //   ...row,
+  //   historyData: JSON.parse(row.history_data),
+  // }));
+  const results = rows.map((row) => {
+    const historyData = JSON.parse(row.history_data);
+    return {
+      ...row,
+      ...historyData,
+    };
+  });
+  return results;
+};
+
+export const getSubdomainRegistrationsForTxid = async (txid: string) => {
+  const sql = 'SELECT * FROM subdomain_records WHERE txid = $1';
+  const params = [txid];
+  const db = await getDB();
+  const { rows } = await db.query(sql, params);
+  return rows;
+};

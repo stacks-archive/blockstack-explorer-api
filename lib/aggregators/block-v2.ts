@@ -7,6 +7,9 @@ import {
   fetchNameOperations, fetchTransactionSubdomains, fetchName,
 } from '../client/core-api';
 import { getBlock, getBlockTransactions, getBlockHash } from '../bitcore-db/queries';
+import {
+  getNameOperationsForBlock, getSubdomainRegistrationsForTxid,
+} from '../core-db-pg/queries';
 
 class BlockAggregator extends Aggregator {
   static key(hash: string) {
@@ -24,16 +27,18 @@ class BlockAggregator extends Aggregator {
     }
     const transactions = await getBlockTransactions(hash);
     block.transactions = transactions;
-    const nameOperations = await fetchNameOperations(block.height);
+    // const nameOperations = await fetchNameOperations(block.height);
+    const nameOperations = await getNameOperationsForBlock(block.height);
     const { time } = block;
     block.nameOperations = await BluebirdPromise.map(nameOperations, async (_nameOp) => {
       try {
         const nameOp: any = { ..._nameOp };
         nameOp.timeAgo = moment(time * 1000).fromNow(true);
         nameOp.time = time * 1000;
-        if (nameOp.opcode === 'NAME_UPDATE' && (nameOp.name === 'id.blockstack')) {
+        if (nameOp.opcode === 'NAME_UPDATE') {
           const { txid } = nameOp;
-          const subdomains = await fetchTransactionSubdomains(txid);
+          // const subdomains = await fetchTransactionSubdomains(txid);
+          const subdomains = await getSubdomainRegistrationsForTxid(txid);
           nameOp.subdomains = subdomains;
         }
         return nameOp;
