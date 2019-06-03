@@ -40,7 +40,11 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
       $gte: beginning.toDate(),
     },
     ...chainQuery,
-  }).limit(100).skip(page * 100).toArray();
+  })
+    .limit(100)
+    .sort({ height: -1 })
+    .skip(page * 100)
+    .toArray();
 
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,

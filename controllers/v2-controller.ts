@@ -16,7 +16,7 @@ const Controller = express.Router();
 Controller.get('/blocks/:hash', async (req: Request, res: Response) => {
   try {
     const { hash } = req.params;
-    const block = await BlockAggregator.fetch(hash);
+    const block = await BlockAggregator.setter(hash);
     res.json({ block });
   } catch (error) {
     console.error(error);
