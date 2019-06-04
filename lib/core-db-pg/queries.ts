@@ -8,7 +8,7 @@ interface Subdomain {
 }
 
 export const getRecentSubdomains = async (limit: number, page: number = 0): Promise<Subdomain[]> => {
-  const sql = 'select * from subdomain_records ORDER BY block_height::integer DESC LIMIT $1 OFFSET $2;';
+  const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1 OFFSET $2;';
   const params = [limit, page * limit];
   const db = await getDB();
   const res = await db.query(sql, params);
