@@ -15,6 +15,7 @@ export const getRecentSubdomains = async (limit: number, page: number = 0): Prom
   const results: Subdomain[] = res.rows.map(row => ({
     ...row,
     name: row.fully_qualified_subdomain,
+    blockHeight: parseInt(row.block_height, 10),
   }));
   return results;
 };
@@ -87,7 +88,21 @@ export const getRecentStacksTransfers = async (limit: number, page: number = 0):
   return results;
 };
 
-export const getNameOperationsForBlock = async (blockHeight: number) => {
+interface HistoryRecord {
+  block_id: number,
+  op: string,
+  opcode: string,
+  txid: string,
+  history_id: string,
+  creator_address: string | null,
+  historyData: {
+    [key: string]: any,
+  }
+}
+
+export const getNameOperationsForBlock = async (
+  blockHeight: number,
+): Promise<HistoryRecord[]> => {
   const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
   const params = [blockHeight];
   const db = await getDB();
@@ -96,7 +111,7 @@ export const getNameOperationsForBlock = async (blockHeight: number) => {
   //   ...row,
   //   historyData: JSON.parse(row.history_data),
   // }));
-  const results = rows.map((row) => {
+  const results: HistoryRecord[] = rows.map((row) => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...row,
@@ -111,5 +126,17 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
   const params = [txid];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  return rows;
+  const results: Subdomain[] = rows.map(row => ({
+    ...row,
+    name: row.fully_qualified_subdomain,
+    blockHeight: parseInt(row.block_height, 10),
+  }));
+  return results;
+};
+
+export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
+  const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
+  const db = await getDB();
+  const { rows } = await db.query(sql);
+  return <HistoryRecord[]>rows;
 };
