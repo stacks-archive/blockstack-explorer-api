@@ -3,6 +3,7 @@ import Aggregator from './aggregator';
 import { fetchName, fetchNameRecord } from '../client/core-api';
 import AppsAggregator, { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
+import { getNameHistory } from '../core-db-pg/queries';
 
 interface UserApp {
   [key: string]: string,
@@ -31,7 +32,7 @@ class NameAggregator extends Aggregator {
   static async setter(name: string, historyPage = 0) {
     const [person, nameRecord, appsList] = await Promise.all([
       fetchName(name),
-      fetchNameRecord(name, historyPage),
+      getNameHistory(name),
       AppsAggregator.fetch(),
     ]);
     let proofs;

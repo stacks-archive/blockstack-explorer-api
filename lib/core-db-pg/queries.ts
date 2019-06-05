@@ -169,3 +169,18 @@ export const getAllHistoryRecords = async (limit: number, page: number = 0) => {
   });
   return results;
 };
+
+export const getNameHistory = async (name: string) => {
+  const sql = 'select * from history WHERE history_id = $1 ORDER BY block_id DESC';
+  const params = [name];
+  const db = await getDB();
+  const { rows } = await db.query(sql, params);
+  const results: HistoryRecord[] = await rows.map((row) => {
+    const historyData = JSON.parse(row.history_data);
+    return {
+      ...historyData,
+      ...row,
+    };
+  });
+  return results;
+};
