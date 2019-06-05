@@ -7,7 +7,12 @@ import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
 // import { getBlocks } from '../lib/bitcore-db/queries';
 import {
-  getRecentStacksTransfers, getRecentNames, getRecentSubdomains, StacksTransaction,
+  getRecentStacksTransfers,
+  getRecentNames,
+  getRecentSubdomains,
+  StacksTransaction,
+  getAllHistoryRecords,
+  HistoryRecordWithSubdomains,
 } from '../lib/core-db-pg/queries';
 import { blockToTime } from '../lib/utils';
 
@@ -50,22 +55,23 @@ const getSTXAddress = (addr: string) => c32check.b58ToC32(
   ),
 );
 
+const getStxAddresses = (tx: StacksTransaction | HistoryRecordWithSubdomains) => {
+  if (!tx.historyData) {
+    return {};
+  }
+  if (tx.opcode === 'TOKEN_TRANSFER') {
+    return {
+      senderSTX: getSTXAddress(tx.historyData.sender),
+      recipientSTX: getSTXAddress(tx.historyData.recipient),
+    };
+  }
+  return {};
+};
+
 Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
     const page = req.query.page || '0';
     const transactions = await getRecentStacksTransfers(100, parseInt(page, 10));
-    const getStxAddresses = (tx: StacksTransaction) => {
-      if (!tx.historyData) {
-        return {};
-      }
-      if (tx.historyData.sender) {
-        return {
-          senderSTX: getSTXAddress(tx.historyData.sender),
-          recipientSTX: getSTXAddress(tx.historyData.recipient),
-        };
-      }
-      return {};
-    };
     const transfers = transactions.map(tx => ({
       ...tx,
       timestamp: blockToTime(tx.blockHeight),
@@ -104,6 +110,23 @@ Controller.get('/transactions/subdomains', async (req: Request, res: Response) =
       timestamp: blockToTime(name.blockHeight),
     }));
     res.json({ subdomains });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/transactions/all', async (req: Request, res: Response) => {
+  try {
+    const limit = 100;
+    const page = req.query.page || '0';
+    const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
+    const history = historyResult.map(historyRecord => ({
+      ...historyRecord,
+      timestamp: blockToTime(historyRecord.block_id),
+      ...getStxAddresses(historyRecord),
+    }));
+    res.json({ history });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false });

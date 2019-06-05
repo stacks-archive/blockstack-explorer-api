@@ -1,3 +1,4 @@
+import BluebirdPromise from 'bluebird';
 import { getDB } from './index';
 
 interface Subdomain {
@@ -81,7 +82,7 @@ export const getRecentStacksTransfers = async (limit: number, page: number = 0):
       historyId: row.history_id,
       blockHeight: row.block_id,
       op: row.op,
-      opcode: row.opCode,
+      opcode: row.opcode,
       historyData,
     };
   });
@@ -95,6 +96,7 @@ interface HistoryRecord {
   txid: string,
   history_id: string,
   creator_address: string | null,
+  history_data: string,
   historyData: {
     [key: string]: any,
   }
@@ -139,4 +141,31 @@ export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
   const db = await getDB();
   const { rows } = await db.query(sql);
   return <HistoryRecord[]>rows;
+};
+
+export interface HistoryRecordWithSubdomains extends HistoryRecord {
+  subdomains?: string[],
+}
+
+export const getAllHistoryRecords = async (limit: number, page: number = 0) => {
+  const sql = 'select * from history ORDER BY block_id DESC LIMIT $1 OFFSET $2';
+  const params = [limit, limit * page];
+  const db = await getDB();
+  const { rows } = await db.query(sql, params);
+  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(<HistoryRecord[]>rows, async (row) => {
+    const historyData = JSON.parse(row.history_data);
+    if (row.opcode === 'NAME_UPDATE') {
+      const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
+      return {
+        ...row,
+        historyData,
+        subdomains: subdomains.map(sub => sub.name),
+      };
+    }
+    return {
+      ...row,
+      historyData,
+    };
+  });
+  return results;
 };
