@@ -16,6 +16,7 @@ export interface Block {
   previousBlockHash: string,
   merkleRoot: string,
   time: number,
+  date: Date,
   bits: number,
   nonce: number,
   size: number,
@@ -49,6 +50,7 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,
     time: block.time.getTime() / 1000,
+    date: block.time,
     txCount: block.transactionCount,
   }));
 
@@ -64,6 +66,7 @@ export const getBlock = async (hash: string): Promise<Block> => {
   const block: Block = {
     ...blockResult,
     time: blockResult.time.getTime() / 1000,
+    date: blockResult.time,
     txCount: blockResult.transactionCount,
   };
 
@@ -79,6 +82,7 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
   const block: Block = {
     ...blockResult,
     time: blockResult.time.getTime() / 1000,
+    date: blockResult.time,
     txCount: blockResult.transactionCount,
   };
 
@@ -133,4 +137,22 @@ export const getLatestBlock = async (): Promise<Block> => {
   const collection = db.collection(Collections.Blocks);
   const block = await collection.findOne({}, { sort: { height: -1 } });
   return <Block>block;
+};
+
+export const getTimeForBlock = async (height: number): Promise<number> => {
+  const block = await getBlockByHeight(height);
+  return block.date.getTime();
+};
+
+export const getTimesForBlockHeights = async (heights: number[]) => {
+  const db = await getDB();
+  const collection = db.collection(Collections.Blocks);
+  const blocks = await collection.find({
+    height: {
+      $in: heights,
+    },
+  }).toArray();
+  const timesByHeight = {};
+  blocks.forEach((block) => { timesByHeight[block.height] = block.time.getTime(); });
+  return timesByHeight;
 };

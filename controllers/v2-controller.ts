@@ -2,10 +2,11 @@ import express, { Request, Response } from 'express';
 import * as c32check from 'c32check';
 import { address, networks } from 'bitcoinjs-lib';
 import moment from 'moment';
+import BluebirdPromise from 'bluebird';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
-// import { getBlocks } from '../lib/bitcore-db/queries';
+import { getTimesForBlockHeights } from '../lib/bitcore-db/queries';
 import {
   getRecentStacksTransfers,
   getRecentNames,
@@ -14,7 +15,6 @@ import {
   getAllHistoryRecords,
   HistoryRecordWithSubdomains,
 } from '../lib/core-db-pg/queries';
-import { blockToTime } from '../lib/utils';
 
 const Controller = express.Router();
 
@@ -72,9 +72,10 @@ Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
     const page = req.query.page || '0';
     const transactions = await getRecentStacksTransfers(100, parseInt(page, 10));
+    const blockTimes = await getTimesForBlockHeights(transactions.map(tx => tx.blockHeight));
     const transfers = transactions.map(tx => ({
       ...tx,
-      timestamp: blockToTime(tx.blockHeight),
+      timestamp: blockTimes[tx.blockHeight],
       ...getStxAddresses(tx),
     }));
     res.json({ transfers });
@@ -89,9 +90,12 @@ Controller.get('/transactions/names', async (req: Request, res: Response) => {
     const limit = 100;
     const page = req.query.page || '0';
     const namesResult = await getRecentNames(limit, parseInt(page, 10));
+    const blockTimes = await getTimesForBlockHeights(
+      namesResult.map(name => name.block_number),
+    );
     const names = namesResult.map(name => ({
       ...name,
-      timestamp: blockToTime(name.block_number),
+      timestamp: blockTimes[name.block_number],
     }));
     res.json({ names });
   } catch (error) {
@@ -105,9 +109,10 @@ Controller.get('/transactions/subdomains', async (req: Request, res: Response) =
     const limit = 100;
     const page = req.query.page || '0';
     const subdomainsResult = await getRecentSubdomains(limit, parseInt(page, 10));
+    const blockTimes = await getTimesForBlockHeights(subdomainsResult.map(sub => parseInt(<string>sub.blockHeight, 10)));
     const subdomains = subdomainsResult.map(name => ({
       ...name,
-      timestamp: blockToTime(name.blockHeight),
+      timestamp: blockTimes[parseInt(<string>name.blockHeight, 10)],
     }));
     res.json({ subdomains });
   } catch (error) {
@@ -121,9 +126,11 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
     const limit = 100;
     const page = req.query.page || '0';
     const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
+    const heights = historyResult.map(item => item.block_id);
+    const blockTimes = await getTimesForBlockHeights(heights);
     const history = historyResult.map(historyRecord => ({
       ...historyRecord,
-      timestamp: blockToTime(historyRecord.block_id),
+      timestamp: blockTimes[historyRecord.block_id],
       ...getStxAddresses(historyRecord),
     }));
     res.json({ history });

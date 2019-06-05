@@ -3,7 +3,7 @@ import { getDB } from './index';
 
 interface Subdomain {
   name: string,
-  blockHeight: number,
+  blockHeight: number | string,
   owner: string,
   [key: string]: any,
 }

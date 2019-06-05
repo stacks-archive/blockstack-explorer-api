@@ -2,7 +2,7 @@ import BluebirdPromise from 'bluebird';
 
 import Aggregator from './aggregator';
 import { getAllNameOperations, getSubdomainRegistrationsForTxid } from '../core-db-pg/queries';
-import { blockToTime } from '../utils';
+import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
 interface NameOp {
   name: string,
@@ -18,12 +18,15 @@ class NameOpsAggregator extends Aggregator {
 
   static async setter(): Promise<NameOp[]> {
     const history = await getAllNameOperations();
+    const blockHeights = history.map(record => record.block_id);
+    const blockTimes = await getTimesForBlockHeights(blockHeights);
     const nameOps = await BluebirdPromise.map(history, async (historyRecord): Promise<NameOp | NameOp[]> => {
+      const time = blockTimes[historyRecord.block_id];
       if (historyRecord.opcode === 'NAME_REGISTRATION') {
         const row: NameOp = {
           name: historyRecord.history_id,
           owner: <string>historyRecord.creator_address,
-          time: blockToTime(historyRecord.block_id),
+          time,
           block: historyRecord.block_id,
         };
         return row;
@@ -32,8 +35,8 @@ class NameOpsAggregator extends Aggregator {
       const results: NameOp[] = subdomains.map(subdomain => ({
         name: subdomain.name,
         owner: subdomain.owner,
-        time: blockToTime(subdomain.blockHeight),
-        block: subdomain.blockHeight,
+        time,
+        block: parseInt(<string>subdomain.blockHeight, 10),
       }));
       return results;
     });
