@@ -14,7 +14,7 @@ class NameAggregator extends Aggregator {
     return `Names:${name}?historyPage=${historyPage}`;
   }
 
-  static getAppsArray(apps: BlockstackApp[], userApps: UserApp[]) {
+  static getAppsArray(apps: BlockstackApp[], userApps: UserApp[] = []) {
     const domains = Object.keys(userApps).map(domain => extractRootDomain(domain));
     const applist: BlockstackApp[] = [];
     const appsNotOnAppco: string[] = [];
