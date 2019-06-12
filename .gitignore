@@ -5,3 +5,4 @@ coverage
 scripts/sqlite-to-pg.sh
 scripts/sqlite.load
 scripts/blockstack_core.sql
+data/renewals.csv
