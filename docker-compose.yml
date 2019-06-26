@@ -1,0 +1,14 @@
+version: '3'
+services:
+  db:
+    image: postgres
+  redis:
+    image: redis
+  web:
+    build: .
+    command: 'yarn prod'
+    ports: 
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
