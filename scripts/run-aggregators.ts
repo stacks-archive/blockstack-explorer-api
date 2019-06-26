@@ -1,4 +1,4 @@
-import Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node';
 import NameOpsAggregator from '../lib/aggregators/name-ops';
 import HomePageAggregator from '../lib/aggregators/home-info';
 import NamespaceAggregator from '../lib/aggregators/namespaces';

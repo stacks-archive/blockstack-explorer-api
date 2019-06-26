@@ -1,6 +1,6 @@
 import BluebirdPromise from 'bluebird';
 import moment from 'moment';
-import Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node';
 
 import Aggregator from './aggregator';
 import {

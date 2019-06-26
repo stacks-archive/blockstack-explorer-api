@@ -1,14 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import Sentry from '@sentry/node';
+import * as Sentry from '@sentry/node';
 
 import makeAPIController from './controllers/api-controller';
 import V2ApiController from './controllers/v2-controller';
 import { getAccounts } from './lib/addresses';
 
 if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN });
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.SENTRY_ENV || 'production',
+  });
 }
 
 const getApp = async () => {
