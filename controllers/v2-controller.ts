@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import * as c32check from 'c32check';
 import { address, networks } from 'bitcoinjs-lib';
 import moment from 'moment';
+import request from 'request-promise';
+import accounting from 'accounting';
 import BluebirdPromise from 'bluebird';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
@@ -15,6 +17,9 @@ import {
   getAllHistoryRecords,
   HistoryRecordWithSubdomains,
 } from '../lib/core-db-pg/queries';
+
+// const { blockToTime } = require('../lib/utils');
+import { blockToTime, stacksValue } from '../lib/utils';
 
 const Controller = express.Router();
 
@@ -137,6 +142,25 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Response) => {
+  const { stacksAddress } = req.params;
+  const uri = `${process.env.HF_URL}/${stacksAddress}`;
+  try {
+    const account = await request.get({
+      uri,
+      json: true,
+    });
+    const vestingBlocks = Object.keys(account.vesting);
+    const lastVestingMonth = blockToTime(vestingBlocks[vestingBlocks.length - 1]);
+    account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
+    account.totalFormatted = accounting.formatNumber(stacksValue(account.value + account.vesting_total));
+    account.unlockPerMonthFormatted = accounting.formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
+    res.json(account);
+  } catch (error) {
+    res.status(404).json({ success: false });
   }
 });
 
