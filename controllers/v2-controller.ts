@@ -19,7 +19,7 @@ import {
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
-import { blockToTime, stacksValue } from '../lib/utils';
+import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
 
 const Controller = express.Router();
 
@@ -158,13 +158,14 @@ Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Respons
       const vestingBlocks = Object.keys(account.vesting);
       const lastVestingMonth = blockToTime(vestingBlocks[vestingBlocks.length - 1]);
       account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
-      account.totalFormatted = accounting.formatNumber(stacksValue(account.value + account.vesting_total));
-      account.unlockPerMonthFormatted = accounting.formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
+      account.totalFormatted = formatNumber(stacksValue(account.value + account.vesting_total));
+      account.unlockPerMonthFormatted = formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
       return account;
     });
-    const totalFormatted = accounting.formatNumber(stacksValue(total));
+    const totalFormatted = formatNumber(stacksValue(total));
     res.json({ accounts, total, totalFormatted });
   } catch (error) {
+    console.error(error);
     res.status(404).json({ success: false });
   }
 });
