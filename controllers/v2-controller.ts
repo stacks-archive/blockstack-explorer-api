@@ -149,16 +149,21 @@ Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Respons
   const { stacksAddress } = req.params;
   const uri = `${process.env.HF_URL}/${stacksAddress}`;
   try {
-    const account = await request.get({
+    const { accounts: _accounts, total } = await request.get({
       uri,
       json: true,
     });
-    const vestingBlocks = Object.keys(account.vesting);
-    const lastVestingMonth = blockToTime(vestingBlocks[vestingBlocks.length - 1]);
-    account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
-    account.totalFormatted = accounting.formatNumber(stacksValue(account.value + account.vesting_total));
-    account.unlockPerMonthFormatted = accounting.formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
-    res.json(account);
+    const accounts = _accounts.map((_account) => {
+      const account = { ..._account };
+      const vestingBlocks = Object.keys(account.vesting);
+      const lastVestingMonth = blockToTime(vestingBlocks[vestingBlocks.length - 1]);
+      account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
+      account.totalFormatted = accounting.formatNumber(stacksValue(account.value + account.vesting_total));
+      account.unlockPerMonthFormatted = accounting.formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
+      return account;
+    });
+    const totalFormatted = accounting.formatNumber(stacksValue(total));
+    res.json({ accounts, total, totalFormatted });
   } catch (error) {
     res.status(404).json({ success: false });
   }
