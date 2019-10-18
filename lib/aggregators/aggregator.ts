@@ -5,9 +5,14 @@ class Aggregator {
     return this.name;
   }
 
+  static async keyWithTag(...args) {
+    const tag = await this.getCurrentGitTag();
+    return `${this.key(...args)}-${tag}`;
+  }
+
   static async set(...args) {
     // const verbose = this.verbose(...args);
-    const key = this.key(...args);
+    const key = await this.keyWithTag(...args);
     const value = await this.setter(...args);
     let setArguments: any[] = [key, JSON.stringify(value)];
     const expiry = this.expiry(...args);
@@ -21,7 +26,7 @@ class Aggregator {
   }
 
   static async get(...args) {
-    const value = await redis.getAsync(this.key(...args));
+    const value = await redis.getAsync(await this.keyWithTag(...args));
     if (value) {
       return JSON.parse(value);
     }
@@ -34,7 +39,7 @@ class Aggregator {
 
   static async fetch(...args) {
     const verbose = this.verbose(...args);
-    const key = this.key(...args);
+    const key = await this.keyWithTag(...args);
     if (verbose) console.log(`Running aggregator: "${key}"`);
     const value = await this.get(...args);
     if (value) {
@@ -51,6 +56,19 @@ class Aggregator {
 
   static verbose(...args): boolean {
     return true;
+  }
+
+  static getCurrentGitTag() {
+    return new Promise(async (resolve) => {
+      const command = "git describe --exact-match --tags $(git log -n1 --pretty='%h')";
+      // eslint-disable-next-line global-require
+      require('child_process').exec(command, (err, stdout) => {
+        if (err) {
+          return resolve('');
+        }
+        return resolve(stdout);
+      });
+    });
   }
 }
 
