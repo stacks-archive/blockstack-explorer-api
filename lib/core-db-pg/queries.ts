@@ -1,4 +1,5 @@
 import BluebirdPromise from 'bluebird';
+import * as c32check from 'c32check';
 import { getDB } from './index';
 
 interface Subdomain {
@@ -183,4 +184,22 @@ export const getNameHistory = async (name: string) => {
     };
   });
   return results;
+};
+
+export const getVestingTotalForAddress = async (address: string) => {
+  try {
+    const addr: string = c32check.c32ToB58(address);
+    const sql = 'SELECT * FROM account_vesting WHERE address = $1';
+    const params = [addr];
+    const db = await getDB();
+    const { rows } = await db.query(sql, params);
+    const vestingTotal: number = rows.reduce((prev, row) => {
+      const vestAtBlock: string = row.vesting_value;
+      return prev + parseInt(vestAtBlock, 10);
+    }, 0);
+    return vestingTotal;
+  } catch (error) {
+    console.log('vesting total query error', error);
+    return 0;
+  }
 };

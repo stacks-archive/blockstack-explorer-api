@@ -78,7 +78,7 @@ const makeAPIController = (Genesis) => {
 
   APIController.getAsync('/stacks/addresses/:address', respond(async req => StacksAddressAggregator.fetch(req.params.address)));
 
-  APIController.getAsync('/home', respond(async () => HomeInfoAggregator.setter(totals)));
+  APIController.getAsync('/home', respond(async () => HomeInfoAggregator.fetch(totals)));
 
   APIController.getAsync('/search/:query', respond(async (req) => {
     const { query } = req.params;
