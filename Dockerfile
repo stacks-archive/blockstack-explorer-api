@@ -1,4 +1,4 @@
-FROM node:lts-alpine as base
+FROM node:10.16.3-alpine as base
 WORKDIR /usr/src
 COPY package.json yarn.lock /usr/src/
 RUN apk add python make g++ && \
@@ -6,7 +6,7 @@ RUN apk add python make g++ && \
 COPY . .
 RUN yarn --production
 
-FROM node:lts-alpine
+FROM node:10.16.3-alpine
 WORKDIR /usr/src
 ENV NODE_ENV="production"
 COPY --from=base /usr/src .
