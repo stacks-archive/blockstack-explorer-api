@@ -1,6 +1,7 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import { getDB } from './index';
+import { getLatestBlock } from '../bitcore-db/queries';
 
 interface Subdomain {
   name: string,
@@ -202,4 +203,14 @@ export const getVestingTotalForAddress = async (address: string) => {
     console.log('vesting total query error', error);
     return 0;
   }
+};
+
+export const getUnlockedSupply = async () => {
+  const latestBlock = await getLatestBlock();
+  const sql = 'SELECT sum(vesting_value::bigint) FROM account_vesting where block_id < $1;';
+  const db = await getDB();
+  const params = [latestBlock.height];
+  const { rows } = await db.query(sql, params);
+  const [row] = rows;
+  return row.sum * 10e-7;
 };
