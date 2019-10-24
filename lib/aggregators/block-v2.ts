@@ -2,14 +2,16 @@ import BluebirdPromise from 'bluebird';
 import moment from 'moment';
 import * as Sentry from '@sentry/node';
 
+import { text } from 'body-parser';
 import Aggregator from './aggregator';
 import {
   fetchNameOperations, fetchTransactionSubdomains, fetchName,
 } from '../client/core-api';
-import { getBlock, getBlockTransactions, getBlockHash } from '../bitcore-db/queries';
+import { getBlock, getBlockTransactions, getBlockHash, Transaction } from '../bitcore-db/queries';
 import {
   getNameOperationsForBlock, getSubdomainRegistrationsForTxid,
 } from '../core-db-pg/queries';
+import { btcValue } from '../utils';
 
 class BlockAggregator extends Aggregator {
   static key(hash: string) {
@@ -25,8 +27,11 @@ class BlockAggregator extends Aggregator {
     if (!block) {
       return null;
     }
-    const transactions = await getBlockTransactions(hash);
-    block.transactions = transactions;
+    const transactions: Transaction[] = await getBlockTransactions(hash);
+    block.transactions = transactions.map(tx => ({
+      ...tx,
+      value: btcValue(tx.value),
+    }));
     // const nameOperations = await fetchNameOperations(block.height);
     const nameOperations = await getNameOperationsForBlock(block.height);
     const { time } = block;
