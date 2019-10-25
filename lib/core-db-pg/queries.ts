@@ -214,3 +214,16 @@ export const getUnlockedSupply = async () => {
   const [row] = rows;
   return row.sum * 10e-7;
 };
+
+export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | null> => {
+  const sql = 'SELECT * from history where txid = $1';
+  const params = [txid];
+  const db = await getDB();
+  const { rows }: { rows: HistoryRecord[] } = await db.query(sql, params);
+  const [row] = rows;
+  if (!row) return null;
+  return {
+    ...row,
+    historyData: JSON.parse(row.history_data),
+  };
+};

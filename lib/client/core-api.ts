@@ -1,11 +1,15 @@
 import request from 'request-promise';
 import moment from 'moment';
+import accounting from 'accounting';
 import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import RPCClient from 'bitcoin-core';
 import dotenv from 'dotenv';
 import { getTX, getLatestBlock } from '../bitcore-db/queries';
 import { decodeTx } from '../btc-tx-decoder';
+import { getHistoryFromTxid } from '../core-db-pg/queries';
+import { getStxAddresses } from '../../controllers/v2-controller';
+import { stacksValue, formatNumber, btcValue } from '../utils';
 
 dotenv.config();
 
@@ -208,17 +212,31 @@ export const fetchRawTxInfo = async (hash: string) => {
 
 export const fetchTX = async (hash: string) => {
   try {
-    const [tx, rawTx, latestBlock] = await Promise.all([
+    const [tx, rawTx, latestBlock, history] = await Promise.all([
       getTX(hash),
       fetchRawTxInfo(hash),
       getLatestBlock(),
+      getHistoryFromTxid(hash),
     ]);
     const decodedTx = Transaction.fromHex(<string>rawTx);
     const formattedTX = await decodeTx(decodedTx, tx);
-    return {
+    const txData = {
       ...formattedTX,
+      feeBTC: btcValue(formattedTX.fee),
       confirmations: latestBlock.height - tx.blockHeight,
     };
+    if (history && history.opcode === 'TOKEN_TRANSFER') {
+      const stxAddresses = getStxAddresses(history);
+      const valueStacks = stacksValue(parseInt(history.historyData.token_fee, 10));
+      return {
+        ...txData,
+        ...stxAddresses,
+        ...history,
+        valueStacks,
+        valueStacksFormatted: formatNumber(valueStacks),
+      };
+    }
+    return txData;
   } catch (error) {
     throw error;
   }

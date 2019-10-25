@@ -60,7 +60,7 @@ const getSTXAddress = (addr: string) => c32check.b58ToC32(
   ),
 );
 
-const getStxAddresses = (tx: StacksTransaction | HistoryRecordWithSubdomains) => {
+export const getStxAddresses = (tx: StacksTransaction | HistoryRecordWithSubdomains) => {
   if (!tx.historyData) {
     return {};
   }
