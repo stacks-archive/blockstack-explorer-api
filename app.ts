@@ -15,6 +15,7 @@ if (process.env.SENTRY_DSN) {
     environment: process.env.SENTRY_ENV || 'production',
     ignoreErrors: [
       'Account not found',
+      'Home page is not available',
     ],
   });
 }
