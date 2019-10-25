@@ -4,8 +4,6 @@ import morgan from 'morgan';
 import * as Sentry from '@sentry/node';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createServer } from '@promster/server';
-// const { createMiddleware: createPrometheusMiddleware } = require('@promster/express');
-// const { createServer } = require('@promster/server');
 
 import makeAPIController from './controllers/api-controller';
 import V2ApiController from './controllers/v2-controller';
