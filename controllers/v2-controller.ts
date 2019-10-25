@@ -5,9 +5,11 @@ import moment from 'moment';
 import request from 'request-promise';
 import accounting from 'accounting';
 import BluebirdPromise from 'bluebird';
+import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
+import FeeEstimator from '../lib/aggregators/fee-estimate';
 import { getTimesForBlockHeights } from '../lib/bitcore-db/queries';
 import {
   getRecentStacksTransfers,
@@ -30,6 +32,7 @@ Controller.get('/blocks/:hash', async (req: Request, res: Response) => {
     res.json({ block });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -46,6 +49,7 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
     res.json({ blocks });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -86,6 +90,7 @@ Controller.get('/transactions/stx', async (req: Request, res: Response) => {
     res.json({ transfers });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -105,6 +110,7 @@ Controller.get('/transactions/names', async (req: Request, res: Response) => {
     res.json({ names });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -122,6 +128,7 @@ Controller.get('/transactions/subdomains', async (req: Request, res: Response) =
     res.json({ subdomains });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -141,6 +148,7 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
     res.json({ history });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(500).json({ success: false });
   }
 });
@@ -166,7 +174,18 @@ Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Respons
     res.json({ accounts, total, totalFormatted });
   } catch (error) {
     console.error(error);
+    Sentry.captureException(error);
     res.status(404).json({ success: false });
+  }
+});
+
+Controller.get('/fee-estimate', async (req: Request, res: Response) => {
+  try {
+    const fee = await FeeEstimator.fetch();
+    res.json({ recommended: fee });
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
   }
 });
 
