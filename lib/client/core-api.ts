@@ -7,6 +7,7 @@ import RPCClient from 'bitcoin-core';
 import dotenv from 'dotenv';
 import { getTX, getLatestBlock } from '../bitcore-db/queries';
 import { decodeTx } from '../btc-tx-decoder';
+import { decode as decodeStx } from '../stacks-decoder';
 import { getHistoryFromTxid } from '../core-db-pg/queries';
 import { getStxAddresses } from '../../controllers/v2-controller';
 import { stacksValue, formatNumber, btcValue } from '../utils';
@@ -227,11 +228,13 @@ export const fetchTX = async (hash: string) => {
     };
     if (history && history.opcode === 'TOKEN_TRANSFER') {
       const stxAddresses = getStxAddresses(history);
+      const stxDecoded = decodeStx(rawTx);
       const valueStacks = stacksValue(parseInt(history.historyData.token_fee, 10));
       return {
         ...txData,
         ...stxAddresses,
         ...history,
+        stxDecoded,
         valueStacks,
         valueStacksFormatted: formatNumber(valueStacks),
       };
