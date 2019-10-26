@@ -234,6 +234,7 @@ export const fetchTX = async (hash: string) => {
         ...txData,
         ...stxAddresses,
         ...history,
+        memo: history.historyData.scratch_area ? Buffer.from(history.historyData.scratch_area, 'hex').toString() : null,
         stxDecoded,
         valueStacks,
         valueStacksFormatted: formatNumber(valueStacks),
