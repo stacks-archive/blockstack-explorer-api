@@ -8,9 +8,25 @@ Sometimes, to get information about something, you'll want to make multiple API 
 
 This repository intends to be a one-stop-shop for all of these APIs, and it has support for aggregating and caching information for everything you might want. For example, to get all name operations in the past few days, you need to make quite a few API requests. First, fetch all blocks, and then fetch name operations for each block in that list. This project provides a single API that caches does that all for you, and caches the result in a sane way.
 
-## N.B.
+## Local Development
 
-This is a new project, built for use in our new explorer. APIs are being added and changed frequently.
+This is unlike a typical web server, as you need to have blockchain information seeded in the server's database. There are two sources of information:
+
+1. `blockstack-core`, for Blockstack related data.
+2. `bitcore`, for Bitcoin related data
+
+Running Bitcore is an exercise left to the reader. It's tricky, and you need to have a full Bitcoind node in order to run Bitcore. If you're a Blockstack engineer, we have an internal Bitcore node that you can use. Ask a team member, and add the ENV variables `BITCORE_MONGODB_URI`, `BITCOIND_USERNAME`, `BITCOIND_PASSWORD`, `BITCOIND_HOST`, and `BITCOIND_PASSWORD` to your `.env` file.
+
+To fast-sync data from `blockstack-core`, we have a setup script that will get your database seeded with everything you need. It uses Docker, so you'll need that installed and running. Then, run `yarn seed` to run the steps needed to get a PostgresSQL database running. Then, add the following to `.env`:
+
+~~~
+PGUSER=admin
+PGPASSWORD=password
+PGPORT=5433
+PGDATABASE=blockstack_core
+~~~
+
+The, you can run the server with `yarn nodemon`, which will automatically restart for file changes.
 
 ## APIs
 

@@ -17,19 +17,15 @@ const steps = [
   },
   {
     name: 'Doing a fast-sync from a blockstack-core snapshot',
-    cmd: 'docker run --name core-spinup quay.io/blockstack/blockstack-core:master blockstack-core fast_sync',
-  },
-  {
-    name: 'Copying files from Docker image',
-    cmd: 'docker cp core-spinup:/root/.blockstack-server/ /tmp/blockstack-server',
+    cmd: 'docker run --name core-spinup -t quay.io/blockstack/blockstack-core:v21.0.0.2 blockstack-core fast_sync',
   },
   {
     name: 'Copying blockstack-server.db',
-    cmd: 'cp /tmp/blockstack-server/blockstack-server.db ~/pgloader/srv/',
+    cmd: 'docker cp core-spinup:/root/.blockstack-server/blockstack-server.db ~/pgloader/srv/',
   },
   {
     name: 'Copying subdomains.db',
-    cmd: 'cp /tmp/blockstack-server/subdomains.db ~/pgloader/srv/',
+    cmd: 'docker cp core-spinup:/root/.blockstack-server/subdomains.db ~/pgloader/srv/',
   },
   {
     name: 'Moving data from SQLite to Postgres image',
@@ -44,6 +40,7 @@ const run = async () => {
       await cmd(step.cmd);
     } catch (error) {
       if (!step.allowFail) {
+        spinner.fail();
         throw error;
       }
     }
