@@ -27,6 +27,7 @@ export interface Block {
   nameOperations?: any[],
   txCount: number,
   transactions?: Transaction[],
+  rewardFormatted?: string,
 }
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {

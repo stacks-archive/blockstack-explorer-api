@@ -2,16 +2,17 @@ import BluebirdPromise from 'bluebird';
 import moment from 'moment';
 import * as Sentry from '@sentry/node';
 
-import { text } from 'body-parser';
 import Aggregator from './aggregator';
 import {
   fetchNameOperations, fetchTransactionSubdomains, fetchName,
 } from '../client/core-api';
-import { getBlock, getBlockTransactions, getBlockHash, Transaction } from '../bitcore-db/queries';
+import {
+  getBlock, getBlockTransactions, getBlockHash, Transaction,
+} from '../bitcore-db/queries';
 import {
   getNameOperationsForBlock, getSubdomainRegistrationsForTxid,
 } from '../core-db-pg/queries';
-import { btcValue } from '../utils';
+import { btcValue, formatNumber } from '../utils';
 
 class BlockAggregator extends Aggregator {
   static key(hash: string) {
@@ -53,6 +54,8 @@ class BlockAggregator extends Aggregator {
         return null;
       }
     }, { concurrency: 1 });
+
+    block.rewardFormatted = formatNumber(btcValue(block.reward));
 
     block.nameOperations = (<any[]>block.nameOperations).filter(Boolean);
 
