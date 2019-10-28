@@ -8,7 +8,7 @@ export default class FeeEstimator extends Aggregator {
       uri,
       json: true,
     });
-    return fastestFee * 1.25;
+    return Math.ceil(fastestFee * 1.25);
   }
 
   static expiry() {
