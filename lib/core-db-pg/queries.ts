@@ -1,5 +1,6 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
+import { address } from 'bitcoinjs-lib';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
@@ -91,7 +92,7 @@ export const getRecentStacksTransfers = async (limit: number, page: number = 0):
   return results;
 };
 
-interface HistoryRecord {
+export interface HistoryRecord {
   block_id: number,
   op: string,
   opcode: string,
@@ -99,6 +100,7 @@ interface HistoryRecord {
   history_id: string,
   creator_address: string | null,
   history_data: string,
+  vtxIndex: number,
   historyData: {
     [key: string]: any,
   }
@@ -226,4 +228,18 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
     ...row,
     historyData: JSON.parse(row.history_data),
   };
+};
+
+export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {
+  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC';
+  console.log(`%${btcAddress}%`);
+  const params = [`%${btcAddress}%`];
+  const db = await getDB();
+  const { rows } = await db.query(sql, params);
+  console.log(rows.length);
+  const history: HistoryRecord[] = rows.map(row => ({
+    ...row,
+    historyData: JSON.parse(row.history_data),
+  }));
+  return history;
 };

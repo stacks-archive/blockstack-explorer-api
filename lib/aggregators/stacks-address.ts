@@ -11,16 +11,23 @@ import {
 import { decode } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
-import { getVestingTotalForAddress } from '../core-db-pg/queries';
+import { getVestingTotalForAddress, getAddressSTXTransactions, HistoryRecord } from '../core-db-pg/queries';
 
 import { getAccounts } from '../addresses';
 
+interface HistoryRecordWithData extends HistoryRecord {
+  operation?: string
+  blockTime?: number
+  valueStacks: number
+  value: number
+}
+
 class StacksAddress extends Aggregator {
-  static key(addr) {
+  static key(addr: string) {
     return `StacksAddress:${addr}`;
   }
 
-  static async setter(addr) {
+  static async setter(addr: string) {
     const { accountsByAddress } = await getAccounts();
     let genesisData = {};
     if (accountsByAddress[addr]) {
@@ -29,6 +36,7 @@ class StacksAddress extends Aggregator {
 
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
+    console.log(address);
 
     const [{ tokens }, [history, totalUnlocked], status, balance, vestingTotal] = await Promise.all([
       network.getAccountTokens(address),
@@ -56,103 +64,64 @@ class StacksAddress extends Aggregator {
       address: addr,
       history,
       status,
-      balance,
+      balance: balance.toString(),
       vesting_total: vestingTotal,
       vestingTotal,
       ...unlockInfo,
     };
 
-    account.balance = balance.toString();
     account.status.debit_value = status.debit_value.toString();
     account.status.credit_value = status.credit_value.toString();
 
     return account;
   }
 
-  static async getHistory(address) {
-    let history = [];
-
-    async function getAllHistoryPages(page) {
-      return network.getAccountHistoryPage(address, page)
-        .then((results) => {
-          if (Object.keys(results).length === 0) {
-            return history;
-          }
-
-          history = history.concat(results);
-          return getAllHistoryPages(page + 1);
-        }).catch((e) => {
-          console.log('history error', e);
-        });
-    }
-
-    history = await getAllHistoryPages(0);
+  static async getHistory(address: string) {
+    const history = await getAddressSTXTransactions(address);
     history.reverse();
-    // const cumulativeBalance = 0;
-    let lastDebitValue = 0;
-    let lastCreditValue = 0;
-    let totalUnlocked = 0;
+    const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    history = await Promise.map(history, async (h, index) => {
+    const historyWithData = await Promise.map(history, async (h, index) => {
       try {
-        const debitValue = parseInt(h.debit_value, 10);
-        const creditValue = parseInt(h.credit_value, 10);
-        let historyEntry = {
+        let historyEntry: HistoryRecordWithData = {
           ...h,
+          valueStacks: stacksValue(h.historyData.token_fee),
+          value: parseInt(h.historyData.token_fee, 10),
         };
-        if (h.debit_value > lastDebitValue) {
-          historyEntry.value = debitValue - lastDebitValue;
-          historyEntry.operation = 'SENT';
-        } else {
-          historyEntry.value = creditValue - lastCreditValue;
-          historyEntry.operation = 'RECEIVED';
-        }
-        lastDebitValue = debitValue;
-        lastCreditValue = creditValue;
-        if (h.vtxindex === 0) {
+        if (h.vtxIndex === 0) {
           if (index === 0) {
             historyEntry.operation = 'GENESIS_INIT';
           } else {
             historyEntry.operation = 'UNLOCK';
-            totalUnlocked += historyEntry.value;
           }
         }
-        // try {
-        //   const blockHash = await fetchBlockHash(h.block_id);
-        //   const block = await fetchBlockInfo(blockHash);
-        //   historyEntry.blockHash = blockHash;
-        //   historyEntry.blockTime = block.time * 1000;
-        // } catch (error) {
-        //   console.error('Error when fetching block info:', error.message);
-        // }
-        historyEntry.blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
+        const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
         const { txid } = h;
         try {
           const hex = await fetchRawTxInfo(txid);
           const decoded = decode(hex);
           historyEntry = {
             ...historyEntry,
+            ...h,
             ...decoded,
+            blockTime,
+            operation: decoded.senderBitcoinAddress === address ? 'SENT' : 'RECEIVED',
           };
+          return historyEntry;
         } catch (error) {
-          console.error('Error when fetching TX info', error.message);
+          console.error('Error when fetching TX info:', error.message);
+          return {
+            ...blockTime,
+            h,
+          };
         }
-
-        return {
-          ...historyEntry,
-          credit_value: h.credit_value.toString(),
-          debit_value: h.debit_value.toString(),
-          creditValueStacks: stacksValue(h.credit_value.toString()),
-          debitValueStacks: stacksValue(h.debit_value.toString()),
-          valueStacks: stacksValue(historyEntry.value),
-        };
       } catch (error) {
         console.error('Error when fetching history', error.message);
         return null;
       }
     });
-    return [compact(history.reverse()), totalUnlocked];
+    return [compact(historyWithData.reverse()), totalUnlocked];
   }
 
   static formatGenesisAddress(account) {

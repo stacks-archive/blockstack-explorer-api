@@ -76,7 +76,7 @@ const makeAPIController = (Genesis) => {
 
   APIController.getAsync('/name-counts', respond(async () => TotalNamesAggregator.fetch()));
 
-  APIController.getAsync('/stacks/addresses/:address', respond(async req => StacksAddressAggregator.fetch(req.params.address)));
+  APIController.getAsync('/stacks/addresses/:address', respond(async req => StacksAddressAggregator.setter(req.params.address)));
 
   APIController.getAsync('/home', respond(async () => HomeInfoAggregator.fetch(totals)));
 
