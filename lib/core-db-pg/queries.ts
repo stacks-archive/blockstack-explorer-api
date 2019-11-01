@@ -232,11 +232,9 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
 
 export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {
   const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC';
-  console.log(`%${btcAddress}%`);
   const params = [`%${btcAddress}%`];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  console.log(rows.length);
   const history: HistoryRecord[] = rows.map(row => ({
     ...row,
     historyData: JSON.parse(row.history_data),

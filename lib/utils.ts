@@ -1,11 +1,11 @@
 /* eslint-disable prefer-destructuring */
-const moment = require('moment');
-const accounting = require('accounting');
+import moment from 'moment';
+import accounting from 'accounting';
 
-export const stacksValue = value => +`${Math.round(`${value * 10e-7}e+7`)}e-7`;
-export const btcValue = value => +`${Math.round(`${value * 10e-9}e+9`)}e-9`;
+export const stacksValue = (value: number) => +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
+export const btcValue = (value: number) => +`${Math.round(parseFloat(`${value * 10e-9}e+9`))}e-9`;
 
-export const formatNumber = (value) => {
+export const formatNumber = (value: number) => {
   const formatted = accounting.formatNumber(value, 8);
   const decimals = formatted.split('.')[1];
   let precision = 8;
@@ -21,7 +21,7 @@ export const formatNumber = (value) => {
 const startBlock = 538161;
 const start = moment(1535059015 * 1000);
 
-export const blockToTime = (block) => {
+export const blockToTime = (block: number) => {
   // 10 minutes per block
   const blocksSinceTimestamp = block - startBlock;
   const minutes = blocksSinceTimestamp * 10;
@@ -29,8 +29,8 @@ export const blockToTime = (block) => {
   return time.valueOf();
 };
 
-export const extractHostname = (url) => {
-  let hostname;
+export const extractHostname = (url: string) => {
+  let hostname: string;
   // find & remove protocol (http, ftp, etc.) and get hostname
 
   if (url.indexOf('//') > -1) {
@@ -51,7 +51,7 @@ export const extractHostname = (url) => {
  * Get root domain of a string (URL)
  * @param {string} url - the url you want the domain of
  */
-export const extractRootDomain = (url) => {
+export const extractRootDomain = (url: string) => {
   let domain = extractHostname(url);
   const splitArr = domain.split('.');
   const arrLen = splitArr.length;

@@ -9,7 +9,6 @@ import {
 test('it can get subdomains', async () => {
   const subdomains = await getRecentSubdomains(20);
   expect(subdomains.length).toEqual(20);
-  console.log(subdomains[0]);
   expect(subdomains[0].name).not.toBeFalsy();
 });
 

@@ -42,7 +42,7 @@ class NameOpsAggregator extends Aggregator {
     allNames = sortBy(allNames, name => -name.blockHeight);
 
     return allNames.map((name) => {
-      const time = blockToTime(name.blockHeight);
+      const time = blockToTime(name.blockHeight as number);
       return {
         time,
         ...name,

@@ -15,11 +15,18 @@ import { getVestingTotalForAddress, getAddressSTXTransactions, HistoryRecord } f
 
 import { getAccounts } from '../addresses';
 
-interface HistoryRecordWithData extends HistoryRecord {
+export interface HistoryRecordWithData extends HistoryRecord {
   operation?: string
   blockTime?: number
   valueStacks: number
   value: number
+  sender?: string
+  recipient?: string
+}
+
+export interface History {
+  records: HistoryRecordWithData[]
+  totalUnlocked: number
 }
 
 class StacksAddress extends Aggregator {
@@ -36,9 +43,8 @@ class StacksAddress extends Aggregator {
 
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
-    console.log(address);
 
-    const [{ tokens }, [history, totalUnlocked], status, balance, vestingTotal] = await Promise.all([
+    const [{ tokens }, history, status, balance, vestingTotal] = await Promise.all([
       network.getAccountTokens(address),
       this.getHistory(address),
       network.getAccountStatus(address, token),
@@ -57,12 +63,12 @@ class StacksAddress extends Aggregator {
 
     const account = {
       ...genesisData,
-      totalUnlocked,
-      totalUnlockedStacks: stacksValue(totalUnlocked),
+      totalUnlocked: history.totalUnlocked,
+      totalUnlockedStacks: stacksValue(history.totalUnlocked),
       tokens,
       btcAddress: address,
       address: addr,
-      history,
+      history: history.records,
       status,
       balance: balance.toString(),
       vesting_total: vestingTotal,
@@ -82,7 +88,7 @@ class StacksAddress extends Aggregator {
     const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const historyWithData = await Promise.map(history, async (h, index) => {
+    const historyWithData: HistoryRecordWithData[] = await Promise.map(history, async (h, index) => {
       try {
         let historyEntry: HistoryRecordWithData = {
           ...h,
@@ -121,7 +127,11 @@ class StacksAddress extends Aggregator {
         return null;
       }
     });
-    return [compact(historyWithData.reverse()), totalUnlocked];
+    // return [compact(historyWithData.reverse()), totalUnlocked];
+    return {
+      records: compact(historyWithData.reverse()),
+      totalUnlocked,
+    };
   }
 
   static formatGenesisAddress(account) {
