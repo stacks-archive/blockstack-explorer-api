@@ -164,7 +164,7 @@ Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Respons
     const accounts = _accounts.map((_account) => {
       const account = { ..._account };
       const vestingBlocks = Object.keys(account.vesting);
-      const lastVestingMonth = blockToTime(vestingBlocks[vestingBlocks.length - 1]);
+      const lastVestingMonth = blockToTime(vestingBlocks[String(vestingBlocks.length - 1)]);
       account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
       account.totalFormatted = formatNumber(stacksValue(account.value + account.vesting_total));
       account.unlockPerMonthFormatted = formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
