@@ -12,7 +12,7 @@ import { decode } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
-  getAddressSTXTransactions, HistoryRecord, getVestingForAddress, getAccountVesting,
+  getAddressSTXTransactions, HistoryRecord, getVestingForAddress, getAccountVesting, getTokensGrantedInHardFork,
 } from '../core-db-pg/queries';
 
 import { getAccounts } from '../addresses';
@@ -46,13 +46,14 @@ class StacksAddress extends Aggregator {
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
 
-    const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks] = await Promise.all([
+    const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks, tokensGranted] = await Promise.all([
       network.getAccountTokens(address),
       this.getHistory(address),
       network.getAccountStatus(address, token),
       network.getAccountBalance(address, token),
       getVestingForAddress(address),
       this.getCumulativeVestedAtBlocks(address),
+      getTokensGrantedInHardFork(address),
     ]);
 
     let unlockInfo = {};
@@ -79,6 +80,7 @@ class StacksAddress extends Aggregator {
       vestingTotal: Vesting.vestingTotal,
       totalLocked: Vesting.totalLocked,
       totalLockedStacks: stacksValue(Vesting.totalLocked),
+      tokensGranted,
       ...unlockInfo,
     };
 

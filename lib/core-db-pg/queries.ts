@@ -283,3 +283,17 @@ export const getVestingForAddress = async (btcAddress: string): Promise<Vesting>
     vestingTotal,
   };
 };
+
+interface Account {
+  credit_value: string
+}
+
+export const getTokensGrantedInHardFork = async (btcAddress: string): Promise<number> => {
+  const sql = 'SELECT * FROM blockstack_core.accounts where address = $1 and block_id = 373601 LIMIT 10;';
+  const db = await getDB();
+  const params = [btcAddress];
+  const { rows }: { rows: Account[] } = await db.query(sql, params);
+  let total = 0;
+  rows.forEach((row) => { total += parseInt(row.credit_value, 10); });
+  return total;
+};
