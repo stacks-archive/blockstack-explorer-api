@@ -242,7 +242,7 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
   return history;
 };
 
-interface Vestung {
+interface Vesting {
   totalUnlocked: number
   totalLocked: number
   vestingTotal: number
@@ -254,12 +254,17 @@ interface AccountVesting {
   block_id: number
 }
 
-export const getVestingForAddress = async (btcAddress: string): Promise<Vestung> => {
-  const latestBlock = await getLatestBlock();
-  const sql = 'SELECT * FROM account_vesting where address = $1;';
+export const getAccountVesting = async (btcAddress: string): Promise<AccountVesting[]> => {
+  const sql = 'SELECT * FROM account_vesting where address = $1 ORDER BY block_id ASC;';
   const db = await getDB();
   const params = [btcAddress];
   const { rows }: { rows: AccountVesting[] } = await db.query(sql, params);
+  return rows;
+};
+
+export const getVestingForAddress = async (btcAddress: string): Promise<Vesting> => {
+  const latestBlock = await getLatestBlock();
+  const rows = await getAccountVesting(btcAddress);
   let totalUnlocked = 0;
   let totalLocked = 0;
   let vestingTotal = 0;

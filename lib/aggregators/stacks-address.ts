@@ -12,7 +12,7 @@ import { decode } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
-  getAddressSTXTransactions, HistoryRecord, getVestingForAddress,
+  getAddressSTXTransactions, HistoryRecord, getVestingForAddress, getAccountVesting,
 } from '../core-db-pg/queries';
 
 import { getAccounts } from '../addresses';
@@ -46,12 +46,13 @@ class StacksAddress extends Aggregator {
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
 
-    const [{ tokens }, history, status, balance, Vesting] = await Promise.all([
+    const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks] = await Promise.all([
       network.getAccountTokens(address),
       this.getHistory(address),
       network.getAccountStatus(address, token),
       network.getAccountBalance(address, token),
       getVestingForAddress(address),
+      this.getCumulativeVestedAtBlocks(address),
     ]);
 
     let unlockInfo = {};
@@ -65,6 +66,7 @@ class StacksAddress extends Aggregator {
 
     const account = {
       ...genesisData,
+      cumulativeVestedAtBlocks,
       totalUnlocked: Vesting.totalUnlocked,
       totalUnlockedStacks: stacksValue(Vesting.totalUnlocked),
       tokens,
@@ -147,6 +149,18 @@ class StacksAddress extends Aggregator {
       history: [],
       ...account,
     };
+  }
+
+  static async getCumulativeVestedAtBlocks(address: string) {
+    const vesting = await getAccountVesting(address);
+    const cumulativeVestedAtBlocks = {};
+    let cumulativeVested = 0;
+    vesting.forEach((block) => {
+      const date = blockToTime(block.block_id);
+      cumulativeVested += parseInt(block.vesting_value, 10);
+      cumulativeVestedAtBlocks[date] = cumulativeVested;
+    });
+    return cumulativeVestedAtBlocks;
   }
 
   static expiry() {
