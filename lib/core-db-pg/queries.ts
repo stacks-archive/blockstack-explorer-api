@@ -100,7 +100,7 @@ export interface HistoryRecord {
   history_id: string,
   creator_address: string | null,
   history_data: string,
-  vtxIndex: number,
+  vtxindex: number,
   historyData: {
     [key: string]: any,
   }
@@ -189,9 +189,9 @@ export const getNameHistory = async (name: string) => {
   return results;
 };
 
-export const getVestingTotalForAddress = async (address: string) => {
+export const getVestingTotalForAddress = async (_address: string) => {
   try {
-    const addr: string = c32check.c32ToB58(address);
+    const addr: string = c32check.c32ToB58(_address);
     const sql = 'SELECT * FROM account_vesting WHERE address = $1';
     const params = [addr];
     const db = await getDB();
@@ -240,4 +240,41 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
     historyData: JSON.parse(row.history_data),
   }));
   return history;
+};
+
+interface Vestung {
+  totalUnlocked: number
+  totalLocked: number
+  vestingTotal: number
+}
+
+interface AccountVesting {
+  address: string
+  vesting_value: string
+  block_id: number
+}
+
+export const getVestingForAddress = async (btcAddress: string): Promise<Vestung> => {
+  const latestBlock = await getLatestBlock();
+  const sql = 'SELECT * FROM account_vesting where address = $1;';
+  const db = await getDB();
+  const params = [btcAddress];
+  const { rows }: { rows: AccountVesting[] } = await db.query(sql, params);
+  let totalUnlocked = 0;
+  let totalLocked = 0;
+  let vestingTotal = 0;
+  rows.forEach((row) => {
+    const value = parseInt(row.vesting_value, 10);
+    vestingTotal += value;
+    if (row.block_id <= latestBlock.height) {
+      totalUnlocked += value;
+    } else {
+      totalLocked += value;
+    }
+  });
+  return {
+    totalUnlocked,
+    totalLocked,
+    vestingTotal,
+  };
 };
