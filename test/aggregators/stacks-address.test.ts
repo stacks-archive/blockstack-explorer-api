@@ -31,3 +31,41 @@ test('only fetches 50 most recent transactions', async () => {
   const account = await StacksAddress.setter(address);
   expect(account.history.length).toEqual(50);
 });
+
+test('calculates token grants', async () => {
+  const address = 'SP1ERE1Z1MDVM100NWYR16GZZJJTZQYHG4F6GWBDM';
+  const account = await StacksAddress.setter(address);
+  expect(account.tokensGranted).toEqual(5245000000);
+});
+
+test('should include token vesting schedule for 2019 accounts', async () => {
+  const address = 'SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93';
+  const account = await StacksAddress.setter(address);
+  const vesting = {
+    1572082015000: 2131041668,
+    1574674015000: 4262083336,
+    1577266015000: 6393125004,
+    1579858015000: 8524166671,
+    1582450015000: 10655208338,
+    1585042015000: 12786250005,
+    1587634015000: 14917291672,
+    1590226015000: 17048333339,
+    1592818015000: 19179375006,
+    1595410015000: 21310416673,
+    1598002015000: 23441458340,
+    1600594015000: 25572500007,
+    1603186015000: 27703541674,
+    1605778015000: 29834583340,
+    1608370015000: 31965625006,
+    1610962015000: 34096666672,
+    1613554015000: 36227708338,
+    1616146015000: 38358750004,
+    1618738015000: 40489791670,
+    1621330015000: 42620833336,
+    1623922015000: 44751875002,
+    1626514015000: 46882916668,
+    1629106015000: 49013958334,
+    1631698015000: 51145000000,
+  };
+  expect(account.cumulativeVestedAtBlocks).toEqual(vesting);
+});
