@@ -1,4 +1,5 @@
 import '../setup';
+import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
 
 test('can get basic STX address info', async () => {
@@ -10,7 +11,8 @@ test('can get basic STX address info', async () => {
   expect(account.totalUnlocked).toBeGreaterThanOrEqual(2131041668);
   expect(account.totalLocked).toBeLessThanOrEqual(49013958332);
   expect(account.totalLocked + account.totalUnlocked).toEqual(account.vestingTotal);
-  const historyItem = account.history.find(h => h.txid === '2e9fae03a2dc74611506433312d8f8ca7f723dcf0de9e7b0230ce72940fbc2a2');
+  const txid = '2e9fae03a2dc74611506433312d8f8ca7f723dcf0de9e7b0230ce72940fbc2a2';
+  const historyItem = account.history.find(h => h.txid === txid);
   if (!historyItem) {
     throw new Error('TX not found for stacks address');
   }
@@ -68,4 +70,13 @@ test('should include token vesting schedule for 2019 accounts', async () => {
     1631698015000: 51145000000,
   };
   expect(account.cumulativeVestedAtBlocks).toEqual(vesting);
+});
+
+test('should calculate available balance by adding unlocked and balance', async () => {
+  const account = await StacksAddress.setter('SP3VJDN79TRQ3KX8PCV4J5ZSYX1JRTVA937SYKY1S');
+  const expectedBalance = account.balanceBN.add(new BN(String(account.totalUnlocked), 10)).toString(10);
+  expect(account.availableBalance).toEqual(expectedBalance);
+  const sent = new BN(account.status.debit_value);
+  const received = new BN(account.status.credit_value);
+  expect(account.balance).toEqual(received.sub(sent).toString());
 });

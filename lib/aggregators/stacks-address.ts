@@ -1,8 +1,9 @@
-import Promise from 'bluebird';
+import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import moment from 'moment';
 import compact from 'lodash/compact';
 import accounting from 'accounting';
+import BN from 'bn.js';
 
 import Aggregator from './aggregator';
 import {
@@ -75,12 +76,14 @@ class StacksAddress extends Aggregator {
       address: addr,
       history: history.records,
       status,
+      balanceBN: balance,
       balance: balance.toString(),
       vesting_total: Vesting.vestingTotal, // preserved for wallet
       vestingTotal: Vesting.vestingTotal,
       totalLocked: Vesting.totalLocked,
       totalLockedStacks: stacksValue(Vesting.totalLocked),
       tokensGranted,
+      availableBalance: balance.add(new BN(String(Vesting.totalUnlocked), 10)).toString(10),
       ...unlockInfo,
     };
 
@@ -96,7 +99,7 @@ class StacksAddress extends Aggregator {
     const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const historyWithData: HistoryRecordWithData[] = await Promise.map(history, async (h, index) => {
+    const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(history, async (h, index) => {
       try {
         let historyEntry: HistoryRecordWithData = {
           ...h,

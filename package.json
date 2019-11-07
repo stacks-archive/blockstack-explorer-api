@@ -45,6 +45,7 @@
     "bitcoinjs-lib": "^5.0.1",
     "blockstack": "^19.3.0",
     "bluebird": "^3.5.2",
+    "bn.js": "^5.0.0",
     "c32check": "^0.0.6",
     "cors": "^2.8.4",
     "dotenv": "^7.0.0",
