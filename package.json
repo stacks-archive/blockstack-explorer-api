@@ -10,7 +10,8 @@
     "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts' --ignore test/",
     "test": "NODE_ENV=test jest --verbose=false --testPathIgnorePatterns core-db --ci",
     "test-watch": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db --watch",
-    "seed": "ts-node scripts/seed-db.ts"
+    "seed": "ts-node scripts/seed-db.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/accounting": "^0.4.1",
