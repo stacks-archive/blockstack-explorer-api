@@ -3,7 +3,6 @@ import * as c32check from 'c32check';
 import moment from 'moment';
 import compact from 'lodash/compact';
 import accounting from 'accounting';
-import BN from 'bn.js';
 
 import Aggregator from './aggregator';
 import {
