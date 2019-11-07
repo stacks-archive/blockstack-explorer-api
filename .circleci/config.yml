@@ -16,9 +16,11 @@ jobs: # a collection of steps
           key: yarn-packages-{{ checksum "package.json" }}
           paths:
             - ./.cache/yarn
-      - run: # run tests
-          name: test
-          command: yarn test --forceExit --testPathIgnorePatterns bitcore core-db
+    # Unfortunately, our tests require too much setup to be viable on free circleCI
+    # We'll have to figure out a good way to automate this.
+    #   - run: # run tests
+    #       name: test
+    #       command: yarn test --forceExit --testPathIgnorePatterns bitcore core-db
       - run: # run lint
           name: lint
           command: yarn eslint .
