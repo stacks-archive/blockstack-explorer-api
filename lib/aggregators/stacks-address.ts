@@ -76,14 +76,12 @@ class StacksAddress extends Aggregator {
       address: addr,
       history: history.records,
       status,
-      balanceBN: balance,
       balance: balance.toString(),
       vesting_total: Vesting.vestingTotal, // preserved for wallet
       vestingTotal: Vesting.vestingTotal,
       totalLocked: Vesting.totalLocked,
       totalLockedStacks: stacksValue(Vesting.totalLocked),
       tokensGranted,
-      availableBalance: balance.add(new BN(String(Vesting.totalUnlocked), 10)).toString(10),
       ...unlockInfo,
     };
 

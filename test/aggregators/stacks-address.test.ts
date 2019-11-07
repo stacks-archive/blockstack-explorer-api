@@ -71,12 +71,3 @@ test('should include token vesting schedule for 2019 accounts', async () => {
   };
   expect(account.cumulativeVestedAtBlocks).toEqual(vesting);
 });
-
-test('should calculate available balance by adding unlocked and balance', async () => {
-  const account = await StacksAddress.setter('SP3VJDN79TRQ3KX8PCV4J5ZSYX1JRTVA937SYKY1S');
-  const expectedBalance = account.balanceBN.add(new BN(String(account.totalUnlocked), 10)).toString(10);
-  expect(account.availableBalance).toEqual(expectedBalance);
-  const sent = new BN(account.status.debit_value);
-  const received = new BN(account.status.credit_value);
-  expect(account.balance).toEqual(received.sub(sent).toString());
-});
