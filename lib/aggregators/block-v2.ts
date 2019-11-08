@@ -4,13 +4,19 @@ import * as Sentry from '@sentry/node';
 
 import Aggregator from './aggregator';
 import {
-  fetchNameOperations, fetchTransactionSubdomains, fetchName,
+  fetchNameOperations,
+  fetchTransactionSubdomains,
+  fetchName
 } from '../client/core-api';
 import {
-  getBlock, getBlockTransactions, getBlockHash, Transaction,
+  getBlock,
+  getBlockTransactions,
+  getBlockHash,
+  Transaction
 } from '../bitcore-db/queries';
 import {
-  getNameOperationsForBlock, getSubdomainRegistrationsForTxid,
+  getNameOperationsForBlock,
+  getSubdomainRegistrationsForTxid
 } from '../core-db-pg/queries';
 import { btcValue, formatNumber } from '../utils';
 
@@ -31,33 +37,37 @@ class BlockAggregator extends Aggregator {
     const transactions: Transaction[] = await getBlockTransactions(hash);
     block.transactions = transactions.map(tx => ({
       ...tx,
-      value: btcValue(tx.value),
+      value: btcValue(tx.value)
     }));
     // const nameOperations = await fetchNameOperations(block.height);
     const nameOperations = await getNameOperationsForBlock(block.height);
     const { time } = block;
-    block.nameOperations = await BluebirdPromise.map(nameOperations, async (_nameOp) => {
-      try {
-        const nameOp: any = { ..._nameOp };
-        nameOp.timeAgo = moment(time * 1000).fromNow(true);
-        nameOp.time = time * 1000;
-        if (nameOp.opcode === 'NAME_UPDATE') {
-          const { txid } = nameOp;
-          // const subdomains = await fetchTransactionSubdomains(txid);
-          const subdomains = await getSubdomainRegistrationsForTxid(txid);
-          nameOp.subdomains = subdomains;
+    block.nameOperations = await BluebirdPromise.map(
+      nameOperations,
+      async _nameOp => {
+        try {
+          const nameOp: any = { ..._nameOp };
+          nameOp.timeAgo = moment(time * 1000).fromNow(true);
+          nameOp.time = time * 1000;
+          if (nameOp.opcode === 'NAME_UPDATE') {
+            const { txid } = nameOp;
+            // const subdomains = await fetchTransactionSubdomains(txid);
+            const subdomains = await getSubdomainRegistrationsForTxid(txid);
+            nameOp.subdomains = subdomains;
+          }
+          return nameOp;
+        } catch (error) {
+          console.error(error);
+          Sentry.captureException(error);
+          return null;
         }
-        return nameOp;
-      } catch (error) {
-        console.error(error);
-        Sentry.captureException(error);
-        return null;
-      }
-    }, { concurrency: 1 });
+      },
+      { concurrency: 1 }
+    );
 
     block.rewardFormatted = formatNumber(btcValue(block.reward));
 
-    block.nameOperations = (<any[]>block.nameOperations).filter(Boolean);
+    block.nameOperations = block.nameOperations.filter(Boolean);
 
     return block;
   }

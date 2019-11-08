@@ -23,26 +23,28 @@ class BlocksAggregator extends Aggregator {
     // if (multi) {
     //   bar = multi.newBar('downloading [:bar] :current / :total :percent :etas', { total: blocks.length });
     // }
-    const concurrency = process.env.API_CONCURRENCY ? parseInt(process.env.API_CONCURRENCY, 10) : 1;
-    const getBlock = (_block: Block) => new Promise(async (resolve) => {
+    const concurrency = process.env.API_CONCURRENCY
+      ? parseInt(process.env.API_CONCURRENCY, 10)
+      : 1;
+    const getBlock = async (_block: Block) => {
       try {
         const blockData = await BlockAggregator.fetch(_block.hash);
         //  if (bar) bar.tick();
-        return resolve({
+        return {
           ...blockData,
-          _block,
-        });
+          _block
+        };
       } catch (error) {
         console.error(error);
         //  if (bar) bar.tick();
-        return resolve(_block);
+        return _block;
       }
-    });
+    }
     return BlueBirdPromise.map(blocks, getBlock, { concurrency });
   }
 
   static expiry(date: string) {
-    if (!date || (date === this.now())) return 10 * 60; // 10 minutes
+    if (!date || date === this.now()) return 10 * 60; // 10 minutes
     return null;
   }
 

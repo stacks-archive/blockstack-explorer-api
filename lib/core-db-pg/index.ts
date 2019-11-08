@@ -5,7 +5,7 @@ let client: Client | null = null;
 
 export const getDB = async (): Promise<Client> => {
   if (client) {
-    return <Client>client;
+    return client;
   }
   // eslint-disable-next-line no-underscore-dangle
   const _client = new Client();

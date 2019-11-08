@@ -13,7 +13,8 @@ test('it can run a query on blockstack-server', async () => {
 });
 
 test('it can run a query on subdomains', async () => {
-  const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT 10;';
+  const sql =
+    'select * from subdomain_records ORDER BY block_height DESC LIMIT 10;';
   const recentSubdomains = await getAll(DB.Subdomains, sql);
   expect(recentSubdomains.length).toEqual(10);
 });

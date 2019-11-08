@@ -13,7 +13,7 @@ test('can run the name-ops aggregator', async () => {
 test('sorts name ops by time', async () => {
   const names = await NameOpsAggregator.setter(100, 0);
   let lastName = names[0];
-  names.forEach((name) => {
+  names.forEach(name => {
     if (lastName) {
       expect(lastName.time).toBeGreaterThanOrEqual(name.time);
     }

@@ -3,7 +3,7 @@ import {
   getRecentSubdomains,
   getRecentNames,
   getStacksHolderCount,
-  getRecentStacksTransfers,
+  getRecentStacksTransfers
 } from '../../lib/core-db/queries';
 
 test('it can get subdomains', async () => {

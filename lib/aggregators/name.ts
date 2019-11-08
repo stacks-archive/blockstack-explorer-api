@@ -1,12 +1,12 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
 import Aggregator from './aggregator';
-import { fetchName, fetchNameRecord } from '../client/core-api';
+import { fetchName } from '../client/core-api';
 import AppsAggregator, { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
 import { getNameHistory } from '../core-db-pg/queries';
 
 interface UserApp {
-  [key: string]: string,
+  [key: string]: string
 }
 
 class NameAggregator extends Aggregator {
@@ -15,17 +15,19 @@ class NameAggregator extends Aggregator {
   }
 
   static getAppsArray(apps: BlockstackApp[], userApps: UserApp[] = []) {
-    const domains = Object.keys(userApps).map(domain => extractRootDomain(domain));
+    const domains = Object.keys(userApps).map(domain =>
+      extractRootDomain(domain)
+    );
     const applist: BlockstackApp[] = [];
     const appsNotOnAppco: string[] = [];
-    domains.forEach((domain) => {
+    domains.forEach(domain => {
       const app = apps.find(appco => appco.website.includes(domain));
       if (app) applist.push(app);
       if (!app) appsNotOnAppco.push(domain);
     });
     return {
       listed: [...new Set(applist)],
-      unlisted: appsNotOnAppco,
+      unlisted: appsNotOnAppco
     };
   }
 
@@ -33,7 +35,7 @@ class NameAggregator extends Aggregator {
     const [person, nameRecord, appsList] = await Promise.all([
       fetchName(name),
       getNameHistory(name),
-      AppsAggregator.fetch(),
+      AppsAggregator.fetch()
     ]);
     let proofs;
     let userApps = {};
@@ -41,7 +43,7 @@ class NameAggregator extends Aggregator {
       const { ownerAddress, profile } = person;
       proofs = await validateProofs(profile, ownerAddress, name);
       try {
-        proofs.forEach((proof) => {
+        proofs.forEach(proof => {
           const { service } = proof;
           profile.account.forEach((account, index) => {
             if (account.service !== service) return false;
@@ -59,7 +61,7 @@ class NameAggregator extends Aggregator {
       nameRecord,
       userApps,
       proofs,
-      ...person,
+      ...person
     };
   }
 

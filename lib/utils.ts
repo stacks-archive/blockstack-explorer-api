@@ -2,19 +2,24 @@
 import moment from 'moment';
 import accounting from 'accounting';
 
-export const stacksValue = (value: number) => +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
-export const btcValue = (value: number) => +`${Math.round(parseFloat(`${value * 10e-9}e+9`))}e-9`;
+export const stacksValue = (value: number) =>
+  +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
+export const btcValue = (value: number) =>
+  +`${Math.round(parseFloat(`${value * 10e-9}e+9`))}e-9`;
 
 export const formatNumber = (value: number) => {
   const formatted = accounting.formatNumber(value, 8);
   const decimals = formatted.split('.')[1];
   let precision = 8;
-  decimals.split('').reverse().some((char) => {
-    if (char === '0') {
-      precision -= 1;
-    }
-    return char !== '0';
-  });
+  decimals
+    .split('')
+    .reverse()
+    .some(char => {
+      if (char === '0') {
+        precision -= 1;
+      }
+      return char !== '0';
+    });
   return accounting.formatNumber(value, precision);
 };
 
@@ -33,7 +38,7 @@ export const extractHostname = (url: string) => {
   let hostname: string;
   // find & remove protocol (http, ftp, etc.) and get hostname
 
-  if (url.indexOf('//') > -1) {
+  if (url.includes('//')) {
     hostname = url.split('/')[2];
   } else {
     hostname = url.split('/')[0];
@@ -61,7 +66,10 @@ export const extractRootDomain = (url: string) => {
   if (arrLen > 2) {
     domain = `${splitArr[arrLen - 2]}.${splitArr[arrLen - 1]}`;
     // check to see if it's using a Country Code Top Level Domain (ccTLD) (i.e. ".me.uk")
-    if (splitArr[arrLen - 2].length === 2 && splitArr[arrLen - 1].length === 2) {
+    if (
+      splitArr[arrLen - 2].length === 2 &&
+      splitArr[arrLen - 1].length === 2
+    ) {
       // this is using a ccTLD
       domain = `${splitArr[arrLen - 3]}.${domain}`;
     }
@@ -75,5 +83,5 @@ module.exports = {
   formatNumber,
   btcValue,
   extractHostname,
-  extractRootDomain,
+  extractRootDomain
 };

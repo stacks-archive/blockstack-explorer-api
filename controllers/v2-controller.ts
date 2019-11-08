@@ -17,7 +17,7 @@ import {
   getRecentSubdomains,
   StacksTransaction,
   getAllHistoryRecords,
-  HistoryRecordWithSubdomains,
+  HistoryRecordWithSubdomains
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
@@ -41,11 +41,16 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
   try {
     let { date } = req.query;
     if (!date) {
-      date = moment().utc().format('YYYY-MM-DD');
+      date = moment()
+        .utc()
+        .format('YYYY-MM-DD');
     }
     console.log(date);
     const { page } = req.query;
-    const blocks = await BlocksAggregator.setter(date, page ? parseInt(page, 10) : 0);
+    const blocks = await BlocksAggregator.setter(
+      date,
+      page ? parseInt(page, 10) : 0
+    );
     res.json({ blocks });
   } catch (error) {
     console.error(error);
@@ -54,24 +59,21 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
   }
 });
 
-const getSTXAddress = (addr: string) => c32check.b58ToC32(
-  address.fromOutputScript(
-    Buffer.from(
-      addr,
-      'hex',
-    ),
-    networks.bitcoin,
-  ),
-);
+const getSTXAddress = (addr: string) =>
+  c32check.b58ToC32(
+    address.fromOutputScript(Buffer.from(addr, 'hex'), networks.bitcoin)
+  );
 
-export const getStxAddresses = (tx: StacksTransaction | HistoryRecordWithSubdomains) => {
+export const getStxAddresses = (
+  tx: StacksTransaction | HistoryRecordWithSubdomains
+) => {
   if (!tx.historyData) {
     return {};
   }
   if (tx.opcode === 'TOKEN_TRANSFER') {
     return {
       senderSTX: getSTXAddress(tx.historyData.sender),
-      recipientSTX: getSTXAddress(tx.historyData.recipient),
+      recipientSTX: getSTXAddress(tx.historyData.recipient)
     };
   }
   return {};
@@ -80,12 +82,17 @@ export const getStxAddresses = (tx: StacksTransaction | HistoryRecordWithSubdoma
 Controller.get('/transactions/stx', async (req: Request, res: Response) => {
   try {
     const page = req.query.page || '0';
-    const transactions = await getRecentStacksTransfers(100, parseInt(page, 10));
-    const blockTimes = await getTimesForBlockHeights(transactions.map(tx => tx.blockHeight));
+    const transactions = await getRecentStacksTransfers(
+      100,
+      parseInt(page, 10)
+    );
+    const blockTimes = await getTimesForBlockHeights(
+      transactions.map(tx => tx.blockHeight)
+    );
     const transfers = transactions.map(tx => ({
       ...tx,
       timestamp: blockTimes[tx.blockHeight],
-      ...getStxAddresses(tx),
+      ...getStxAddresses(tx)
     }));
     res.json({ transfers });
   } catch (error) {
@@ -101,11 +108,11 @@ Controller.get('/transactions/names', async (req: Request, res: Response) => {
     const page = req.query.page || '0';
     const namesResult = await getRecentNames(limit, parseInt(page, 10));
     const blockTimes = await getTimesForBlockHeights(
-      namesResult.map(name => name.block_number),
+      namesResult.map(name => name.block_number)
     );
     const names = namesResult.map(name => ({
       ...name,
-      timestamp: blockTimes[name.block_number],
+      timestamp: blockTimes[name.block_number]
     }));
     res.json({ names });
   } catch (error) {
@@ -115,23 +122,31 @@ Controller.get('/transactions/names', async (req: Request, res: Response) => {
   }
 });
 
-Controller.get('/transactions/subdomains', async (req: Request, res: Response) => {
-  try {
-    const limit = 100;
-    const page = req.query.page || '0';
-    const subdomainsResult = await getRecentSubdomains(limit, parseInt(page, 10));
-    const blockTimes = await getTimesForBlockHeights(subdomainsResult.map(sub => parseInt(<string>sub.blockHeight, 10)));
-    const subdomains = subdomainsResult.map(name => ({
-      ...name,
-      timestamp: blockTimes[parseInt(<string>name.blockHeight, 10)],
-    }));
-    res.json({ subdomains });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
+Controller.get(
+  '/transactions/subdomains',
+  async (req: Request, res: Response) => {
+    try {
+      const limit = 100;
+      const page = req.query.page || '0';
+      const subdomainsResult = await getRecentSubdomains(
+        limit,
+        parseInt(page, 10)
+      );
+      const blockTimes = await getTimesForBlockHeights(
+        subdomainsResult.map(sub => parseInt(sub.blockHeight as string, 10))
+      );
+      const subdomains = subdomainsResult.map(name => ({
+        ...name,
+        timestamp: blockTimes[parseInt(name.blockHeight as string, 10)]
+      }));
+      res.json({ subdomains });
+    } catch (error) {
+      console.error(error);
+      Sentry.captureException(error);
+      res.status(500).json({ success: false });
+    }
   }
-});
+);
 
 Controller.get('/transactions/all', async (req: Request, res: Response) => {
   try {
@@ -143,7 +158,7 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
     const history = historyResult.map(historyRecord => ({
       ...historyRecord,
       timestamp: blockTimes[historyRecord.block_id],
-      ...getStxAddresses(historyRecord),
+      ...getStxAddresses(historyRecord)
     }));
     res.json({ history });
   } catch (error) {
@@ -153,31 +168,40 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
   }
 });
 
-Controller.get('/genesis-2019/:stacksAddress', async (req: Request, res: Response) => {
-  const { stacksAddress } = req.params;
-  const uri = `${process.env.HF_URL}/${stacksAddress}`;
-  try {
-    const { accounts: _accounts, total } = await request.get({
-      uri,
-      json: true,
-    });
-    const accounts = _accounts.map((_account) => {
-      const account = { ..._account };
-      const vestingBlocks = Object.keys(account.vesting);
-      const lastVestingMonth = blockToTime(vestingBlocks[String(vestingBlocks.length - 1)]);
-      account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
-      account.totalFormatted = formatNumber(stacksValue(account.value + account.vesting_total));
-      account.unlockPerMonthFormatted = formatNumber(stacksValue(account.vesting[vestingBlocks[0]]));
-      return account;
-    });
-    const totalFormatted = formatNumber(stacksValue(total));
-    res.json({ accounts, total, totalFormatted });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(404).json({ success: false });
+Controller.get(
+  '/genesis-2019/:stacksAddress',
+  async (req: Request, res: Response) => {
+    const { stacksAddress } = req.params;
+    const uri = `${process.env.HF_URL}/${stacksAddress}`;
+    try {
+      const { accounts: _accounts, total } = await request.get({
+        uri,
+        json: true
+      });
+      const accounts = _accounts.map(_account => {
+        const account = { ..._account };
+        const vestingBlocks = Object.keys(account.vesting);
+        const lastVestingMonth = blockToTime(
+          vestingBlocks[String(vestingBlocks.length - 1)]
+        );
+        account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
+        account.totalFormatted = formatNumber(
+          stacksValue(account.value + account.vesting_total)
+        );
+        account.unlockPerMonthFormatted = formatNumber(
+          stacksValue(account.vesting[vestingBlocks[0]])
+        );
+        return account;
+      });
+      const totalFormatted = formatNumber(stacksValue(total));
+      res.json({ accounts, total, totalFormatted });
+    } catch (error) {
+      console.error(error);
+      Sentry.captureException(error);
+      res.status(404).json({ success: false });
+    }
   }
-});
+);
 
 Controller.get('/fee-estimate', async (req: Request, res: Response) => {
   try {

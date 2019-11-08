@@ -1,4 +1,5 @@
-const redis = require('../redis');
+import redis from '../redis';
+import ChildProcess from 'child_process';
 
 class Aggregator {
   static key(...args) {
@@ -33,8 +34,8 @@ class Aggregator {
     return null;
   }
 
-  static async setter(...args): Promise<any> {
-    return null;
+  static setter(...args): Promise<any> {
+    return Promise.resolve(null);
   }
 
   static async fetch(...args) {
@@ -46,7 +47,8 @@ class Aggregator {
       if (verbose) console.log(`Found cached value for "${key}"`);
       return value;
     }
-    if (verbose) console.log(`Cached value not found for "${key}". Fetching data.`);
+    if (verbose)
+      console.log(`Cached value not found for "${key}". Fetching data.`);
     return this.set(...args);
   }
 
@@ -58,15 +60,16 @@ class Aggregator {
     return true;
   }
 
-  static getCurrentGitTag() {
-    return new Promise(async (resolve) => {
-      const command = "git describe --exact-match --tags $(git log -n1 --pretty='%h')";
+  static getCurrentGitTag(): Promise<string> {
+    return new Promise(resolve => {
+      const command =
+        "git describe --exact-match --tags $(git log -n1 --pretty='%h')";
       // eslint-disable-next-line global-require
-      require('child_process').exec(command, (err, stdout) => {
+      ChildProcess.exec(command, (err, stdout) => {
         if (err) {
-          return resolve('');
+          resolve('');
         }
-        return resolve(stdout);
+        resolve(stdout);
       });
     });
   }
