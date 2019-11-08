@@ -2,10 +2,10 @@ cd $HOME
 docker stop postgres
 docker rm postgres
 docker rmi postgres:alpine
-docker stop pgloader
-docker rm pgloader
-docker rmi pgloader:local
-docker network rm pgloader
+docker stop pgloader || true
+docker rm pgloader || true
+docker rmi pgloader:local || true
+docker network rm pgloader || true
 if [ -d "pgloader" ]; then
   git -C pgloader pull
 else
