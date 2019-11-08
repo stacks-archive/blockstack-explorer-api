@@ -66,5 +66,6 @@
     "./controllers/**/*",
     "./scripts/**/*",
     "./test/**/*",
+    "app.ts"
   ]
 }
