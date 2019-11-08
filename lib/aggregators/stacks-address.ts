@@ -81,7 +81,7 @@ class StacksAddress extends Aggregator {
       totalLocked: Vesting.totalLocked,
       totalLockedStacks: stacksValue(Vesting.totalLocked),
       tokensGranted,
-      totalReceived: parseInt(status.credit_value, 10) - Vesting.totalUnlocked,
+      totalReceived: parseInt(status.credit_value, 10) - Vesting.totalUnlocked - (tokensGranted || 0),
       ...unlockInfo,
     };
 
