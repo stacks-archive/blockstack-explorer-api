@@ -11,7 +11,7 @@ interface Subdomain {
   [key: string]: any,
 }
 
-export const getRecentSubdomains = async (limit: number, page: number = 0): Promise<Subdomain[]> => {
+export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subdomain[]> => {
   const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1 OFFSET $2;';
   const params = [limit, page * limit];
   const db = await getDB();
@@ -33,7 +33,7 @@ interface NameRecord {
   [key: string]: any,
 }
 
-export const getRecentNames = async (limit: number, page: number = 0): Promise<NameRecord[]> => {
+export const getRecentNames = async (limit: number, page = 0): Promise<NameRecord[]> => {
   const sql = 'select * from name_records ORDER BY block_number DESC LIMIT $1 OFFSET $2';
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
@@ -66,7 +66,7 @@ export interface StacksTransaction {
   [key: string]: any,
 }
 
-export const getRecentStacksTransfers = async (limit: number, page: number = 0): Promise<StacksTransaction[]> => {
+export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
   const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
@@ -151,7 +151,7 @@ export interface HistoryRecordWithSubdomains extends HistoryRecord {
   subdomains?: string[],
 }
 
-export const getAllHistoryRecords = async (limit: number, page: number = 0) => {
+export const getAllHistoryRecords = async (limit: number, page = 0) => {
   const sql = "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
   const params = [limit, limit * page];
   const db = await getDB();
@@ -231,7 +231,7 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
 };
 
 export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {
-  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC LIMIT 50';
+  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC, vtxindex DESC LIMIT 50';
   const params = [`%${btcAddress}%`];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
