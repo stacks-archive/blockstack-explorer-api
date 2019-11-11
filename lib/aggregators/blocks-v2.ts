@@ -18,23 +18,16 @@ class BlocksAggregator extends Aggregator {
 
   static async setter(date: string, page: number) {
     const blocks = await getBlocks(date, page);
-    // const blocks = await fetchBlocks(date);
-    // let bar;
-    // if (multi) {
-    //   bar = multi.newBar('downloading [:bar] :current / :total :percent :etas', { total: blocks.length });
-    // }
     const concurrency = process.env.API_CONCURRENCY ? parseInt(process.env.API_CONCURRENCY, 10) : 1;
     const getBlock = (_block: Block) => new Promise(async (resolve) => {
       try {
         const blockData = await BlockAggregator.fetch(_block.hash);
-        //  if (bar) bar.tick();
         return resolve({
           ...blockData,
           _block,
         });
       } catch (error) {
         console.error(error);
-        //  if (bar) bar.tick();
         return resolve(_block);
       }
     });
