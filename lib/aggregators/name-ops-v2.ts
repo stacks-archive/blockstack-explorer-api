@@ -4,7 +4,7 @@ import Aggregator from './aggregator';
 import { getAllNameOperations, getSubdomainRegistrationsForTxid } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
-interface NameOp {
+export interface NameOp {
   name: string,
   owner: string,
   time: number,
@@ -25,7 +25,7 @@ class NameOpsAggregator extends Aggregator {
       if (historyRecord.opcode === 'NAME_REGISTRATION') {
         const row: NameOp = {
           name: historyRecord.history_id,
-          owner: <string>historyRecord.creator_address,
+          owner: historyRecord.creator_address as string,
           time,
           block: historyRecord.block_id,
         };
@@ -36,7 +36,7 @@ class NameOpsAggregator extends Aggregator {
         name: subdomain.name,
         owner: subdomain.owner,
         time,
-        block: parseInt(<string>subdomain.blockHeight, 10),
+        block: parseInt(subdomain.blockHeight as string, 10),
       }));
       return results;
     });

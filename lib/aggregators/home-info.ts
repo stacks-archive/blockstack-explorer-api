@@ -23,7 +23,7 @@ class HomeInfo extends Aggregator {
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
     const ticks = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp => parseInt(nameOp.time, 10));
+    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time, 10);
     sortedNames.forEach((nameOp) => {
       const { time } = nameOp;
       currentCount += 1;
@@ -39,7 +39,7 @@ class HomeInfo extends Aggregator {
       const tick = ticks[time];
       return {
         ...tick,
-        x: parseInt(time, 10),
+        x: time,
         y: tick.names,
         time,
       };
