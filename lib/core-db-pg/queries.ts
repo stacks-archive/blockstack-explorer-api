@@ -144,7 +144,7 @@ export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
   const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
   const db = await getDB();
   const { rows } = await db.query(sql);
-  return <HistoryRecord[]>rows;
+  return rows as HistoryRecord[];
 };
 
 export interface HistoryRecordWithSubdomains extends HistoryRecord {
@@ -156,7 +156,7 @@ export const getAllHistoryRecords = async (limit: number, page = 0) => {
   const params = [limit, limit * page];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(<HistoryRecord[]>rows, async (row) => {
+  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(rows as HistoryRecord[], async (row) => {
     const historyData = JSON.parse(row.history_data);
     if (row.opcode === 'NAME_UPDATE') {
       const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
@@ -179,7 +179,7 @@ export const getNameHistory = async (name: string) => {
   const params = [name];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecord[] = await rows.map((row) => {
+  const results: HistoryRecord[] = rows.map((row) => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...historyData,
