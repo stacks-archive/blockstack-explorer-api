@@ -27,6 +27,9 @@ class Aggregator {
   }
 
   static async get(...args) {
+    if (process.env.NODE_ENV === 'development') {
+      return null;
+    }
     const value = await redis.getAsync(await this.keyWithTag(...args));
     if (value) {
       return JSON.parse(value);

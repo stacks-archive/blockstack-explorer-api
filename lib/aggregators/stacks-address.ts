@@ -98,7 +98,8 @@ class StacksAddress extends Aggregator {
       totalLocked: Vesting.totalLocked,
       totalLockedStacks: stacksValue(Vesting.totalLocked),
       tokensGranted,
-      ...unlockInfo
+      totalReceived: parseInt(status.credit_value, 10) - Vesting.totalUnlocked - (tokensGranted || 0),
+      ...unlockInfo,
     };
 
     account.status.debit_value = status.debit_value.toString();
@@ -182,7 +183,10 @@ class StacksAddress extends Aggregator {
     const vesting = await getAccountVesting(address);
     const cumulativeVestedAtBlocks = {};
     let cumulativeVested = 0;
-    vesting.forEach(block => {
+    if (vesting.length === 0) {
+      return null;
+    }
+    vesting.forEach((block) => {
       const date = blockToTime(block.block_id);
       cumulativeVested += parseInt(block.vesting_value, 10);
       cumulativeVestedAtBlocks[date] = cumulativeVested;
