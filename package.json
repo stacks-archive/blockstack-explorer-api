@@ -8,9 +8,10 @@
     "prod": "NODE_ENV=production ts-node server.ts",
     "dev": "NODE_ENV=development ts-node server.ts",
     "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts' --ignore test/",
-    "test": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db",
-    "test-watch": "NODE_ENV=test jest --verbose=false --ci --watch --testPathIgnorePatterns core-db",
-    "seed": "ts-node scripts/seed-db.ts"
+    "test": "NODE_ENV=test jest --verbose=false --testPathIgnorePatterns core-db --ci",
+    "test-watch": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db --watch",
+    "seed": "ts-node scripts/seed-db.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/accounting": "^0.4.1",
@@ -45,6 +46,7 @@
     "bitcoinjs-lib": "^5.0.1",
     "blockstack": "^19.3.0",
     "bluebird": "^3.5.2",
+    "bn.js": "^5.0.0",
     "c32check": "^0.0.6",
     "cors": "^2.8.4",
     "dotenv": "^7.0.0",

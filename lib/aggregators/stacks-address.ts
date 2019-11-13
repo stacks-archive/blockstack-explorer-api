@@ -1,4 +1,4 @@
-import Promise from 'bluebird';
+import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import moment from 'moment';
 import compact from 'lodash/compact';
@@ -11,7 +11,9 @@ import {
 import { decode } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
-import { getVestingTotalForAddress, getAddressSTXTransactions, HistoryRecord } from '../core-db-pg/queries';
+import {
+  getAddressSTXTransactions, HistoryRecord, getVestingForAddress, getAccountVesting, getTokensGrantedInHardFork,
+} from '../core-db-pg/queries';
 
 import { getAccounts } from '../addresses';
 
@@ -44,35 +46,42 @@ class StacksAddress extends Aggregator {
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
 
-    const [{ tokens }, history, status, balance, vestingTotal] = await Promise.all([
+    const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks, tokensGranted] = await Promise.all([
       network.getAccountTokens(address),
       this.getHistory(address),
       network.getAccountStatus(address, token),
       network.getAccountBalance(address, token),
-      getVestingTotalForAddress(addr),
+      getVestingForAddress(address),
+      this.getCumulativeVestedAtBlocks(address),
+      getTokensGrantedInHardFork(address),
     ]);
 
     let unlockInfo = {};
-    if (vestingTotal && vestingTotal > 0) {
+    if (Vesting.vestingTotal && Vesting.vestingTotal > 0) {
       unlockInfo = {
-        formattedUnlockTotal: accounting.formatNumber(vestingTotal * 10e-7),
-        unlockTotalStacks: stacksValue(vestingTotal),
-        unlockTotal: vestingTotal,
+        formattedUnlockTotal: accounting.formatNumber(Vesting.vestingTotal * 10e-7),
+        unlockTotalStacks: stacksValue(Vesting.vestingTotal),
+        unlockTotal: Vesting.vestingTotal,
       };
     }
 
     const account = {
       ...genesisData,
-      totalUnlocked: history.totalUnlocked,
-      totalUnlockedStacks: stacksValue(history.totalUnlocked),
+      cumulativeVestedAtBlocks,
+      totalUnlocked: Vesting.totalUnlocked,
+      totalUnlockedStacks: stacksValue(Vesting.totalUnlocked),
       tokens,
       btcAddress: address,
       address: addr,
       history: history.records,
       status,
       balance: balance.toString(),
-      vesting_total: vestingTotal,
-      vestingTotal,
+      vesting_total: Vesting.vestingTotal, // preserved for wallet
+      vestingTotal: Vesting.vestingTotal,
+      totalLocked: Vesting.totalLocked,
+      totalLockedStacks: stacksValue(Vesting.totalLocked),
+      tokensGranted,
+      totalReceived: parseInt(status.credit_value, 10) - Vesting.totalUnlocked - (tokensGranted || 0),
       ...unlockInfo,
     };
 
@@ -88,20 +97,13 @@ class StacksAddress extends Aggregator {
     const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const historyWithData: HistoryRecordWithData[] = await Promise.map(history, async (h, index) => {
+    const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(history, async (h, index) => {
       try {
         let historyEntry: HistoryRecordWithData = {
           ...h,
           valueStacks: stacksValue(h.historyData.token_fee),
           value: parseInt(h.historyData.token_fee, 10),
         };
-        if (h.vtxIndex === 0) {
-          if (index === 0) {
-            historyEntry.operation = 'GENESIS_INIT';
-          } else {
-            historyEntry.operation = 'UNLOCK';
-          }
-        }
         const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
         const { txid } = h;
         try {
@@ -150,6 +152,21 @@ class StacksAddress extends Aggregator {
       history: [],
       ...account,
     };
+  }
+
+  static async getCumulativeVestedAtBlocks(address: string) {
+    const vesting = await getAccountVesting(address);
+    const cumulativeVestedAtBlocks = {};
+    let cumulativeVested = 0;
+    if (vesting.length === 0) {
+      return null;
+    }
+    vesting.forEach((block) => {
+      const date = blockToTime(block.block_id);
+      cumulativeVested += parseInt(block.vesting_value, 10);
+      cumulativeVestedAtBlocks[date] = cumulativeVested;
+    });
+    return cumulativeVestedAtBlocks;
   }
 
   static expiry() {

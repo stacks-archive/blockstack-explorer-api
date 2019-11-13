@@ -7,7 +7,6 @@ import Aggregator from './aggregator';
 
 import NameCounts from './total-names';
 
-import { getAccounts } from '../addresses';
 import { getUnlockedSupply } from '../core-db-pg/queries';
 
 class HomeInfo extends Aggregator {
@@ -16,7 +15,6 @@ class HomeInfo extends Aggregator {
   }
 
   static async setter() {
-    const accounts = await getAccounts();
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
       NameOperations.setter(),
@@ -25,7 +23,7 @@ class HomeInfo extends Aggregator {
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
     const ticks = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp => parseInt(nameOp.time, 10));
+    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time, 10);
     sortedNames.forEach((nameOp) => {
       const { time } = nameOp;
       currentCount += 1;
@@ -41,7 +39,7 @@ class HomeInfo extends Aggregator {
       const tick = ticks[time];
       return {
         ...tick,
-        x: parseInt(time, 10),
+        x: time,
         y: tick.names,
         time,
       };

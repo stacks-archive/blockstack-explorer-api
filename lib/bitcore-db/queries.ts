@@ -50,12 +50,11 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
 
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,
-    time: block.time.getTime() / 1000,
     date: block.time,
     txCount: block.transactionCount,
   }));
 
-  return blocksResult;
+  return blocks;
 };
 
 export const getBlock = async (hash: string): Promise<Block> => {
@@ -90,7 +89,7 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
   return <Block>block;
 };
 
-export const getBlockTransactions = async (hash: string, page: number = 0): Promise<Transaction[]> => {
+export const getBlockTransactions = async (hash: string, page = 0): Promise<Transaction[]> => {
   const db = await getDB();
   const txCollection = db.collection(Collections.Transactions);
   const txResults: Transaction[] = await txCollection.find({

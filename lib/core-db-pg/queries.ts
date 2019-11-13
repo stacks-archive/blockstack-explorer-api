@@ -11,7 +11,7 @@ interface Subdomain {
   [key: string]: any,
 }
 
-export const getRecentSubdomains = async (limit: number, page: number = 0): Promise<Subdomain[]> => {
+export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subdomain[]> => {
   const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1 OFFSET $2;';
   const params = [limit, page * limit];
   const db = await getDB();
@@ -33,7 +33,7 @@ interface NameRecord {
   [key: string]: any,
 }
 
-export const getRecentNames = async (limit: number, page: number = 0): Promise<NameRecord[]> => {
+export const getRecentNames = async (limit: number, page = 0): Promise<NameRecord[]> => {
   const sql = 'select * from name_records ORDER BY block_number DESC LIMIT $1 OFFSET $2';
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
@@ -66,7 +66,7 @@ export interface StacksTransaction {
   [key: string]: any,
 }
 
-export const getRecentStacksTransfers = async (limit: number, page: number = 0): Promise<StacksTransaction[]> => {
+export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
   const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
@@ -100,7 +100,7 @@ export interface HistoryRecord {
   history_id: string,
   creator_address: string | null,
   history_data: string,
-  vtxIndex: number,
+  vtxindex: number,
   historyData: {
     [key: string]: any,
   }
@@ -144,19 +144,19 @@ export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
   const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
   const db = await getDB();
   const { rows } = await db.query(sql);
-  return <HistoryRecord[]>rows;
+  return rows as HistoryRecord[];
 };
 
 export interface HistoryRecordWithSubdomains extends HistoryRecord {
   subdomains?: string[],
 }
 
-export const getAllHistoryRecords = async (limit: number, page: number = 0) => {
+export const getAllHistoryRecords = async (limit: number, page = 0) => {
   const sql = "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
   const params = [limit, limit * page];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(<HistoryRecord[]>rows, async (row) => {
+  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(rows as HistoryRecord[], async (row) => {
     const historyData = JSON.parse(row.history_data);
     if (row.opcode === 'NAME_UPDATE') {
       const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
@@ -179,7 +179,7 @@ export const getNameHistory = async (name: string) => {
   const params = [name];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecord[] = await rows.map((row) => {
+  const results: HistoryRecord[] = rows.map((row) => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...historyData,
@@ -189,9 +189,9 @@ export const getNameHistory = async (name: string) => {
   return results;
 };
 
-export const getVestingTotalForAddress = async (address: string) => {
+export const getVestingTotalForAddress = async (_address: string) => {
   try {
-    const addr: string = c32check.c32ToB58(address);
+    const addr: string = c32check.c32ToB58(_address);
     const sql = 'SELECT * FROM account_vesting WHERE address = $1';
     const params = [addr];
     const db = await getDB();
@@ -231,7 +231,7 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
 };
 
 export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {
-  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC LIMIT 50';
+  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC, vtxindex DESC LIMIT 50';
   const params = [`%${btcAddress}%`];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
@@ -240,4 +240,60 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
     historyData: JSON.parse(row.history_data),
   }));
   return history;
+};
+
+interface Vesting {
+  totalUnlocked: number
+  totalLocked: number
+  vestingTotal: number
+}
+
+interface AccountVesting {
+  address: string
+  vesting_value: string
+  block_id: number
+}
+
+export const getAccountVesting = async (btcAddress: string): Promise<AccountVesting[]> => {
+  const sql = 'SELECT * FROM account_vesting where address = $1 ORDER BY block_id ASC;';
+  const db = await getDB();
+  const params = [btcAddress];
+  const { rows }: { rows: AccountVesting[] } = await db.query(sql, params);
+  return rows;
+};
+
+export const getVestingForAddress = async (btcAddress: string): Promise<Vesting> => {
+  const latestBlock = await getLatestBlock();
+  const rows = await getAccountVesting(btcAddress);
+  let totalUnlocked = 0;
+  let totalLocked = 0;
+  let vestingTotal = 0;
+  rows.forEach((row) => {
+    const value = parseInt(row.vesting_value, 10);
+    vestingTotal += value;
+    if (row.block_id <= latestBlock.height) {
+      totalUnlocked += value;
+    } else {
+      totalLocked += value;
+    }
+  });
+  return {
+    totalUnlocked,
+    totalLocked,
+    vestingTotal,
+  };
+};
+
+interface Account {
+  credit_value: string
+}
+
+export const getTokensGrantedInHardFork = async (btcAddress: string): Promise<number> => {
+  const sql = 'SELECT * FROM blockstack_core.accounts where address = $1 and block_id = 373601 LIMIT 10;';
+  const db = await getDB();
+  const params = [btcAddress];
+  const { rows }: { rows: Account[] } = await db.query(sql, params);
+  let total = 0;
+  rows.forEach((row) => { total += parseInt(row.credit_value, 10); });
+  return total;
 };

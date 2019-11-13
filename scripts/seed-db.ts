@@ -20,6 +20,10 @@ const steps = [
     cmd: 'docker run --name core-spinup -t quay.io/blockstack/blockstack-core:v21.0.0.2 blockstack-core fast_sync',
   },
   {
+    name: 'Setting up pgloader',
+    cmd: 'sh scripts/setup-pgloader.sh',
+  },
+  {
     name: 'Copying blockstack-server.db',
     cmd: 'docker cp core-spinup:/root/.blockstack-server/blockstack-server.db ~/pgloader/srv/',
   },
