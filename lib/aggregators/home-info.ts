@@ -47,7 +47,7 @@ class HomeInfo extends Aggregator {
 
     // TODO: this query is slightly off
     // const unlockedSupply = await getUnlockedSupply();
-    const unlockedSupply = 385937151.767519;
+    const unlockedSupply = 426700520.464896;
 
     return {
       totalStacks: '1,320,000,000',
