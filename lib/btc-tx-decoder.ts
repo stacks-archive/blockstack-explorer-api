@@ -1,9 +1,8 @@
 import {
-  Transaction as BTCTransaction, TxOutput, address, networks, script, payments,
+  Transaction as BTCTransaction, TxOutput, address, networks, script,
 } from 'bitcoinjs-lib';
 import { Transaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
-import { Input } from 'bitcoinjs-lib/types/transaction';
 
 const getAddr = (out: TxOutput) => {
   let addr: string | null = null;
@@ -15,49 +14,43 @@ const getAddr = (out: TxOutput) => {
   return addr;
 };
 
-export const getInputAddr = (input: Input) => {
-  const pmt = payments.p2pkh({
-    input: input.script,
-    network: networks.bitcoin,
-  });
-  return pmt.address;
-};
-
 interface Output {
   addr: string,
   value: number,
   [key: string]: any,
 }
 
+interface Input {
+  addr: string,
+  txid: string,
+  [key: string]: any,
+}
+
 export const decodeTx = async (tx: BTCTransaction, networkData: Transaction) => {
-  const fetchVins: Promise<Input>[] = tx.ins.map(async (input, index) => {
+  const fetchVins: Promise<Input>[] = tx.ins.map((input, index) => new Promise(async (resolve) => {
     const txid = input.hash.reverse().toString('hex');
     try {
       const inputTxHash = await fetchRawTxInfo(txid);
       const inputTx = BTCTransaction.fromHex(<string>inputTxHash);
-      return {
+
+      return resolve({
         txid,
         index,
-        script: Buffer.from(input.script),
+        script: script.toASM(input.script),
         sequence: input.sequence,
         addr: <string>getAddr(<TxOutput>inputTx.outs[0]),
         inputTx,
-        hash: undefined,
-        witness: undefined,
-      } as Input;
+      });
     } catch (error) {
-      return {
+      return resolve({
         txid,
         index,
         addr: '',
         // script: input.script ? script.toASM(input.script) : null,
-        script: undefined,
-        hash: undefined,
-        witness: undefined,
         sequence: input.sequence,
-      } as Input;
+      });
     }
-  });
+  }));
   let vin: Input[] = [];
   try {
     vin = await Promise.all(fetchVins);

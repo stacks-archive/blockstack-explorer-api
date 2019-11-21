@@ -1,11 +1,8 @@
 import '../setup';
+import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
-import { getAllAccountAddresses, getUnlockedSupply } from '../../lib/core-db-pg/queries';
+import { getUnlockedSupply } from '../../lib/core-db-pg/queries';
 
-test('get get all STX addresses', async () => {
-  const addresses = await getAllAccountAddresses();
-  expect(addresses.length).toBeGreaterThan(1);
-});
 
 test('get total supply', async () => {
   const { unlockedSupply, blockHeight } = await getUnlockedSupply();

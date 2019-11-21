@@ -1,5 +1,6 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
+import { address } from 'bitcoinjs-lib';
 import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
@@ -262,14 +263,6 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
     ...row,
     historyData: JSON.parse(row.history_data),
   };
-};
-
-export const getAllAccountAddresses = async (): Promise<string[]> => {
-  const sql = 'SELECT DISTINCT address FROM accounts';
-  const db = await getDB();
-  const { rows } = await db.query(sql);
-  const addresses: string[] = rows.map(row => row.address);
-  return addresses;
 };
 
 export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {
