@@ -1,6 +1,6 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
-import { address } from 'bitcoinjs-lib';
+import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
@@ -207,14 +207,61 @@ export const getVestingTotalForAddress = async (_address: string) => {
   }
 };
 
+function bigIntToStacks(microStx: BigNumber | string, format = false): string {
+  const stxUnits = 1000000;
+  const input = typeof microStx === 'string' ? new BigNumber(microStx) : microStx;
+  const result = input.dividedBy(stxUnits);
+  return format ? result.toFormat() : result.toString();
+}
+
 export const getUnlockedSupply = async () => {
-  const latestBlock = await getLatestBlock();
-  const sql = 'SELECT sum(vesting_value::bigint) FROM account_vesting where block_id < $1;';
+  const sql = `
+    SELECT DISTINCT ON (address) * 
+    FROM accounts 
+    WHERE type = 'STACKS' 
+    ORDER BY address, block_id DESC, vtxindex DESC`;
   const db = await getDB();
-  const params = [latestBlock.height];
-  const { rows } = await db.query(sql, params);
-  const [row] = rows;
-  return row.sum * 10e-7;
+  const { rows } = await db.query(sql);
+  const accounts: Record<string, {
+    creditValue: BigNumber;
+    debitValue: BigNumber;
+    receiveWhitelisted: string;
+    lockTransferBlockId: number;
+    blockId: number;
+  }> = {};
+  const latestBlock = await getLatestBlock();
+  let totalSupply = new BigNumber(0);
+  const invalidAddrPrefixes = ['not_', 'missing-', 'Reserved_'];
+  rows.forEach(row => {
+    const address: string = row.address;
+    if (accounts[address]) {
+      throw new Error('duplicate address');
+    }
+    if (invalidAddrPrefixes.find(prefix => address.startsWith(prefix))) {
+      return;
+    }
+    const lockTransferBlockId = parseInt(row.lock_transfer_block_id, 10);
+    if (lockTransferBlockId > latestBlock.height) {
+      return;
+    }
+    // TODO: filter out `address` that is not a valid c32
+    const credit = new BigNumber(row.credit_value);
+    const debit = new BigNumber(row.debit_value);
+    const balance = credit.minus(debit);
+    if (balance.lt(0)) {
+      throw new Error(`Unexpected negative account balance for ${address}`);
+    }
+    accounts[address] = {
+      creditValue: credit,
+      debitValue: debit,
+      receiveWhitelisted: row.receive_whitelisted,
+      lockTransferBlockId,
+      blockId: parseInt(row.block_id, 10),
+    };
+    totalSupply = totalSupply.plus(balance);
+  });
+  const totalSupplyStx = bigIntToStacks(totalSupply);
+  return totalSupplyStx;
 };
 
 export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | null> => {
@@ -228,6 +275,14 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
     ...row,
     historyData: JSON.parse(row.history_data),
   };
+};
+
+export const getAllAccountAddresses = async (): Promise<string[]> => {
+  const sql = 'SELECT DISTINCT address FROM accounts';
+  const db = await getDB();
+  const { rows } = await db.query(sql);
+  const addresses: string[] = rows.map(row => row.address);
+  return addresses;
 };
 
 export const getAddressSTXTransactions = async (btcAddress: string): Promise<HistoryRecord[]> => {

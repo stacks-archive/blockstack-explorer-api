@@ -2,6 +2,7 @@ import './setup';
 import {
   fetchName, fetchAddress, fetchTX, fetchBlock, fetchBlocks,
 } from '../lib/client/core-api';
+import { getInputAddr } from '../lib/btc-tx-decoder';
 
 jest.setTimeout(10000);
 
@@ -40,7 +41,9 @@ test.skip('fetches a TX', async () => {
   expect(tx.vout[0].scriptPubKey.hex).toBe(
     '6a3c69643a68616e6b73746f657665722e69640000000000000000000000000000000000000000000000daa4437cd303d5c751b62a4c25ece524889b0b81',
   );
-  expect(tx.vin[0].addr).toBe('17kuBnomGz2mU5A5eKiA3a5MuadHUybWbC');
+  const testAddr = getInputAddr(tx.vin[0]);
+  // expect(tx.vin[0].add).toBe('17kuBnomGz2mU5A5eKiA3a5MuadHUybWbC');
+  expect(testAddr).toBe('17kuBnomGz2mU5A5eKiA3a5MuadHUybWbC');
   expect(tx.value).toEqual(0.0027731);
   expect(tx.valueOut).toEqual(0.0027731);
 });
@@ -53,7 +56,9 @@ test.only('fetches an older TX', async () => {
   expect(tx.vout[0].scriptPubKey.hex).toBe(
     '76a9146b4b10e85549c2faee992947299f1058a771e97488ac',
   );
-  expect(tx.vin[0].addr).toBe('15yxQGynajqqEQiGBoioe6ATp2n2LTBJ4V');
+  const testAddr = getInputAddr(tx.vin[0]);
+  expect(testAddr).toBe('15yxQGynajqqEQiGBoioe6ATp2n2LTBJ4V');
+  // expect(tx.vin[0].addr).toBe('15yxQGynajqqEQiGBoioe6ATp2n2LTBJ4V');
   expect(tx.value).toEqual(4.29555498);
   expect(tx.valueOut).toEqual(4.29555498);
 }, 25000);

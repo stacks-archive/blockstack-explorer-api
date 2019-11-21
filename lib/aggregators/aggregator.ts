@@ -62,7 +62,7 @@ class Aggregator {
   }
 
   static getCurrentGitTag() {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
       const command = "git describe --exact-match --tags $(git log -n1 --pretty='%h')";
       // eslint-disable-next-line global-require
       require('child_process').exec(command, (err, stdout) => {

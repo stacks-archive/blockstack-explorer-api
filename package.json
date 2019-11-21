@@ -10,6 +10,7 @@
     "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts' --ignore test/",
     "test": "NODE_ENV=test jest --verbose=false --testPathIgnorePatterns core-db --ci",
     "test-watch": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db --watch",
+    "lint": "eslint --ext .js,.ts -f=codeframe ./",
     "seed": "ts-node scripts/seed-db.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -22,16 +23,15 @@
     "@types/morgan": "^1.7.35",
     "@types/node": "^11.13.0",
     "@types/request-promise": "^4.1.42",
-    "@types/sqlite3": "^3.1.5",
-    "@typescript-eslint/eslint-plugin": "^1.6.0",
-    "@typescript-eslint/parser": "^1.6.0",
-    "eslint": "^5.7.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-import-resolver-typescript": "^1.1.1",
-    "eslint-plugin-import": "^2.16.0",
-    "eslint-plugin-jest": "^22.0.0",
-    "jest": "^24.7.1",
-    "ts-jest": "^24.0.2"
+    "@typescript-eslint/eslint-plugin": "^2.8.0",
+    "@typescript-eslint/parser": "^2.8.0",
+    "eslint": "^6.6.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-import-resolver-typescript": "^2.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jest": "^23.0.4",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.1.0"
   },
   "dependencies": {
     "@awaitjs/express": "^0.1.4",
@@ -42,8 +42,9 @@
     "@types/pg": "^7.4.14",
     "accounting": "^0.4.1",
     "bigi": "^1.4.2",
+    "bignumber.js": "^9.0.0",
     "bitcoin-core": "^2.0.0",
-    "bitcoinjs-lib": "^5.0.1",
+    "bitcoinjs-lib": "^5.1.6",
     "blockstack": "^19.3.0",
     "bluebird": "^3.5.2",
     "bn.js": "^5.0.0",
@@ -65,8 +66,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.2",
     "split-on-first": "^1.1.0",
-    "sqlite3": "^4.0.6",
-    "ts-node": "^8.1.0",
-    "typescript": "^3.4.2"
+    "ts-node": "^8.5.2",
+    "typescript": "^3.7.2"
   }
 }

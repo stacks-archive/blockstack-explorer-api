@@ -1,5 +1,6 @@
 import moment from 'moment';
 import accounting from 'accounting';
+import BigNumber from 'bignumber.js';
 import sortBy from 'lodash/sortBy';
 import NameOperations from './name-ops-v2';
 
@@ -46,13 +47,16 @@ class HomeInfo extends Aggregator {
     });
 
     // TODO: this query is slightly off
-    // const unlockedSupply = await getUnlockedSupply();
-    const unlockedSupply = 426700520.464896;
+    const unlockedSupply = await getUnlockedSupply();
+    const unlockedSupplyFormatted = new BigNumber(unlockedSupply).toFormat();
+    // const unlockedSupply = 426,700,520.464896;
+    //                       "431,788,941.820805"
+
 
     return {
       totalStacks: '1,320,000,000',
       unlockedSupply,
-      unlockedSupplyFormatted: accounting.formatNumber(unlockedSupply, 0),
+      unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations,

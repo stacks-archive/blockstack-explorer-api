@@ -31,6 +31,10 @@ export interface History {
   totalUnlocked: number
 }
 
+interface AccountTokens {
+  tokens: string[];
+}
+
 class StacksAddress extends Aggregator {
   static key(addr: string) {
     return `StacksAddress:${addr}`;
@@ -47,9 +51,9 @@ class StacksAddress extends Aggregator {
     const token = 'STACKS';
 
     const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks, tokensGranted] = await Promise.all([
-      network.getAccountTokens(address),
+      network.getAccountTokens(address) as Promise<AccountTokens>,
       this.getHistory(address),
-      network.getAccountStatus(address, token),
+      network.getAccountStatus(address, token) as Promise<Record<string, string>>,
       network.getAccountBalance(address, token),
       getVestingForAddress(address),
       this.getCumulativeVestedAtBlocks(address),
@@ -91,7 +95,7 @@ class StacksAddress extends Aggregator {
     return account;
   }
 
-  static async getHistory(address: string) {
+  static async getHistory(address: string): Promise<History> {
     const history = await getAddressSTXTransactions(address);
     history.reverse();
     const totalUnlocked = 0;
@@ -120,9 +124,9 @@ class StacksAddress extends Aggregator {
         } catch (error) {
           console.error('Error when fetching TX info:', error.message);
           return {
-            ...blockTime,
-            h,
-          };
+            ...h,
+            blockTime,
+          } as HistoryRecordWithData;
         }
       } catch (error) {
         console.error('Error when fetching history', error.message);
@@ -156,7 +160,7 @@ class StacksAddress extends Aggregator {
 
   static async getCumulativeVestedAtBlocks(address: string) {
     const vesting = await getAccountVesting(address);
-    const cumulativeVestedAtBlocks = {};
+    const cumulativeVestedAtBlocks: Record<number, number> = {};
     let cumulativeVested = 0;
     if (vesting.length === 0) {
       return null;

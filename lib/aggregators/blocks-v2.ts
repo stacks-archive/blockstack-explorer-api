@@ -19,18 +19,18 @@ class BlocksAggregator extends Aggregator {
   static async setter(date: string, page: number) {
     const blocks = await getBlocks(date, page);
     const concurrency = process.env.API_CONCURRENCY ? parseInt(process.env.API_CONCURRENCY, 10) : 1;
-    const getBlock = (_block: Block) => new Promise(async (resolve) => {
+    const getBlock = async (_block: Block) => {
       try {
         const blockData = await BlockAggregator.fetch(_block.hash);
-        return resolve({
+        return {
           ...blockData,
           _block,
-        });
+        };
       } catch (error) {
         console.error(error);
-        return resolve(_block);
+        return _block;
       }
-    });
+    };
     return BlueBirdPromise.map(blocks, getBlock, { concurrency });
   }
 

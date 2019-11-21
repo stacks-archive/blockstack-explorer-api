@@ -1,6 +1,16 @@
 import '../setup';
-import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
+import { getAllAccountAddresses, getUnlockedSupply } from '../../lib/core-db-pg/queries';
+
+test('get get all STX addresses', async () => {
+  const ff = await getAllAccountAddresses();
+  expect(ff).toBeTruthy();
+});
+
+test('get total supply', async () => {
+  const ff = await getUnlockedSupply();
+  expect(ff).toBeTruthy();
+});
 
 test('can get basic STX address info', async () => {
   const account = await StacksAddress.setter('SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93');
