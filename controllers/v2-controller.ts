@@ -20,6 +20,7 @@ import {
   getAllHistoryRecords,
   HistoryRecordWithSubdomains,
   getUnlockedSupply,
+  getTopBalances,
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
@@ -202,6 +203,23 @@ Controller.get('/total-supply', async (req: Request, res: Response) => {
       unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
       blockHeight,
     });
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/top-balances', async (req: Request, res: Response) => {
+  try {
+    const { unlockedSupply } = await getUnlockedSupply();
+    const topBalances = await getTopBalances();
+    const formatted = topBalances.map(account => ({
+      address: account.address,
+      balance: microStacksToStacks(account.balance),
+      distribution: parseFloat(account.balance.div(unlockedSupply).multipliedBy(100).toFixed(6)),
+    }));
+    res.contentType('application/json');
+    res.send(JSON.stringify(formatted, null, 2));
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });
