@@ -214,55 +214,42 @@ function bigIntToStacks(microStx: BigNumber | string, format = false): string {
   return format ? result.toFormat() : result.toString();
 }
 
-export const getUnlockedSupply = async () => {
+export interface UnlockedSupply {
+  blockHeight: string;
+  unlockedSupply: string;
+}
+
+export async function getUnlockedSupply(): Promise<UnlockedSupply> {
   const sql = `
-    SELECT DISTINCT ON (address) * 
-    FROM accounts 
-    WHERE type = 'STACKS' 
-    ORDER BY address, block_id DESC, vtxindex DESC`;
+    WITH 
+    block_height AS (SELECT MAX(block_id) from accounts),
+    totals as (
+      SELECT DISTINCT ON (address) credit_value, debit_value 
+        FROM accounts 
+        WHERE type = 'STACKS' 
+        AND address !~ '(-|_)' 
+        AND length(address) BETWEEN 33 AND 34 
+        AND receive_whitelisted = '1' 
+        AND lock_transfer_block_id <= (SELECT * from block_height) 
+        ORDER BY address, block_id DESC, vtxindex DESC 
+    )
+    SELECT (SELECT * from block_height) as val
+    UNION ALL
+    SELECT SUM(
+      CAST(totals.credit_value as bigint) - CAST(totals.debit_value as bigint)
+    ) as val FROM totals`;
   const db = await getDB();
   const { rows } = await db.query(sql);
-  const accounts: Record<string, {
-    creditValue: BigNumber;
-    debitValue: BigNumber;
-    receiveWhitelisted: string;
-    lockTransferBlockId: number;
-    blockId: number;
-  }> = {};
-  const latestBlock = await getLatestBlock();
-  let totalSupply = new BigNumber(0);
-  const invalidAddrPrefixes = ['not_', 'missing-', 'Reserved_'];
-  rows.forEach(row => {
-    const address: string = row.address;
-    if (accounts[address]) {
-      throw new Error('duplicate address');
-    }
-    if (invalidAddrPrefixes.find(prefix => address.startsWith(prefix))) {
-      return;
-    }
-    const lockTransferBlockId = parseInt(row.lock_transfer_block_id, 10);
-    if (lockTransferBlockId > latestBlock.height) {
-      return;
-    }
-    // TODO: filter out `address` that is not a valid c32
-    const credit = new BigNumber(row.credit_value);
-    const debit = new BigNumber(row.debit_value);
-    const balance = credit.minus(debit);
-    if (balance.lt(0)) {
-      throw new Error(`Unexpected negative account balance for ${address}`);
-    }
-    accounts[address] = {
-      creditValue: credit,
-      debitValue: debit,
-      receiveWhitelisted: row.receive_whitelisted,
-      lockTransferBlockId,
-      blockId: parseInt(row.block_id, 10),
-    };
-    totalSupply = totalSupply.plus(balance);
-  });
-  const totalSupplyStx = bigIntToStacks(totalSupply);
-  return totalSupplyStx;
-};
+  if (!rows || rows.length !== 2) {
+    throw new Error('Failed to retrieve total_supply in accounts query');
+  }
+  const blockHeight: string = rows[0].val;
+  const unlockedSupply = bigIntToStacks(rows[1].val);
+  return {
+    blockHeight,
+    unlockedSupply,
+  };
+}
 
 export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | null> => {
   const sql = 'SELECT * from history where txid = $1';

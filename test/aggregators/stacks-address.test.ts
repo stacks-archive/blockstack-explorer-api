@@ -3,13 +3,14 @@ import StacksAddress from '../../lib/aggregators/stacks-address';
 import { getAllAccountAddresses, getUnlockedSupply } from '../../lib/core-db-pg/queries';
 
 test('get get all STX addresses', async () => {
-  const ff = await getAllAccountAddresses();
-  expect(ff).toBeTruthy();
+  const addresses = await getAllAccountAddresses();
+  expect(addresses.length).toBeGreaterThan(1);
 });
 
 test('get total supply', async () => {
-  const ff = await getUnlockedSupply();
-  expect(ff).toBeTruthy();
+  const { unlockedSupply, blockHeight } = await getUnlockedSupply();
+  expect(parseFloat(unlockedSupply)).toBeGreaterThan(1);
+  expect(parseInt(blockHeight, 10)).toBeGreaterThan(1);
 });
 
 test('can get basic STX address info', async () => {

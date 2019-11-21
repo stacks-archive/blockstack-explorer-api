@@ -46,12 +46,8 @@ class HomeInfo extends Aggregator {
       };
     });
 
-    // TODO: this query is slightly off
-    const unlockedSupply = await getUnlockedSupply();
+    const { unlockedSupply } = await getUnlockedSupply();
     const unlockedSupplyFormatted = new BigNumber(unlockedSupply).toFormat();
-    // const unlockedSupply = 426,700,520.464896;
-    //                       "431,788,941.820805"
-
 
     return {
       totalStacks: '1,320,000,000',

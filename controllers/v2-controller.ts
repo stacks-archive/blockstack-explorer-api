@@ -18,10 +18,12 @@ import {
   StacksTransaction,
   getAllHistoryRecords,
   HistoryRecordWithSubdomains,
+  getUnlockedSupply,
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
 import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
+import BigNumber from 'bignumber.js';
 
 const Controller = express.Router();
 
@@ -183,6 +185,23 @@ Controller.get('/fee-estimate', async (req: Request, res: Response) => {
   try {
     const fee = await FeeEstimator.fetch();
     res.json({ recommended: fee });
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/total-supply', async (req: Request, res: Response) => {
+  try {
+    const { unlockedSupply, blockHeight } = await getUnlockedSupply();
+    const totalStacks = new BigNumber('1320000000');
+    res.json({
+      totalStacks: totalStacks.toString(),
+      totalStacksFormatted: totalStacks.toFormat(),
+      unlockedSupply,
+      unlockedSupplyFormatted: new BigNumber(unlockedSupply).toFormat(),
+      blockHeight,
+    });
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });
