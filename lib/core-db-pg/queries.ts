@@ -217,7 +217,7 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
   const sql = `
     WITH 
     block_height AS (SELECT MAX(block_id) from accounts),
-    totals as (
+    totals AS (
       SELECT DISTINCT ON (address) credit_value, debit_value 
         FROM accounts 
         WHERE type = 'STACKS' 
@@ -227,11 +227,11 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
         AND lock_transfer_block_id <= (SELECT * from block_height) 
         ORDER BY address, block_id DESC, vtxindex DESC 
     )
-    SELECT (SELECT * from block_height) as val
+    SELECT (SELECT * from block_height) AS val
     UNION ALL
     SELECT SUM(
-      CAST(totals.credit_value as bigint) - CAST(totals.debit_value as bigint)
-    ) as val FROM totals`;
+      CAST(totals.credit_value AS bigint) - CAST(totals.debit_value AS bigint)
+    ) AS val FROM totals`;
   const db = await getDB();
   const { rows } = await db.query(sql);
   if (!rows || rows.length !== 2) {
