@@ -10,6 +10,7 @@ import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
+import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
 import FeeEstimator from '../lib/aggregators/fee-estimate';
 import { getTimesForBlockHeights } from '../lib/bitcore-db/queries';
 import {
@@ -193,15 +194,19 @@ Controller.get('/fee-estimate', async (req: Request, res: Response) => {
 
 Controller.get('/total-supply', async (req: Request, res: Response) => {
   try {
-    const { unlockedSupply, blockHeight } = await getUnlockedSupply();
-    const totalStacks = new BigNumber(TOTAL_STACKS);
-    res.json({
-      totalStacks: microStacksToStacks(totalStacks),
-      totalStacksFormatted: microStacksToStacks(totalStacks, 'thousands'),
-      unlockedSupply: microStacksToStacks(unlockedSupply),
-      unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
-      blockHeight,
-    });
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+    const formatted = JSON.stringify(totalSupplyInfo, null, 2);
+    res.contentType('application/json').send(formatted);
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/unlocked-supply', async (req: Request, res: Response) => {
+  try {
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+    res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });

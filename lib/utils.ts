@@ -110,4 +110,5 @@ module.exports = {
   extractRootDomain,
   microStacksToStacks,
   TOTAL_STACKS,
+  MICROSTACKS_IN_STACKS,
 };

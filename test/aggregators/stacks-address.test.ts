@@ -1,13 +1,15 @@
 import '../setup';
 import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
-import { getUnlockedSupply } from '../../lib/core-db-pg/queries';
+import TotalSupplyAggregator, { TotalSupplyResult } from '../../lib/aggregators/total-supply';
 
 
 test('get total supply', async () => {
-  const { unlockedSupply, blockHeight } = await getUnlockedSupply();
-  expect(unlockedSupply.gt(1)).toBeTruthy();
-  expect(parseInt(blockHeight, 10)).toBeGreaterThan(1);
+  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  expect(parseFloat(totalSupplyInfo.blockHeight)).toBeGreaterThan(1);
+  expect(parseFloat(totalSupplyInfo.totalStacks)).toBeGreaterThan(1);
+  expect(parseFloat(totalSupplyInfo.unlockedSupply)).toBeGreaterThan(1);
+  expect(parseFloat(totalSupplyInfo.unlockedPercent)).toBeGreaterThan(1);
 });
 
 test('can get basic STX address info', async () => {

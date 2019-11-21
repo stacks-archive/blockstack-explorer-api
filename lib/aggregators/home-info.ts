@@ -10,6 +10,7 @@ import NameCounts from './total-names';
 
 import { getUnlockedSupply } from '../core-db-pg/queries';
 import { microStacksToStacks, TOTAL_STACKS } from '../utils';
+import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
 class HomeInfo extends Aggregator {
   static key() {
@@ -47,12 +48,11 @@ class HomeInfo extends Aggregator {
       };
     });
 
-    const { unlockedSupply } = await getUnlockedSupply();
-    const totalStacks = new BigNumber(TOTAL_STACKS);
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
     return {
-      totalStacks: microStacksToStacks(totalStacks, 'thousands'),
-      unlockedSupply: microStacksToStacks(unlockedSupply),
-      unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
+      totalStacks: totalSupplyInfo.totalStacksFormatted,
+      unlockedSupply: totalSupplyInfo.unlockedSupply,
+      unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations,
