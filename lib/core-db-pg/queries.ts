@@ -250,11 +250,7 @@ export interface BalanceInfo {
   balance: BigNumber;
 }
 
-export async function getTopBalances(count = 250): Promise<BalanceInfo[]> {
-  const MAX_COUNT = 500;
-  if (count > MAX_COUNT) {
-    throw new Error(`Max count of ${MAX_COUNT} exceeded`);
-  }
+export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
   const sql = `
     SELECT * FROM (
       SELECT DISTINCT ON (address) address, (CAST(credit_value AS bigint) - CAST(debit_value AS bigint)) as balance

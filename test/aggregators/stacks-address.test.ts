@@ -1,22 +1,18 @@
 import '../setup';
 import BN from 'bn.js';
-import BigNumber from 'bignumber.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
-import { getUnlockedSupply, getTopBalances } from '../../lib/core-db-pg/queries';
+import TopBalancesAggregator, { TopBalanceAccount } from '../../lib/aggregators/top-balances';
+import { getUnlockedSupply } from '../../lib/core-db-pg/queries';
+
 
 test('get top balances', async () => {
-  const { unlockedSupply } = await getUnlockedSupply();
-  const balances = await getTopBalances(500);
-  expect(balances).toBeTruthy();
+  const balances: TopBalanceAccount[] = await TopBalancesAggregator.fetch(500);
   expect(balances.length).toEqual(500);
   expect(balances[0].address).toBeTruthy();
-  expect(balances[0].balance.gt(1)).toBeTruthy();
-
-  const distributions = balances.map(account => account.balance.div(unlockedSupply).multipliedBy(100));
-  const totalDistribution = distributions.reduce((total, amount) => total.plus(amount), new BigNumber(0));
-  const totalNum = parseFloat(totalDistribution.toFixed(4));
+  expect(parseFloat(balances[0].balance)).toBeGreaterThan(1);
+  const totalDistribution = balances.reduce((total, account) => total + account.distribution, 0);
   // Sanity check on the combined distribution percentages of the top accounts
-  expect(totalNum).toBeGreaterThan(50);
+  expect(totalDistribution).toBeGreaterThan(50);
 });
 
 test('get total supply', async () => {

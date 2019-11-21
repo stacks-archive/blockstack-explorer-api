@@ -33,7 +33,11 @@
               "--detectOpenHandles",
               "--config",
               "${workspaceRoot}/jest.config.js"
-            ]
+            ],
+            "console": "integratedTerminal",
+            "env": {
+                "NODE_ENV": "development"
+            }
           }
     ]
 }

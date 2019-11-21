@@ -25,6 +25,7 @@ import {
 
 // const { blockToTime } = require('../lib/utils');
 import { blockToTime, stacksValue, formatNumber, microStacksToStacks, TOTAL_STACKS } from '../lib/utils';
+import TopBalancesAggregator from '../lib/aggregators/top-balances';
 
 const Controller = express.Router();
 
@@ -211,15 +212,20 @@ Controller.get('/total-supply', async (req: Request, res: Response) => {
 
 Controller.get('/top-balances', async (req: Request, res: Response) => {
   try {
-    const { unlockedSupply } = await getUnlockedSupply();
-    const topBalances = await getTopBalances();
-    const formatted = topBalances.map(account => ({
-      address: account.address,
-      balance: microStacksToStacks(account.balance),
-      distribution: parseFloat(account.balance.div(unlockedSupply).multipliedBy(100).toFixed(6)),
-    }));
+    let count = 250;
+    if (req.query.count) {
+      const queryCount = parseInt(req.query.count, 10);
+      if (queryCount > 0) {
+        count = queryCount;
+      }
+    }
+    const MAX_COUNT = 500;
+    if (count > MAX_COUNT) {
+      throw new Error(`Max count of ${MAX_COUNT} exceeded`);
+    }
+    const topBalances = await TopBalancesAggregator.fetch(count);
     res.contentType('application/json');
-    res.send(JSON.stringify(formatted, null, 2));
+    res.send(JSON.stringify(topBalances, null, 2));
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });
