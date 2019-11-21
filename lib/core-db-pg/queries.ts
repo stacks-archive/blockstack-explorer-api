@@ -208,16 +208,9 @@ export const getVestingTotalForAddress = async (_address: string) => {
   }
 };
 
-function bigIntToStacks(microStx: BigNumber | string, format = false): string {
-  const stxUnits = 1000000;
-  const input = typeof microStx === 'string' ? new BigNumber(microStx) : microStx;
-  const result = input.dividedBy(stxUnits);
-  return format ? result.toFormat() : result.toString();
-}
-
 export interface UnlockedSupply {
   blockHeight: string;
-  unlockedSupply: string;
+  unlockedSupply: BigNumber;
 }
 
 export async function getUnlockedSupply(): Promise<UnlockedSupply> {
@@ -245,7 +238,7 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
     throw new Error('Failed to retrieve total_supply in accounts query');
   }
   const blockHeight: string = rows[0].val;
-  const unlockedSupply = bigIntToStacks(rows[1].val);
+  const unlockedSupply = new BigNumber(rows[1].val);
   return {
     blockHeight,
     unlockedSupply,

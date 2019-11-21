@@ -5,6 +5,7 @@ import moment from 'moment';
 import request from 'request-promise';
 import accounting from 'accounting';
 import BluebirdPromise from 'bluebird';
+import BigNumber from 'bignumber.js';
 import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
@@ -22,8 +23,7 @@ import {
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
-import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
-import BigNumber from 'bignumber.js';
+import { blockToTime, stacksValue, formatNumber, microStacksToStacks, TOTAL_STACKS } from '../lib/utils';
 
 const Controller = express.Router();
 
@@ -194,12 +194,12 @@ Controller.get('/fee-estimate', async (req: Request, res: Response) => {
 Controller.get('/total-supply', async (req: Request, res: Response) => {
   try {
     const { unlockedSupply, blockHeight } = await getUnlockedSupply();
-    const totalStacks = new BigNumber('1320000000');
+    const totalStacks = new BigNumber(TOTAL_STACKS);
     res.json({
-      totalStacks: totalStacks.toString(),
-      totalStacksFormatted: totalStacks.toFormat(),
-      unlockedSupply,
-      unlockedSupplyFormatted: new BigNumber(unlockedSupply).toFormat(),
+      totalStacks: microStacksToStacks(totalStacks),
+      totalStacksFormatted: microStacksToStacks(totalStacks, 'thousands'),
+      unlockedSupply: microStacksToStacks(unlockedSupply),
+      unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
       blockHeight,
     });
   } catch (error) {

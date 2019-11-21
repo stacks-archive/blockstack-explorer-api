@@ -6,7 +6,7 @@ import { getUnlockedSupply } from '../../lib/core-db-pg/queries';
 
 test('get total supply', async () => {
   const { unlockedSupply, blockHeight } = await getUnlockedSupply();
-  expect(parseFloat(unlockedSupply)).toBeGreaterThan(1);
+  expect(unlockedSupply.gt(1)).toBeTruthy();
   expect(parseInt(blockHeight, 10)).toBeGreaterThan(1);
 });
 

@@ -9,6 +9,7 @@ import Aggregator from './aggregator';
 import NameCounts from './total-names';
 
 import { getUnlockedSupply } from '../core-db-pg/queries';
+import { microStacksToStacks, TOTAL_STACKS } from '../utils';
 
 class HomeInfo extends Aggregator {
   static key() {
@@ -47,12 +48,11 @@ class HomeInfo extends Aggregator {
     });
 
     const { unlockedSupply } = await getUnlockedSupply();
-    const unlockedSupplyFormatted = new BigNumber(unlockedSupply).toFormat();
-
+    const totalStacks = new BigNumber(TOTAL_STACKS);
     return {
-      totalStacks: '1,320,000,000',
-      unlockedSupply,
-      unlockedSupplyFormatted,
+      totalStacks: microStacksToStacks(totalStacks, 'thousands'),
+      unlockedSupply: microStacksToStacks(unlockedSupply),
+      unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations,
