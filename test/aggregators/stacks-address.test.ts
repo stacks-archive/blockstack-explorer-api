@@ -1,16 +1,5 @@
 import '../setup';
-import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
-import TotalSupplyAggregator, { TotalSupplyResult } from '../../lib/aggregators/total-supply';
-
-
-test('get total supply', async () => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-  expect(parseFloat(totalSupplyInfo.blockHeight)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.totalStacks)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.unlockedSupply)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.unlockedPercent)).toBeGreaterThan(1);
-});
 
 test('can get basic STX address info', async () => {
   const account = await StacksAddress.setter('SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93');
