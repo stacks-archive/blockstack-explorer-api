@@ -120,9 +120,9 @@ class StacksAddress extends Aggregator {
         } catch (error) {
           console.error('Error when fetching TX info:', error.message);
           return {
-            ...blockTime,
-            h,
-          };
+            ...h,
+            blockTime,
+          } as HistoryRecordWithData;
         }
       } catch (error) {
         console.error('Error when fetching history', error.message);

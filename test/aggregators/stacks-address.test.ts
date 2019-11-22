@@ -1,5 +1,4 @@
 import '../setup';
-import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
 
 test('can get basic STX address info', async () => {
