@@ -23,13 +23,6 @@ const asyncFunctions: RedisClientAsync = {
 }
 /* eslint-enable @typescript-eslint/unbound-method */
 
-/*
-client.getAsync = promisify(client.get).bind(client);
-client.setAsync = promisify(client.set).bind(client);
-client.delAsync = promisify(client.del).bind(client);
-client.keysAsync = promisify(client.keys).bind(client);
-*/
-
 const asyncClient: redis.RedisClient & RedisClientAsync = Object.assign(client, asyncFunctions);
 
 export default asyncClient;
