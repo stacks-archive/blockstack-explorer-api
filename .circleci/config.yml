@@ -23,7 +23,7 @@ jobs: # a collection of steps
     #       command: yarn test --forceExit --testPathIgnorePatterns bitcore core-db
       - run: # run lint
           name: lint
-          command: yarn eslint .
+          command: yarn lint
       - run:
           name: typecheck
           command: yarn typecheck
