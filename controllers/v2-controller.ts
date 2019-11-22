@@ -21,10 +21,12 @@ import {
   getAllHistoryRecords,
   HistoryRecordWithSubdomains,
   getUnlockedSupply,
+  getTopBalances,
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
 import { blockToTime, stacksValue, formatNumber, microStacksToStacks, TOTAL_STACKS } from '../lib/utils';
+import TopBalancesAggregator from '../lib/aggregators/top-balances';
 
 const Controller = express.Router();
 
@@ -207,6 +209,28 @@ Controller.get('/unlocked-supply', async (req: Request, res: Response) => {
   try {
     const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
     res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/top-balances', async (req: Request, res: Response) => {
+  try {
+    let count = 250;
+    if (req.query.count) {
+      const queryCount = parseInt(req.query.count, 10);
+      if (queryCount > 0) {
+        count = queryCount;
+      }
+    }
+    const MAX_COUNT = 500;
+    if (count > MAX_COUNT) {
+      throw new Error(`Max count of ${MAX_COUNT} exceeded`);
+    }
+    const topBalances = await TopBalancesAggregator.fetch(count);
+    res.contentType('application/json');
+    res.send(JSON.stringify(topBalances, null, 2));
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });

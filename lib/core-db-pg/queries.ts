@@ -245,6 +245,35 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
   };
 }
 
+export interface BalanceInfo {
+  address: string;
+  balance: BigNumber;
+}
+
+export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
+  const sql = `
+    SELECT * FROM (
+      SELECT DISTINCT ON (address) address, (CAST(credit_value AS bigint) - CAST(debit_value AS bigint)) as balance
+          FROM accounts 
+          WHERE type = 'STACKS' 
+          AND address !~ '(-|_)' 
+          AND length(address) BETWEEN 33 AND 34 
+          AND receive_whitelisted = '1' 
+          AND lock_transfer_block_id <= (SELECT MAX(block_id) from accounts)
+          ORDER BY address, block_id DESC, vtxindex DESC
+    ) as balances
+    ORDER BY balance DESC
+    LIMIT $1`;
+  const db = await getDB();
+  const params = [count];
+  const { rows } = await db.query(sql, params);
+  const balances: BalanceInfo[] = rows.map(row => ({
+    address: row.address,
+    balance: new BigNumber(row.balance),
+  }));
+  return balances;
+}
+
 export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | null> => {
   const sql = 'SELECT * from history where txid = $1';
   const params = [txid];
