@@ -5,9 +5,9 @@ import StacksAddress from '../../lib/aggregators/stacks-address';
 import { network } from '../../lib/client/core-api';
 
 interface CoreHistoryItem {
-  txid: string;
-  vtxindex: number;
-  block_id: number;
+  txid: string
+  vtxindex: number
+  block_id: number
 }
 
 const testAddressHistory = async (addr: string) => {

@@ -117,13 +117,13 @@ class StacksAddress extends Aggregator {
     const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(
       history,
       async (h, index) => {
+        const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
         try {
           let historyEntry: HistoryRecordWithData = {
             ...h,
             valueStacks: stacksValue(h.historyData.token_fee),
             value: parseInt(h.historyData.token_fee, 10)
           };
-          const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
           const { txid } = h;
           try {
             const hex = await fetchRawTxInfo(txid);
@@ -139,14 +139,19 @@ class StacksAddress extends Aggregator {
             return historyEntry;
           } catch (error) {
             console.error('Error when fetching TX info:', error.message);
+            console.error(error);
             return {
               ...blockTime,
               h
             };
           }
         } catch (error) {
-          console.error('Error when fetching history', error.message);
-          return null;
+          console.error('Error when fetching TX info:', error.message);
+          console.error(error);
+          return {
+            ...h,
+            blockTime,
+          };
         }
       }
     );

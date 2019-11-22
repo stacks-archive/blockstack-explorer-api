@@ -1,0 +1,7 @@
+{
+    "eslint.packageManager": "yarn",
+    "eslint.validate": [
+        "javascript",
+        "typescript"
+    ]
+}

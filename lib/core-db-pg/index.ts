@@ -1,15 +1,13 @@
-// import sqlite, { Database } from 'sqlite3';
-import { Client } from 'pg';
+import { Pool } from 'pg';
 
-let client: Client | null = null;
+let client: Pool | null = null;
 
-export const getDB = async (): Promise<Client> => {
+export const getDB = async (): Promise<Pool> => {
   if (client) {
     return client;
   }
-  // eslint-disable-next-line no-underscore-dangle
-  const _client = new Client();
-  await _client.connect();
-  client = _client;
-  return _client;
+  const newClient = new Pool();
+  await newClient.connect();
+  client = newClient;
+  return newClient;
 };

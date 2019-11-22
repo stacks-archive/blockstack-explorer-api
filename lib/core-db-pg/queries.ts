@@ -1,6 +1,7 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import { address } from 'bitcoinjs-lib';
+import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
@@ -186,7 +187,7 @@ export const getNameHistory = async (name: string) => {
   const params = [name];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecord[] = rows.map(row => {
+  const results: HistoryRecord[] = rows.map((row) => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...historyData,
@@ -214,16 +215,71 @@ export const getVestingTotalForAddress = async (_address: string) => {
   }
 };
 
-export const getUnlockedSupply = async () => {
-  const latestBlock = await getLatestBlock();
-  const sql =
-    'SELECT sum(vesting_value::bigint) FROM account_vesting where block_id < $1;';
+export interface UnlockedSupply {
+  blockHeight: string
+  unlockedSupply: BigNumber
+}
+
+export async function getUnlockedSupply(): Promise<UnlockedSupply> {
+  const sql = `
+    WITH 
+    block_height AS (SELECT MAX(block_id) from accounts),
+    totals AS (
+      SELECT DISTINCT ON (address) credit_value, debit_value 
+        FROM accounts 
+        WHERE type = 'STACKS' 
+        AND address !~ '(-|_)' 
+        AND length(address) BETWEEN 33 AND 34 
+        AND receive_whitelisted = '1' 
+        AND lock_transfer_block_id <= (SELECT * from block_height) 
+        ORDER BY address, block_id DESC, vtxindex DESC 
+    )
+    SELECT (SELECT * from block_height) AS val
+    UNION ALL
+    SELECT SUM(
+      CAST(totals.credit_value AS bigint) - CAST(totals.debit_value AS bigint)
+    ) AS val FROM totals`;
   const db = await getDB();
-  const params = [latestBlock.height];
+  const { rows } = await db.query(sql);
+  if (!rows || rows.length !== 2) {
+    throw new Error('Failed to retrieve total_supply in accounts query');
+  }
+  const blockHeight: string = rows[0].val;
+  const unlockedSupply = new BigNumber(rows[1].val);
+  return {
+    blockHeight,
+    unlockedSupply,
+  };
+}
+
+export interface BalanceInfo {
+  address: string
+  balance: BigNumber
+}
+
+export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
+  const sql = `
+    SELECT * FROM (
+      SELECT DISTINCT ON (address) address, (CAST(credit_value AS bigint) - CAST(debit_value AS bigint)) as balance
+          FROM accounts 
+          WHERE type = 'STACKS' 
+          AND address !~ '(-|_)' 
+          AND length(address) BETWEEN 33 AND 34 
+          AND receive_whitelisted = '1' 
+          AND lock_transfer_block_id <= (SELECT MAX(block_id) from accounts)
+          ORDER BY address, block_id DESC, vtxindex DESC
+    ) as balances
+    ORDER BY balance DESC
+    LIMIT $1`;
+  const db = await getDB();
+  const params = [count];
   const { rows } = await db.query(sql, params);
-  const [row] = rows;
-  return row.sum * 10e-7;
-};
+  const balances: BalanceInfo[] = rows.map(row => ({
+    address: row.address,
+    balance: new BigNumber(row.balance),
+  }));
+  return balances;
+}
 
 export const getHistoryFromTxid = async (
   txid: string

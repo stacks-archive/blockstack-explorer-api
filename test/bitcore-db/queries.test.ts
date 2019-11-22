@@ -10,12 +10,11 @@ import {
 
 test('can fetch blocks', async () => {
   const blocks = await getBlocks('2013-02-01');
-  // console.log(blocks[0]);
   const date = moment(blocks[0].time).utc();
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
-  const lastDate = moment(blocks[0].time).utc();
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
   expect(blocks.length).toEqual(100);
+  expect(blocks[0].txCount).toEqual(blocks[0].transactionCount);
 }, 15000);
 
 test('can fetch blocks with a page', async () => {

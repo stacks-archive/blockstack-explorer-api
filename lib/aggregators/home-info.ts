@@ -1,5 +1,6 @@
 import moment from 'moment';
 import accounting from 'accounting';
+import BigNumber from 'bignumber.js';
 import sortBy from 'lodash/sortBy';
 import NameOperations from './name-ops-v2';
 
@@ -7,8 +8,9 @@ import Aggregator from './aggregator';
 
 import NameCounts from './total-names';
 
-import { getAccounts } from '../addresses';
 import { getUnlockedSupply } from '../core-db-pg/queries';
+import { microStacksToStacks, TOTAL_STACKS } from '../utils';
+import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
 class HomeInfo extends Aggregator {
   static key() {
@@ -16,7 +18,6 @@ class HomeInfo extends Aggregator {
   }
 
   static async setter() {
-    const accounts = await getAccounts();
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
       NameOperations.setter()
@@ -25,10 +26,8 @@ class HomeInfo extends Aggregator {
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
     const ticks = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp =>
-      parseInt(nameOp.time, 10)
-    );
-    sortedNames.forEach(nameOp => {
+    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time, 10);
+    sortedNames.forEach((nameOp) => {
       const { time } = nameOp;
       currentCount += 1;
       ticks[time] = {
@@ -47,20 +46,17 @@ class HomeInfo extends Aggregator {
       const tick = ticks[time];
       return {
         ...tick,
-        x: parseInt(time, 10),
+        x: time,
         y: tick.names,
         time
       };
     });
 
-    // TODO: this query is slightly off
-    // const unlockedSupply = await getUnlockedSupply();
-    const unlockedSupply = 385937151.767519;
-
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
     return {
-      totalStacks: '1,320,000,000',
-      unlockedSupply,
-      unlockedSupplyFormatted: accounting.formatNumber(unlockedSupply, 0),
+      totalStacks: totalSupplyInfo.totalStacksFormatted,
+      unlockedSupply: totalSupplyInfo.unlockedSupply,
+      unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations

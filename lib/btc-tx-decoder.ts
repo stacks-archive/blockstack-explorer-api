@@ -46,7 +46,7 @@ export const decodeTx = async (
           index,
           script: script.toASM(input.script),
           sequence: input.sequence,
-          addr: getAddr(inputTx.outs[0] as TxOutput) as string,
+          addr: getAddr(inputTx.outs[0] as TxOutput),
           inputTx
         };
       } catch (error) {
@@ -77,7 +77,7 @@ export const decodeTx = async (
         hex: out.script.toString('hex'),
         addresses: []
       },
-      addr: getAddr(out) as string
+      addr: getAddr(out)
     };
     return vout;
   };

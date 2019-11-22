@@ -5,10 +5,12 @@ import moment from 'moment';
 import request from 'request-promise';
 import accounting from 'accounting';
 import BluebirdPromise from 'bluebird';
+import BigNumber from 'bignumber.js';
 import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
+import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
 import FeeEstimator from '../lib/aggregators/fee-estimate';
 import { getTimesForBlockHeights } from '../lib/bitcore-db/queries';
 import {
@@ -17,11 +19,14 @@ import {
   getRecentSubdomains,
   StacksTransaction,
   getAllHistoryRecords,
-  HistoryRecordWithSubdomains
+  HistoryRecordWithSubdomains,
+  getUnlockedSupply,
+  getTopBalances,
 } from '../lib/core-db-pg/queries';
 
 // const { blockToTime } = require('../lib/utils');
-import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
+import { blockToTime, stacksValue, formatNumber, microStacksToStacks, TOTAL_STACKS } from '../lib/utils';
+import TopBalancesAggregator from '../lib/aggregators/top-balances';
 
 const Controller = express.Router();
 
@@ -207,6 +212,49 @@ Controller.get('/fee-estimate', async (req: Request, res: Response) => {
   try {
     const fee = await FeeEstimator.fetch();
     res.json({ recommended: fee });
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/total-supply', async (req: Request, res: Response) => {
+  try {
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+    const formatted = JSON.stringify(totalSupplyInfo, null, 2);
+    res.contentType('application/json').send(formatted);
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/unlocked-supply', async (req: Request, res: Response) => {
+  try {
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+    res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
+  } catch (error) {
+    Sentry.captureException(error);
+    res.status(500).json({ success: false });
+  }
+});
+
+Controller.get('/top-balances', async (req: Request, res: Response) => {
+  try {
+    let count = 250;
+    if (req.query.count) {
+      const queryCount = parseInt(req.query.count, 10);
+      if (queryCount > 0) {
+        count = queryCount;
+      }
+    }
+    const MAX_COUNT = 500;
+    if (count > MAX_COUNT) {
+      throw new Error(`Max count of ${MAX_COUNT} exceeded`);
+    }
+    const topBalances = await TopBalancesAggregator.fetch(count);
+    res.contentType('application/json');
+    res.send(JSON.stringify(topBalances, null, 2));
   } catch (error) {
     Sentry.captureException(error);
     res.status(500).json({ success: false });
