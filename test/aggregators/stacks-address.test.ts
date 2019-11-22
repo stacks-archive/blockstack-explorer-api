@@ -1,9 +1,6 @@
 import '../setup';
-import BN from 'bn.js';
 import StacksAddress from '../../lib/aggregators/stacks-address';
 import TopBalancesAggregator, { TopBalanceAccount } from '../../lib/aggregators/top-balances';
-import TotalSupplyAggregator, { TotalSupplyResult } from '../../lib/aggregators/total-supply';
-
 
 test('get top balances', async () => {
   const balances: TopBalanceAccount[] = await TopBalancesAggregator.fetch(500);
@@ -13,14 +10,6 @@ test('get top balances', async () => {
   const totalDistribution = balances.reduce((total, account) => total + account.distribution, 0);
   // Sanity check on the combined distribution percentages of the top accounts
   expect(totalDistribution).toBeGreaterThan(50);
-});
-
-test('get total supply', async () => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-  expect(parseFloat(totalSupplyInfo.blockHeight)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.totalStacks)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.unlockedSupply)).toBeGreaterThan(1);
-  expect(parseFloat(totalSupplyInfo.unlockedPercent)).toBeGreaterThan(1);
 });
 
 test('can get basic STX address info', async () => {
