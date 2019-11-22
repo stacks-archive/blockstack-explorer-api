@@ -24,7 +24,7 @@ class BlocksAggregator extends Aggregator {
         { total: blocks.length }
       );
     }
-    return Promise.map(blocks, async (_block) => {
+    return BluebirdPromise.map(blocks, async (_block: any) => {
       try {
         const blockData = await BlockAggregator.fetch(_block.hash, multi);
         if (bar) bar.tick();
@@ -58,5 +58,4 @@ class BlocksAggregator extends Aggregator {
   }
 }
 
-module.exports = BlocksAggregator;
 export default BlocksAggregator;

@@ -1,5 +1,4 @@
 import fs from 'fs-extra';
-import moment from 'moment';
 import _ from 'lodash';
 import { blockToTime } from './utils';
 
@@ -13,7 +12,7 @@ export const getAccounts = async () => {
       const cumulativeVestedAtBlocks = {};
       let cumulativeVested = 0;
       Object.keys(account.vesting).forEach(block => {
-        const date = blockToTime(block);
+        const date = blockToTime(parseInt(block, 10));
         cumulativeVested += account.vesting[block];
         cumulativeVestedAtBlocks[date] = cumulativeVested;
       });
@@ -48,7 +47,7 @@ export const getTotals = ({ accounts }) => {
     totals.vestedValues += account.vesting_total;
     const vestingKeys = Object.keys(account.vesting);
     vestingKeys.forEach((block, i) => {
-      const date = blockToTime(block);
+      const date = blockToTime(parseInt(block, 0));
       totals.vestedAtBlocks[date] = totals.vestedAtBlocks[date] || 0;
       totals.transferrableAtBlocks[date] =
         totals.transferrableAtBlocks[date] || 0;
@@ -83,7 +82,7 @@ export const getTotals = ({ accounts }) => {
     }
   });
 
-  const blocks = Object.keys(totals.vestedAtBlocks).sort((a, b) => a - b);
+  const blocks = Object.keys(totals.vestedAtBlocks).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 
   blocks.forEach(block => {
     const amount = totals.vestedAtBlocks[block];

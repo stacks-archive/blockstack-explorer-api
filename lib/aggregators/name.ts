@@ -70,5 +70,4 @@ class NameAggregator extends Aggregator {
   }
 }
 
-module.exports = NameAggregator;
 export default NameAggregator;

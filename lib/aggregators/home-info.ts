@@ -69,5 +69,4 @@ class HomeInfo extends Aggregator {
   }
 }
 
-module.exports = HomeInfo;
 export default HomeInfo;

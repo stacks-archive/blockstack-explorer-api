@@ -52,5 +52,4 @@ class BlocksAggregator extends Aggregator {
   }
 }
 
-module.exports = BlocksAggregator;
 export default BlocksAggregator;

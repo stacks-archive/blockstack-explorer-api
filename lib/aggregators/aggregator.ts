@@ -15,14 +15,16 @@ class Aggregator {
     // const verbose = this.verbose(...args);
     const key = await this.keyWithTag(...args);
     const value = await this.setter(...args);
-    let setArguments: any[] = [key, JSON.stringify(value)];
+
+    const valArg = JSON.stringify(value);
     const expiry = this.expiry(...args);
     if (expiry) {
       // if (verbose) console.log('Expiry:', expiry);
-      setArguments = setArguments.concat('EX', expiry);
+      await redis.setAsync(key, valArg, 'EX', expiry);
+    } else {
+      await redis.setAsync(key, valArg);
     }
     // console.log(setArguments);
-    await redis.setAsync(...setArguments);
     return value;
   }
 

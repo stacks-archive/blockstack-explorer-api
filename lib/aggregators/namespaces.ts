@@ -7,7 +7,7 @@ import { fetchNamespaceNameCount, fetchNamespaces } from '../client/core-api';
 class NamespaceAggregator extends Aggregator {
   static async setter() {
     const namespaces = await fetchNamespaces();
-    const counts = await BluebirdPromise.map(namespaces, async namespace => {
+    const counts = await BluebirdPromise.map(namespaces, async (namespace: string) => {
       const count = await fetchNamespaceNameCount(namespace);
       return {
         namespace,
@@ -30,5 +30,4 @@ class NamespaceAggregator extends Aggregator {
   }
 }
 
-module.exports = NamespaceAggregator;
 export default NamespaceAggregator;

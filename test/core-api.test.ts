@@ -44,6 +44,7 @@ test.skip('fetches a TX', async () => {
   // console.log(tx);
   expect(tx.blockheight).toBe(517739);
   expect(tx.vout[0].scriptPubKey.hex).toBe(
+    // eslint-disable-next-line max-len
     '6a3c69643a68616e6b73746f657665722e69640000000000000000000000000000000000000000000000daa4437cd303d5c751b62a4c25ece524889b0b81'
   );
   expect(tx.vin[0].addr).toBe('17kuBnomGz2mU5A5eKiA3a5MuadHUybWbC');

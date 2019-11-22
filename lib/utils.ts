@@ -108,15 +108,3 @@ function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat 
 }
 
 export { microStacksToStacks };
-
-module.exports = {
-  stacksValue,
-  blockToTime,
-  formatNumber,
-  btcValue,
-  extractHostname,
-  extractRootDomain,
-  microStacksToStacks,
-  TOTAL_STACKS,
-  MICROSTACKS_IN_STACKS
-};

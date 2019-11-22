@@ -199,5 +199,4 @@ class StacksAddress extends Aggregator {
   }
 }
 
-module.exports = StacksAddress;
 export default StacksAddress;

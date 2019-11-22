@@ -144,7 +144,9 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
 
 export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
   const sql =
-    "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
+    `SELECT * FROM history 
+    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
+    ORDER BY block_id DESC LIMIT 100`;
   const db = await getDB();
   const { rows } = await db.query(sql);
   return rows as HistoryRecord[];
@@ -155,8 +157,10 @@ export interface HistoryRecordWithSubdomains extends HistoryRecord {
 }
 
 export const getAllHistoryRecords = async (limit: number, page = 0) => {
-  const sql =
-    "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
+  const sql = 
+    `select * from history 
+    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER')  
+    ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
   const params = [limit, limit * page];
   const db = await getDB();
   const { rows } = await db.query(sql, params);

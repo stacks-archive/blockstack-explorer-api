@@ -13,8 +13,8 @@
     "test-watch": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db --watch",
     "seed": "ts-node scripts/seed-db.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint --ext .ts,.js . -f codeframe",
-    "lint-fix": "eslint --ext .ts,.js . -f codeframe --fix"
+    "lint": "eslint --ext .ts . -f codeframe",
+    "lint-fix": "eslint --ext .ts . -f codeframe --fix"
   },
   "devDependencies": {
     "@blockstack/prettier-config": "^0.0.3",
@@ -25,6 +25,7 @@
     "@types/lodash": "^4.14.123",
     "@types/morgan": "^1.7.35",
     "@types/node": "^12.12.11",
+    "@types/redis": "^2.8.14",
     "@types/request-promise": "^4.1.42",
     "@typescript-eslint/eslint-plugin": "^2.8.1-alpha.10",
     "@typescript-eslint/parser": "^2.8.0",

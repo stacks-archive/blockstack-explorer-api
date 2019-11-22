@@ -672,7 +672,9 @@ declare module 'bitcoin-core' {
 
     backupWallet(destination: string): Promise<void>;
 
-    bumpFee(txid: string, options?: BumpFeeOption): Promise<{ txid: string; origfee: number; fee: number; error?: string[] }>;
+    bumpFee(
+      txid: string, options?: BumpFeeOption
+    ): Promise<{ txid: string; origfee: number; fee: number; error?: string[] }>;
 
     clearBanned(): Promise<void>;
 
@@ -719,7 +721,9 @@ declare module 'bitcoin-core' {
      */
     estimateSmartPriority(...args: any[]): void;
 
-    fundRawTransaction(hexstring: string, options: FundRawTxOptions): Promise<{ hex: string; fee: number; changepos: number }>;
+    fundRawTransaction(
+      hexstring: string, options: FundRawTxOptions
+    ): Promise<{ hex: string; fee: number; changepos: number }>;
 
     generate(nblocks: number, maxtries?: number): Promise<string[]>;
 
@@ -861,7 +865,9 @@ declare module 'bitcoin-core' {
 
     importAddress(script: string, label?: string, rescan?: boolean, p2sh?: boolean): Promise<void>;
 
-    importMulti(requests: ImportMultiRequest[], options?: { rescan?: boolean }): Promise<{ success: boolean; error?: { code: string; message: string } }[]>;
+    importMulti(
+      requests: ImportMultiRequest[], options?: { rescan?: boolean }
+    ): Promise<{ success: boolean; error?: { code: string; message: string } }[]>;
 
     importPrivKey(bitcoinprivkey: string, label?: string, rescan?: boolean): Promise<void>;
 
@@ -989,7 +995,9 @@ declare module 'bitcoin-core' {
 
     signMessageWithPrivKey(privkey: string, message: string): Promise<{ signature: string }>;
 
-    signRawTransaction(hexstring: string, prevtxs?: PrevOut[], privkeys?: string[], sighashtype?: SigHashType): Promise<SignRawTxResult>;
+    signRawTransaction(
+      hexstring: string, prevtxs?: PrevOut[], privkeys?: string[], sighashtype?: SigHashType
+    ): Promise<SignRawTxResult>;
 
     stop(): Promise<void>;
 
