@@ -1,16 +1,5 @@
 import '../setup';
 import StacksAddress from '../../lib/aggregators/stacks-address';
-import TopBalancesAggregator, { TopBalanceAccount } from '../../lib/aggregators/top-balances';
-
-test('get top balances', async () => {
-  const balances: TopBalanceAccount[] = await TopBalancesAggregator.fetch(500);
-  expect(balances.length).toEqual(500);
-  expect(balances[0].address).toBeTruthy();
-  expect(parseFloat(balances[0].balance)).toBeGreaterThan(1);
-  const totalDistribution = balances.reduce((total, account) => total + account.distribution, 0);
-  // Sanity check on the combined distribution percentages of the top accounts
-  expect(totalDistribution).toBeGreaterThan(50);
-});
 
 test('can get basic STX address info', async () => {
   const account = await StacksAddress.setter('SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93');
