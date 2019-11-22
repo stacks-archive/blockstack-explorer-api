@@ -4,7 +4,6 @@ import BlueBirdPromise from 'bluebird';
 import Aggregator from './aggregator';
 import BlockAggregator from './block-v2';
 
-// const { fetchBlocks } = require('../client/core-api');
 import { getBlocks, Block } from '../bitcore-db/queries';
 
 class BlocksAggregator extends Aggregator {
