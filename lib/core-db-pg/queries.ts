@@ -1,14 +1,15 @@
 import BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import { address } from 'bitcoinjs-lib';
+import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
 interface Subdomain {
-  name: string
-  blockHeight: number | string
-  owner: string
-  [key: string]: any
+  name: string;
+  blockHeight: number | string;
+  owner: string;
+  [key: string]: any;
 }
 
 export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subdomain[]> => {
@@ -25,12 +26,12 @@ export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subd
 };
 
 interface NameRecord {
-  name: string
-  preorderBlockHeight: number
-  address: string
-  firstRegistered: number
-  txid: string
-  [key: string]: any
+  name: string;
+  preorderBlockHeight: number;
+  address: string;
+  firstRegistered: number;
+  txid: string;
+  [key: string]: any;
 }
 
 export const getRecentNames = async (limit: number, page = 0): Promise<NameRecord[]> => {
@@ -57,13 +58,13 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
 // };
 
 export interface StacksTransaction {
-  txid: string
-  historyId: string
-  blockHeight: number
-  op: string
-  opcode: string
-  historyData: any
-  [key: string]: any
+  txid: string;
+  historyId: string;
+  blockHeight: number;
+  op: string;
+  opcode: string;
+  historyData: any;
+  [key: string]: any;
 }
 
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
@@ -93,17 +94,17 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
 };
 
 export interface HistoryRecord {
-  block_id: number
-  op: string
-  opcode: string
-  txid: string
-  history_id: string
-  creator_address: string | null
-  history_data: string
-  vtxindex: number
+  block_id: number;
+  op: string;
+  opcode: string;
+  txid: string;
+  history_id: string;
+  creator_address: string | null;
+  history_data: string;
+  vtxindex: number;
   historyData: {
-    [key: string]: any
-  }
+    [key: string]: any;
+  };
 }
 
 export const getNameOperationsForBlock = async (
@@ -150,7 +151,7 @@ export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
 };
 
 export interface HistoryRecordWithSubdomains extends HistoryRecord {
-  subdomains?: string[]
+  subdomains?: string[];
 }
 
 export const getAllHistoryRecords = async (limit: number, page = 0) => {
@@ -214,16 +215,71 @@ export const getVestingTotalForAddress = async (_address: string) => {
   }
 };
 
-export const getUnlockedSupply = async () => {
-  const latestBlock = await getLatestBlock();
-  const sql =
-    'SELECT sum(vesting_value::bigint) FROM account_vesting where block_id < $1;';
+export interface UnlockedSupply {
+  blockHeight: string;
+  unlockedSupply: BigNumber;
+}
+
+export async function getUnlockedSupply(): Promise<UnlockedSupply> {
+  const sql = `
+    WITH 
+    block_height AS (SELECT MAX(block_id) from accounts),
+    totals AS (
+      SELECT DISTINCT ON (address) credit_value, debit_value 
+        FROM accounts 
+        WHERE type = 'STACKS' 
+        AND address !~ '(-|_)' 
+        AND length(address) BETWEEN 33 AND 34 
+        AND receive_whitelisted = '1' 
+        AND lock_transfer_block_id <= (SELECT * from block_height) 
+        ORDER BY address, block_id DESC, vtxindex DESC 
+    )
+    SELECT (SELECT * from block_height) AS val
+    UNION ALL
+    SELECT SUM(
+      CAST(totals.credit_value AS bigint) - CAST(totals.debit_value AS bigint)
+    ) AS val FROM totals`;
   const db = await getDB();
-  const params = [latestBlock.height];
+  const { rows } = await db.query(sql);
+  if (!rows || rows.length !== 2) {
+    throw new Error('Failed to retrieve total_supply in accounts query');
+  }
+  const blockHeight: string = rows[0].val;
+  const unlockedSupply = new BigNumber(rows[1].val);
+  return {
+    blockHeight,
+    unlockedSupply,
+  };
+}
+
+export interface BalanceInfo {
+  address: string;
+  balance: BigNumber;
+}
+
+export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
+  const sql = `
+    SELECT * FROM (
+      SELECT DISTINCT ON (address) address, (CAST(credit_value AS bigint) - CAST(debit_value AS bigint)) as balance
+          FROM accounts 
+          WHERE type = 'STACKS' 
+          AND address !~ '(-|_)' 
+          AND length(address) BETWEEN 33 AND 34 
+          AND receive_whitelisted = '1' 
+          AND lock_transfer_block_id <= (SELECT MAX(block_id) from accounts)
+          ORDER BY address, block_id DESC, vtxindex DESC
+    ) as balances
+    ORDER BY balance DESC
+    LIMIT $1`;
+  const db = await getDB();
+  const params = [count];
   const { rows } = await db.query(sql, params);
-  const [row] = rows;
-  return row.sum * 10e-7;
-};
+  const balances: BalanceInfo[] = rows.map(row => ({
+    address: row.address,
+    balance: new BigNumber(row.balance),
+  }));
+  return balances;
+}
 
 export const getHistoryFromTxid = async (
   txid: string
@@ -253,15 +309,15 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
 };
 
 interface Vesting {
-  totalUnlocked: number
-  totalLocked: number
-  vestingTotal: number
+  totalUnlocked: number;
+  totalLocked: number;
+  vestingTotal: number;
 }
 
 interface AccountVesting {
-  address: string
-  vesting_value: string
-  block_id: number
+  address: string;
+  vesting_value: string;
+  block_id: number;
 }
 
 export const getAccountVesting = async (
@@ -300,7 +356,7 @@ export const getVestingForAddress = async (
 };
 
 interface Account {
-  credit_value: string
+  credit_value: string;
 }
 
 export const getTokensGrantedInHardFork = async (

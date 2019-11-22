@@ -7,11 +7,11 @@ import {
 } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
-interface NameOp {
-  name: string
-  owner: string
-  time: number
-  block: number
+export interface NameOp {
+  name: string;
+  owner: string;
+  time: number;
+  block: number;
 }
 
 class NameOpsAggregator extends Aggregator {
@@ -30,7 +30,7 @@ class NameOpsAggregator extends Aggregator {
         if (historyRecord.opcode === 'NAME_REGISTRATION') {
           const row: NameOp = {
             name: historyRecord.history_id,
-            owner: historyRecord.creator_address as string,
+            owner: historyRecord.creator_address,
             time,
             block: historyRecord.block_id
           };

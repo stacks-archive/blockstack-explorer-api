@@ -12,22 +12,22 @@ const chainQuery = {
 };
 
 export interface Block {
-  nextBlockHash: string
-  previousBlockHash: string
-  merkleRoot: string
-  time: number
-  date: Date
-  bits: number
-  nonce: number
-  size: number
-  transactionCount: number
-  reward: number
-  height: number
-  hash: string
-  nameOperations?: any[]
-  txCount: number
-  transactions?: Transaction[]
-  rewardFormatted?: string
+  nextBlockHash: string;
+  previousBlockHash: string;
+  merkleRoot: string;
+  time: number;
+  date: Date;
+  bits: number;
+  nonce: number;
+  size: number;
+  transactionCount: number;
+  reward: number;
+  height: number;
+  hash: string;
+  nameOperations?: any[];
+  txCount: number;
+  transactions?: Transaction[];
+  rewardFormatted?: string;
 }
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
@@ -56,7 +56,7 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
     txCount: block.transactionCount
   }));
 
-  return blocksResult;
+  return blocks;
 };
 
 export const getBlock = async (hash: string): Promise<Block> => {
@@ -108,16 +108,16 @@ export const getBlockTransactions = async (
 };
 
 export interface Transaction {
-  txid: string
-  blockHeight: number
-  blockHash: string
-  blockTime: Date
-  coinbase: boolean
-  fee: number
-  size: number
-  inputCount: number
-  outputCount: number
-  value: number
+  txid: string;
+  blockHeight: number;
+  blockHash: string;
+  blockTime: Date;
+  coinbase: boolean;
+  fee: number;
+  size: number;
+  inputCount: number;
+  outputCount: number;
+  value: number;
 }
 
 export const getTX = async (txid: string): Promise<Transaction> => {
@@ -127,7 +127,7 @@ export const getTX = async (txid: string): Promise<Transaction> => {
     txid,
     ...chainQuery
   });
-  return tx as Transaction;
+  return tx;
 };
 
 export const getBlockHash = async (height: string): Promise<string> => {

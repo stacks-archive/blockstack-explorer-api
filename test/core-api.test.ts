@@ -51,7 +51,7 @@ test.skip('fetches a TX', async () => {
   expect(tx.valueOut).toEqual(0.0027731);
 });
 
-test.only('fetches an older TX', async () => {
+test('fetches an older TX', async () => {
   const tx = await fetchTX(
     '7e08c36aaa53ae3fc87abfda55a6cd92de7dd723da3399ad274b614cb7d37874'
   );

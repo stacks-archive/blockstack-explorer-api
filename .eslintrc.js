@@ -7,6 +7,7 @@ module.exports = {
   parser: "@typescript-eslint/parser",
   plugins: ["jest", "import", "@typescript-eslint"],
   parserOptions: {
+    ecmaVersion: 2018,
     project: './tsconfig.json',
   },
   rules: {
@@ -24,7 +25,6 @@ module.exports = {
     "@typescript-eslint/class-name-casing": "off",
     "@typescript-eslint/camelcase": "off",
     "@typescript-eslint/array-type": "off",
-    "@typescript-eslint/member-delimiter-style": "off",
     "@typescript-eslint/no-angle-bracket-type-assertion": "off",
     "@typescript-eslint/prefer-interface": "off",
     "@typescript-eslint/no-use-before-define": "off",
@@ -37,7 +37,7 @@ module.exports = {
       'error',
       {
         multiline: {
-          delimiter: 'none',
+          delimiter: 'semi',
           requireLast: true
         },
         singleline: {

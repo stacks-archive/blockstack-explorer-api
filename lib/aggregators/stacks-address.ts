@@ -25,17 +25,17 @@ import {
 import { getAccounts } from '../addresses';
 
 export interface HistoryRecordWithData extends HistoryRecord {
-  operation?: string
-  blockTime?: number
-  valueStacks: number
-  value: number
-  sender?: string
-  recipient?: string
+  operation?: string;
+  blockTime?: number;
+  valueStacks: number;
+  value: number;
+  sender?: string;
+  recipient?: string;
 }
 
 export interface History {
-  records: HistoryRecordWithData[]
-  totalUnlocked: number
+  records: HistoryRecordWithData[];
+  totalUnlocked: number;
 }
 
 class StacksAddress extends Aggregator {
@@ -140,9 +140,9 @@ class StacksAddress extends Aggregator {
           } catch (error) {
             console.error('Error when fetching TX info:', error.message);
             return {
-              ...blockTime,
-              h
-            };
+              ...h,
+              blockTime
+            } as HistoryRecordWithData;
           }
         } catch (error) {
           console.error('Error when fetching history', error.message);

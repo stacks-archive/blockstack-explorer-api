@@ -11,9 +11,9 @@ import { blockToTime } from '../utils';
 // import BlocksAggregator from './blocks';
 
 interface CommonName {
-  name: string
-  blockHeight: number
-  owner: string
+  name: string;
+  blockHeight: number;
+  owner: string;
 }
 
 class NameOpsAggregator extends Aggregator {

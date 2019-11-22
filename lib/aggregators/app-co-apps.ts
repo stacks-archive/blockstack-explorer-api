@@ -2,25 +2,25 @@ import request from 'request-promise';
 import Aggregator from './aggregator';
 
 interface Slug {
-  id: number
-  value: string
+  id: number;
+  value: string;
 }
 
 interface App {
-  id: number
-  website: string
-  imgixImageUrl: string
-  name: string
-  authentication: string
-  Slugs: Slug[]
+  id: number;
+  website: string;
+  imgixImageUrl: string;
+  name: string;
+  authentication: string;
+  Slugs: Slug[];
 }
 
 export interface BlockstackApp {
-  id: number
-  website: string
-  imgixImageUrl: string
-  name: string
-  slug: string | null
+  id: number;
+  website: string;
+  imgixImageUrl: string;
+  name: string;
+  slug: string | null;
 }
 
 export default class AppsAggregator extends Aggregator {

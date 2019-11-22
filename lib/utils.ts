@@ -1,6 +1,7 @@
 /* eslint-disable prefer-destructuring */
 import moment from 'moment';
 import accounting from 'accounting';
+import BigNumber from 'bignumber.js';
 
 export const stacksValue = (value: number) =>
   +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
@@ -77,11 +78,45 @@ export const extractRootDomain = (url: string) => {
   return domain;
 };
 
+export const TOTAL_STACKS = '1320000000';
+export const MICROSTACKS_IN_STACKS = 1000000;
+export const STACKS_DECIMAL_PLACES = 6;
+
+const MAX_BIGNUMBER_ROUND_MODE = 8;
+type StacksFormat = 'string' | 'thousands' | 'bigint';
+
+/**
+ * Converts integer microstacks to full stacks. E.g. `"1"` to `"0.000001"`.
+ * String return values are unrounded fixed-point decimals (six decimal places).
+ */
+function microStacksToStacks(microStx: BigNumber | string, format?: 'thousands' | 'string'): string;
+function microStacksToStacks(microStx: BigNumber | string, format: 'bigint'): BigNumber;
+function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat | undefined): string | BigNumber {
+  const input = typeof microStx === 'string' ? new BigNumber(microStx) : microStx;
+  const stxValue = input.dividedBy(MICROSTACKS_IN_STACKS);
+  let result: string | BigNumber;
+  if (format === undefined || format === 'string') {
+    result = stxValue.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
+  } else if (format === 'thousands') {
+    result = stxValue.toFormat(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
+  } else if (format === 'bigint') {
+    result = stxValue;
+  } else {
+    throw new Error(`Unexpected Stacks value rounding mode "${format}"`);
+  }
+  return result;
+}
+
+export { microStacksToStacks };
+
 module.exports = {
   stacksValue,
   blockToTime,
   formatNumber,
   btcValue,
   extractHostname,
-  extractRootDomain
+  extractRootDomain,
+  microStacksToStacks,
+  TOTAL_STACKS,
+  MICROSTACKS_IN_STACKS
 };
