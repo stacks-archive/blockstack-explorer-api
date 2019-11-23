@@ -30,13 +30,15 @@ class NameAggregator extends Aggregator {
   }
 
   static async setter(name: string, historyPage = 0) {
-    const [person, nameRecord, appsList] = await Promise.all([
+    const [person, nameRecord] = await Promise.all([
       fetchName(name),
       getNameHistory(name),
-      AppsAggregator.fetch(),
     ]);
     let proofs;
-    let userApps = {};
+    const userApps = {
+      listed: [],
+      unlisted: [],
+    };
     if (person) {
       const { ownerAddress, profile } = person;
       proofs = await validateProofs(profile, ownerAddress, name);
@@ -53,7 +55,7 @@ class NameAggregator extends Aggregator {
         console.error(error);
         // move on
       }
-      userApps = this.getAppsArray(appsList, profile.apps);
+      // userApps = this.getAppsArray(appsList, profile.apps);
     }
     return {
       nameRecord,
