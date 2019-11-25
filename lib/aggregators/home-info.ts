@@ -1,5 +1,6 @@
 import moment from 'moment';
 import accounting from 'accounting';
+import BigNumber from 'bignumber.js';
 import sortBy from 'lodash/sortBy';
 import NameOperations from './name-ops-v2';
 
@@ -8,6 +9,8 @@ import Aggregator from './aggregator';
 import NameCounts from './total-names';
 
 import { getUnlockedSupply } from '../core-db-pg/queries';
+import { microStacksToStacks, TOTAL_STACKS } from '../utils';
+import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
 class HomeInfo extends Aggregator {
   static key() {
@@ -45,14 +48,11 @@ class HomeInfo extends Aggregator {
       };
     });
 
-    // TODO: this query is slightly off
-    // const unlockedSupply = await getUnlockedSupply();
-    const unlockedSupply = 426700520.464896;
-
+    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
     return {
-      totalStacks: '1,320,000,000',
-      unlockedSupply,
-      unlockedSupplyFormatted: accounting.formatNumber(unlockedSupply, 0),
+      totalStacks: totalSupplyInfo.totalStacksFormatted,
+      unlockedSupply: totalSupplyInfo.unlockedSupply,
+      unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations,
