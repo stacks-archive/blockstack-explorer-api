@@ -29,7 +29,20 @@ const getApp = async () => {
     app.use(Sentry.Handlers.requestHandler());
   }
 
-  app.use(createPrometheusMiddleware({ app }));
+  app.use(createPrometheusMiddleware({ 
+    app,
+    options: {
+      normalizePath: (path: string) => {
+        if (path.startsWith('/api/stacks/addresses/SP1P72Z3704VMT3DMHPP2CB8TGQWGDBHD3RPR9GZS')) {
+          return path;
+        }
+        if (path.startsWith('/api/stacks/addresses/')) {
+          return '/api/stacks/addresses/';
+        }
+        return '/';
+      }
+    }
+  }));
 
   // Create `/metrics` endpoint on separate server
   createServer({ port: 9152 }).then(() => console.log('@promster/server started on port 9152.'));
