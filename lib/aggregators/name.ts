@@ -46,16 +46,16 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
   }
 
   async setter({ name }: NameAggregatorInput): Promise<NameAggregatorResult> {
-    const [person, nameRecord, appsList] = await Promise.all([
+    const [person, nameRecord] = await Promise.all([
       fetchName(name),
       getNameHistory(name),
-      AppsAggregator.fetch()
     ]);
     let proofs;
     let userApps: {
       listed: BlockstackApp[];
       unlisted: string[];
     };
+
     if (person) {
       const { profile } = person;
       const ownerAddress = person.ownerAddress || person.owner_address;
@@ -73,7 +73,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
         console.error(error);
         // move on
       }
-      userApps = this.getAppsArray(appsList, profile.apps);
+      // userApps = this.getAppsArray(appsList, profile.apps);
     }
     return {
       nameRecord,
