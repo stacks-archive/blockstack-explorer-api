@@ -104,7 +104,10 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
       Vesting,
       cumulativeVestedAtBlocks,
       tokensGranted
-    ] = await Promise.all<{tokens: string[]}, GetHistoryResult, StackAccountStatusResult, BN, Vesting, Record<number, number>, number>([
+    ] = await Promise.all<
+    {tokens: string[]}, GetHistoryResult, 
+    StackAccountStatusResult, BN, Vesting, 
+    Record<number, number>, number>([
       network.getAccountTokens(address),
       this.getHistory(address, page),
       network.getAccountStatus(address, token),

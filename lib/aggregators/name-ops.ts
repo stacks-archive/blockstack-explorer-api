@@ -41,7 +41,7 @@ class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, Name
     allNames = sortBy(allNames, name => -name.blockHeight);
 
     return allNames.map(name => {
-      const time = blockToTime(name.blockHeight as number);
+      const time = blockToTime(name.blockHeight);
       return {
         time,
         ...name

@@ -1,10 +1,12 @@
 import * as BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
-import { address } from 'bitcoinjs-lib';
 import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
-import { HistoryDataEntry, HistoryDataNameUpdate, HistoryDataNameRegistration, HistoryDataNamePreorder } from './history-data-types';
+import { 
+  HistoryDataEntry, HistoryDataNameUpdate, 
+  HistoryDataNameRegistration, HistoryDataNamePreorder 
+} from './history-data-types';
 
 export type Subdomain = SubdomainRecordQueryResult & {
   name: string;
@@ -367,7 +369,8 @@ export const getAddressSTXTransactions = async (
   if (!page || !Number.isFinite(page) || page < 0) {
     page = 0;
   }
-  const sql = 'SELECT * from history where history_data LIKE $1 order by block_id DESC, vtxindex DESC LIMIT $2 OFFSET $3';
+  const sql = `SELECT * from history WHERE history_data LIKE $1 
+    order by block_id DESC, vtxindex DESC LIMIT $2 OFFSET $3`;
   const offset = page * limit;
   const params = [`%${btcAddress}%`, limit, offset];
   const db = await getDB();
