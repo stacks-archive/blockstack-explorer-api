@@ -1,8 +1,21 @@
-import btc from 'bitcoinjs-lib';
-import bigi from 'bigi';
-import c32check from 'c32check';
+import * as btc from 'bitcoinjs-lib';
+import * as bigi from 'bigi';
+import * as c32check from 'c32check';
 
-export const decode = rawTX => {
+export type StacksDecodeResult = {
+  operationType: string;
+  consensusHash: string;
+  tokenType: string;
+  tokensSent: string;
+  scratchData: string;
+  recipientBitcoinAddress: string;
+  recipient: string;
+  tokenSentHex: string;
+  senderBitcoinAddress: string;
+  sender: string;
+};
+
+export const decode = (rawTX: string): StacksDecodeResult => {
   const tx = btc.Transaction.fromHex(rawTX);
   const data = btc.script.decompile(tx.outs[0].script)[1];
   if (!Buffer.isBuffer(data)) {

@@ -1,37 +1,36 @@
-import sortBy from 'lodash/sortBy';
+import { sortBy } from 'lodash';
 // import moment from 'moment';
 // import flatten from 'lodash/flatten';
 // import const ProgressBar from 'progress';
 // import BluebirdPromise from 'bluebird';
 // import MultiProgress from 'multi-progress';
 
-import Aggregator from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import { getRecentNames, getRecentSubdomains } from '../core-db-pg/queries';
 import { blockToTime } from '../utils';
 // import BlocksAggregator from './blocks';
 
-interface CommonName {
+type NameOpsAggregatorResult = {
   name: string;
-  blockHeight: number;
+  blockHeight: string | number;
   owner: string;
-}
+  time: number;
+}[];
 
-class NameOpsAggregator extends Aggregator {
-  static key(limit = 100, page = 0) {
+type NameOpsAggregatorOpts = {
+  limit?: number;
+  page?: number;
+};
+
+class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, NameOpsAggregatorOpts> {
+  key({ limit = 100, page = 0 }: NameOpsAggregatorOpts) {
     return `NameOpsAggregator:limit=${limit}:page=${page}`;
   }
 
-  static async setter(limit: number, page = 0) {
+  async setter({ limit = 100, page = 0}: NameOpsAggregatorOpts) {
     const [recentSubdomains] = await Promise.all([
-      // getRecentNames(100),
-      getRecentSubdomains(100)
+      getRecentSubdomains(limit, page)
     ]);
-
-    // let allNames: CommonName[] = recentNames.map(name => ({
-    //   name: name.name,
-    //   blockHeight: name.preorderBlockHeight,
-    //   owner: name.address,
-    // }));
 
     let allNames = recentSubdomains.map(subdomain => ({
       name: subdomain.name,
@@ -51,4 +50,4 @@ class NameOpsAggregator extends Aggregator {
   }
 }
 
-export default NameOpsAggregator;
+export default new NameOpsAggregator();

@@ -1,13 +1,17 @@
-import moment from 'moment';
-import BluebirdPromise from 'bluebird';
-
-import Aggregator from './aggregator';
+import * as moment from 'moment';
+import * as BluebirdPromise from 'bluebird';
+import * as multi from 'multi-progress';
+import { AggregatorWithArgs, Json } from './aggregator';
 import BlockAggregator from './block';
 
 import { fetchBlocks } from '../client/core-api';
 
-class BlocksAggregator extends Aggregator {
-  static key(date) {
+
+/** date */
+type BlockAggregatorOpts = string;
+
+class BlocksAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
+  key(date: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
       return `Blocks:${now}`;
@@ -15,9 +19,9 @@ class BlocksAggregator extends Aggregator {
     return `Blocks:${date}`;
   }
 
-  static async setter(date, multi) {
+  async setter(date: BlockAggregatorOpts, multi?: multi) {
     const blocks = await fetchBlocks(date);
-    let bar;
+    let bar: ProgressBar;
     if (multi) {
       bar = multi.newBar(
         'downloading [:bar] :current / :total :percent :etas',
@@ -29,7 +33,7 @@ class BlocksAggregator extends Aggregator {
         const blockData = await BlockAggregator.fetch(_block.hash, multi);
         if (bar) bar.tick();
         return {
-          ...blockData,
+          ...(blockData as any),
           _block,
         };
       } catch (error) {
@@ -42,20 +46,20 @@ class BlocksAggregator extends Aggregator {
     });
   }
 
-  static expiry(date) {
+  expiry(date: BlockAggregatorOpts) {
     if (!date || date === this.now()) return 10 * 60; // 10 minutes
     return null;
   }
 
-  static verbose(date, multi) {
+  verbose(date: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
 
-  static now() {
+  now() {
     return moment()
       .utc()
       .format('YYYY-MM-DD');
   }
 }
 
-export default BlocksAggregator;
+export default new BlocksAggregator();

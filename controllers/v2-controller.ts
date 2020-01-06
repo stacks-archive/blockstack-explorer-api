@@ -1,10 +1,10 @@
-import express, { Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import * as c32check from 'c32check';
 import { address, networks } from 'bitcoinjs-lib';
-import moment from 'moment';
-import request from 'request-promise';
-import accounting from 'accounting';
-import BluebirdPromise from 'bluebird';
+import * as moment from 'moment';
+import * as request from 'request-promise';
+import * as accounting from 'accounting';
+import * as BluebirdPromise from 'bluebird';
 import BigNumber from 'bignumber.js';
 import * as Sentry from '@sentry/node';
 
@@ -19,13 +19,14 @@ import {
   getRecentSubdomains,
   StacksTransaction,
   getAllHistoryRecords,
-  HistoryRecordWithSubdomains
+  HistoryRecordResult
 } from '../lib/core-db-pg/queries';
 
 import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
+import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
 
-const Controller = express.Router();
+const Controller = Router();
 
 Controller.get('/blocks/:hash', async (req: Request, res: Response) => {
   try {
@@ -49,10 +50,10 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
     }
     console.log(date);
     const { page } = req.query;
-    const blocks = await BlocksAggregator.setter(
+    const blocks = await BlocksAggregator.setter({
       date,
-      page ? parseInt(page, 10) : 0
-    );
+      page: page ? parseInt(page, 10) : 0
+    });
     res.json({ blocks });
   } catch (error) {
     console.error(error);
@@ -61,21 +62,29 @@ Controller.get('/blocks', async (req: Request, res: Response) => {
   }
 });
 
-const getSTXAddress = (addr: string) =>
-  c32check.b58ToC32(
+const getSTXAddress = (addr: string): string => {
+  const result = c32check.b58ToC32(
     address.fromOutputScript(Buffer.from(addr, 'hex'), networks.bitcoin)
   );
+  return result;
+}
+
+export type GetStxAddressResult = {
+  senderSTX?: string;
+  recipientSTX?: string;
+}
 
 export const getStxAddresses = (
-  tx: StacksTransaction | HistoryRecordWithSubdomains
-) => {
+  tx: StacksTransaction | HistoryRecordResult
+): GetStxAddressResult => {
   if (!tx.historyData) {
     return {};
   }
   if (tx.opcode === 'TOKEN_TRANSFER') {
+    const historyData = tx.historyData as HistoryDataTokenTransfer;
     return {
-      senderSTX: getSTXAddress(tx.historyData.sender),
-      recipientSTX: getSTXAddress(tx.historyData.recipient)
+      senderSTX: getSTXAddress(historyData.sender),
+      recipientSTX: getSTXAddress(historyData.recipient)
     };
   }
   return {};
@@ -135,11 +144,11 @@ Controller.get(
         parseInt(page, 10)
       );
       const blockTimes = await getTimesForBlockHeights(
-        subdomainsResult.map(sub => parseInt(sub.blockHeight as string, 10))
+        subdomainsResult.map(sub => sub.blockHeight)
       );
       const subdomains = subdomainsResult.map(name => ({
         ...name,
-        timestamp: blockTimes[parseInt(name.blockHeight as string, 10)]
+        timestamp: blockTimes[name.blockHeight]
       }));
       res.json({ subdomains });
     } catch (error) {
@@ -180,11 +189,12 @@ Controller.get(
         uri,
         json: true
       });
-      const accounts = _accounts.map(_account => {
+      // TODO: lots of unknown types here
+      const accounts = _accounts.map((_account: any) => {
         const account = { ..._account };
-        const vestingBlocks = Object.keys(account.vesting);
+        const vestingBlocks: any = Object.keys(account.vesting);
         const lastVestingMonth = blockToTime(
-          vestingBlocks[String(vestingBlocks.length - 1)]
+          vestingBlocks[String((vestingBlocks.length - 1))]
         );
         account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
         account.totalFormatted = formatNumber(
@@ -249,7 +259,7 @@ Controller.get('/top-balances', async (req: Request, res: Response) => {
     if (count > MAX_COUNT) {
       throw new Error(`Max count of ${MAX_COUNT} exceeded`);
     }
-    const topBalances = await TopBalancesAggregator.fetch(count);
+    const topBalances = await TopBalancesAggregator.fetch({ count });
     res.contentType('application/json');
     res.send(JSON.stringify(topBalances, null, 2));
   } catch (error) {

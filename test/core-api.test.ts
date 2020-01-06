@@ -87,7 +87,7 @@ test('fetches block info', async () => {
 
   const [nameOperation] = block.nameOperations;
   expect(nameOperation.opcode).toBe('NAME_UPDATE');
-}, 10000);
+}, 30000);
 
 test('fetches blocks on a date', async () => {
   const date = '2018-10-05';

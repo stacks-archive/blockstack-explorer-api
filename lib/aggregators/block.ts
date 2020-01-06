@@ -1,16 +1,20 @@
-import Promise from 'bluebird';
-import moment from 'moment';
+import * as Promise from 'bluebird';
+import * as moment from 'moment';
 import * as Sentry from '@sentry/node';
+import * as multi from 'multi-progress';
 
-import Aggregator from './aggregator';
+import { AggregatorWithArgs, Json } from './aggregator';
 import { fetchBlock, fetchTransactionSubdomains } from '../client/core-api';
 
-class BlockAggregator extends Aggregator {
-  static key(hash) {
+/** hash */
+type BlockAggregatorOpts = string;
+
+class BlockAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
+  key(hash: BlockAggregatorOpts) {
     return `Block:${hash}`;
   }
 
-  static async setter(hash) {
+  async setter(hash: BlockAggregatorOpts) {
     const block = await fetchBlock(hash);
     if (!block) {
       return null;
@@ -47,13 +51,16 @@ class BlockAggregator extends Aggregator {
     return block;
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 60 * 24 * 2; // 2 days
   }
 
-  static verbose(hash, multi) {
+  verbose(hash: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
+
 }
 
-export default BlockAggregator;
+const blockAggregator = new BlockAggregator();
+
+export default blockAggregator;

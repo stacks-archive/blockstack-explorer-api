@@ -1,31 +1,40 @@
-import BluebirdPromise from 'bluebird';
-import moment from 'moment';
+import * as BluebirdPromise from 'bluebird';
+import * as moment from 'moment';
 import * as Sentry from '@sentry/node';
+import * as multi from 'multi-progress';
 
-import Aggregator from './aggregator';
-import {
-  fetchNameOperations,
-  fetchTransactionSubdomains,
-  fetchName
-} from '../client/core-api';
+import { AggregatorWithArgs } from './aggregator';
 import {
   getBlock,
   getBlockTransactions,
   getBlockHash,
-  Transaction
+  BitCoreTransaction,
+  Block
 } from '../bitcore-db/queries';
 import {
   getNameOperationsForBlock,
-  getSubdomainRegistrationsForTxid
+  getSubdomainRegistrationsForTxid,
+  Subdomain,
+  NameOperationsForBlockResult
 } from '../core-db-pg/queries';
 import { btcValue, formatNumber } from '../utils';
 
-class BlockAggregator extends Aggregator {
-  static key(hash: string) {
-    return `Block:${hash}`;
+
+/** hashOrHeight */
+type BlockAggregatorOpts = string;
+
+export type HistoryInfoNameOp = NameOperationsForBlockResult & {
+  timeAgo?: string;
+  time?: number;
+  subdomains?: Subdomain[];
+}
+
+class BlockAggregator extends AggregatorWithArgs<Block, BlockAggregatorOpts> {
+  key(hashOrHeight: BlockAggregatorOpts) {
+    return `Block:${hashOrHeight}`;
   }
 
-  static async setter(hashOrHeight: string) {
+  async setter(hashOrHeight: BlockAggregatorOpts) {
     let hash = hashOrHeight;
     if (hash.toString().length < 10) {
       hash = await getBlockHash(hashOrHeight);
@@ -34,7 +43,7 @@ class BlockAggregator extends Aggregator {
     if (!block) {
       return null;
     }
-    const transactions: Transaction[] = await getBlockTransactions(hash);
+    const transactions: BitCoreTransaction[] = await getBlockTransactions(hash);
     block.transactions = transactions.map(tx => ({
       ...tx,
       value: btcValue(tx.value)
@@ -46,7 +55,7 @@ class BlockAggregator extends Aggregator {
       nameOperations,
       async _nameOp => {
         try {
-          const nameOp: any = { ..._nameOp };
+          const nameOp: HistoryInfoNameOp = { ..._nameOp };
           nameOp.timeAgo = moment(time * 1000).fromNow(true);
           nameOp.time = time * 1000;
           if (nameOp.opcode === 'NAME_UPDATE') {
@@ -72,13 +81,13 @@ class BlockAggregator extends Aggregator {
     return block;
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 60 * 24 * 2; // 2 days
   }
 
-  static verbose(hash: string, multi: any) {
+  verbose(hashOrHeight: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
 }
 
-export default BlockAggregator;
+export default new BlockAggregator();

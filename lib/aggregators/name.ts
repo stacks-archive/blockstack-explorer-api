@@ -1,20 +1,34 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
-import Aggregator from './aggregator';
-import { fetchName } from '../client/core-api';
+import { AggregatorWithArgs } from './aggregator';
+import { fetchName, FetchNameEntry } from '../client/core-api';
 import AppsAggregator, { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
-import { getNameHistory } from '../core-db-pg/queries';
+import { getNameHistory, NameHistoryResult } from '../core-db-pg/queries';
 
-interface UserApp {
-  [key: string]: string;
+type UserApps = {
+  [appUrl: string]: string;
 }
 
-class NameAggregator extends Aggregator {
-  static key(name: string, historyPage = 0) {
+type NameAggregatorResult = {
+  nameRecord: NameHistoryResult[];
+  userApps: {
+    listed: BlockstackApp[];
+    unlisted: string[];
+  };
+  proofs?: any[];
+} & Partial<FetchNameEntry>;
+
+type NameAggregatorInput = {
+  name: string;
+  historyPage?: number;
+};
+
+class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggregatorInput> {
+  key({ name, historyPage = 0 }: NameAggregatorInput) {
     return `Names:${name}?historyPage=${historyPage}`;
   }
 
-  static getAppsArray(apps: BlockstackApp[], userApps: UserApp[] = []) {
+  getAppsArray(apps: BlockstackApp[], userApps: UserApps = {}) {
     const domains = Object.keys(userApps).map(domain =>
       extractRootDomain(domain)
     );
@@ -31,21 +45,25 @@ class NameAggregator extends Aggregator {
     };
   }
 
-  static async setter(name: string, historyPage = 0) {
+  async setter({ name }: NameAggregatorInput): Promise<NameAggregatorResult> {
     const [person, nameRecord, appsList] = await Promise.all([
       fetchName(name),
       getNameHistory(name),
       AppsAggregator.fetch()
     ]);
     let proofs;
-    let userApps = {};
+    let userApps: {
+      listed: BlockstackApp[];
+      unlisted: string[];
+    };
     if (person) {
-      const { ownerAddress, profile } = person;
+      const { profile } = person;
+      const ownerAddress = person.ownerAddress || person.owner_address;
       proofs = await validateProofs(profile, ownerAddress, name);
       try {
         proofs.forEach(proof => {
           const { service } = proof;
-          profile.account.forEach((account, index) => {
+          profile.account.forEach((account: any, index: number) => {
             if (account.service !== service) return false;
             person.profile.account[index].verified = proof.valid;
             return true;
@@ -65,9 +83,9 @@ class NameAggregator extends Aggregator {
     };
   }
 
-  static expiry() {
+  expiry() {
     return 60; // 1 minute
   }
 }
 
-export default NameAggregator;
+export default new NameAggregator();

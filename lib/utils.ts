@@ -1,10 +1,9 @@
-/* eslint-disable prefer-destructuring */
-import moment from 'moment';
-import accounting from 'accounting';
+import * as moment from 'moment';
+import * as accounting from 'accounting';
 import BigNumber from 'bignumber.js';
 
-export const stacksValue = (value: number) =>
-  +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
+export const stacksValue = (value: number | string) =>
+  +`${Math.round(parseFloat(`${parseFloat(value.toString()) * 10e-7}e+7`))}e-7`;
 export const btcValue = (value: number) =>
   +`${Math.round(parseFloat(`${value * 10e-9}e+9`))}e-9`;
 

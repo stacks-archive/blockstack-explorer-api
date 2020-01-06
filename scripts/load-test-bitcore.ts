@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-import BluebirdPromise from 'bluebird';
+import * as dotenv from 'dotenv';
+import * as BluebirdPromise from 'bluebird';
 
 import { getBlockByHeight } from '../lib/bitcore-db/queries';
 
@@ -28,7 +28,7 @@ run()
     console.log('done');
     process.exit();
   })
-  .then(error => {
+  .then((error: Error | string) => {
     console.error(error);
     process.exit();
   });

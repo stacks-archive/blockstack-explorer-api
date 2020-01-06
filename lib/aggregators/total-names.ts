@@ -1,10 +1,19 @@
-import accounting from 'accounting';
-import Aggregator from './aggregator';
+import * as accounting from 'accounting';
+import { Aggregator } from './aggregator';
 
 import { fetchTotalNames, fetchTotalSubdomains } from '../client/core-api';
 
-class TotalNames extends Aggregator {
-  static async setter() {
+export type TotalNamesResult = {
+  namesFormatted: string;
+  totalFormatted: string;
+  subdomainsFormatted: string;
+  names: any;
+  subdomains: any;
+  total: any;
+};
+
+class TotalNames extends Aggregator<TotalNamesResult> {
+  async setter() {
     const [names, subdomains] = await Promise.all([
       fetchTotalNames(),
       fetchTotalSubdomains()
@@ -22,9 +31,9 @@ class TotalNames extends Aggregator {
     };
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 10; // 10 minutes
   }
 }
 
-export default TotalNames;
+export default new TotalNames();

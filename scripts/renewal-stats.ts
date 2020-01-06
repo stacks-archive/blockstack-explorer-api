@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import moment from 'moment';
-import fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as moment from 'moment';
+import * as fs from 'fs';
 import { getDB } from '../lib/core-db-pg';
 import { blockToTime } from '../lib/utils';
 

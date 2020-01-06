@@ -31,6 +31,7 @@ module.exports = {
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/prefer-string-starts-ends-with": "off",
     "import/prefer-default-export": "off",
     "max-len": [1, { code: 120 }],
     "@typescript-eslint/no-var-requires": "error",

@@ -1,13 +1,19 @@
-import moment from 'moment';
-import BlueBirdPromise from 'bluebird';
+import * as moment from 'moment';
+import * as BlueBirdPromise from 'bluebird';
+import * as multi from 'multi-progress';
 
-import Aggregator from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import BlockAggregator from './block-v2';
 
 import { getBlocks, Block } from '../bitcore-db/queries';
 
-class BlocksAggregator extends Aggregator {
-  static key(date: string, page: number) {
+export type BlockAggregatorOpts = {
+  date: string | undefined;
+  page: number;
+}
+
+class BlocksAggregator extends AggregatorWithArgs<Block[], BlockAggregatorOpts> {
+  key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
       return `Blocks:${now}:${page}`;
@@ -15,7 +21,7 @@ class BlocksAggregator extends Aggregator {
     return `Blocks:${date}:${page}`;
   }
 
-  static async setter(date: string, page: number) {
+  async setter({date, page}: BlockAggregatorOpts) {
     const blocks = await getBlocks(date, page);
     const concurrency = process.env.API_CONCURRENCY
       ? parseInt(process.env.API_CONCURRENCY, 10)
@@ -35,20 +41,20 @@ class BlocksAggregator extends Aggregator {
     return BlueBirdPromise.map(blocks, getBlock, { concurrency });
   }
 
-  static expiry(date: string) {
+  expiry({date}: BlockAggregatorOpts) {
     if (!date || date === this.now()) return 10 * 60; // 10 minutes
     return null;
   }
 
-  static verbose(date: string, multi) {
+  verbose(opts: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
 
-  static now(): string {
+  now(): string {
     return moment()
       .utc()
       .format('YYYY-MM-DD');
   }
 }
 
-export default BlocksAggregator;
+export default new BlocksAggregator();

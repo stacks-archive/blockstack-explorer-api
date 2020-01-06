@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { getRecentSubdomains } from '../lib/core-db-pg/queries';
 
 dotenv.config();

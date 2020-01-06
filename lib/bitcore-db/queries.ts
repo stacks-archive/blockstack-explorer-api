@@ -1,5 +1,6 @@
-import moment from 'moment';
+import * as moment from 'moment';
 import { getDB } from './index';
+import { HistoryInfoNameOp } from '../aggregators/block-v2';
 
 enum Collections {
   Blocks = 'blocks',
@@ -11,12 +12,12 @@ const chainQuery = {
   chain: 'BTC'
 };
 
-export interface Block {
+export type Block = {
   nextBlockHash: string;
   previousBlockHash: string;
   merkleRoot: string;
   time: number;
-  date: Date;
+  date: string;
   bits: number;
   nonce: number;
   size: number;
@@ -24,11 +25,11 @@ export interface Block {
   reward: number;
   height: number;
   hash: string;
-  nameOperations?: any[];
+  nameOperations?: HistoryInfoNameOp[];
   txCount: number;
-  transactions?: Transaction[];
+  transactions?: BitCoreTransaction[];
   rewardFormatted?: string;
-}
+};
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
   const db = await getDB();
@@ -52,7 +53,7 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,
     time: block.time.getTime() / 1000,
-    date: block.time,
+    date: block.time.toISOString(),
     txCount: block.transactionCount
   }));
 
@@ -68,7 +69,7 @@ export const getBlock = async (hash: string): Promise<Block> => {
   const block: Block = {
     ...blockResult,
     time: blockResult.time.getTime() / 1000,
-    date: blockResult.time,
+    date: blockResult.time.toISOString(),
     txCount: blockResult.transactionCount
   };
 
@@ -84,7 +85,7 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
   const block: Block = {
     ...blockResult,
     time: blockResult.time.getTime() / 1000,
-    date: blockResult.time,
+    date: blockResult.time.toISOString(),
     txCount: blockResult.transactionCount
   };
 
@@ -94,10 +95,10 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
 export const getBlockTransactions = async (
   hash: string,
   page = 0
-): Promise<Transaction[]> => {
+): Promise<BitCoreTransaction[]> => {
   const db = await getDB();
   const txCollection = db.collection(Collections.Transactions);
-  const txResults: Transaction[] = await txCollection
+  const txResults: BitCoreTransaction[] = await txCollection
     .find({
       blockHash: hash
     })
@@ -107,23 +108,23 @@ export const getBlockTransactions = async (
   return txResults;
 };
 
-export interface Transaction {
+export type BitCoreTransaction = {
   txid: string;
   blockHeight: number;
   blockHash: string;
-  blockTime: Date;
+  blockTime: string;
   coinbase: boolean;
   fee: number;
   size: number;
   inputCount: number;
   outputCount: number;
   value: number;
-}
+};
 
-export const getTX = async (txid: string): Promise<Transaction> => {
+export const getTX = async (txid: string): Promise<BitCoreTransaction> => {
   const db = await getDB();
   const collection = db.collection(Collections.Transactions);
-  const tx: Transaction | null = await collection.findOne({
+  const tx: BitCoreTransaction | null = await collection.findOne({
     txid,
     ...chainQuery
   });
@@ -143,17 +144,24 @@ export const getBlockHash = async (height: string): Promise<string> => {
 export const getLatestBlock = async (): Promise<Block> => {
   const db = await getDB();
   const collection = db.collection(Collections.Blocks);
-  const block = await collection.findOne({}, { sort: { height: -1 } });
-  return block as Block;
+  const blockResult = await collection.findOne({}, { sort: { height: -1 } });
+  const block: Block = {
+    ...blockResult,
+    time: blockResult.time.getTime() / 1000,
+    date: blockResult.time.toISOString(),
+    txCount: blockResult.transactionCount
+  };
+  return block;
 };
 
 export const getTimeForBlock = async (height: number): Promise<number> => {
   const block = await getBlockByHeight(height);
-  return block.date.getTime();
+  return new Date(block.date).getTime();
 };
 
 export const getTimesForBlockHeights = async (heights: number[]) => {
   const db = await getDB();
+  // TODO: create type def
   const collection = db.collection(Collections.Blocks);
   const blocks = await collection
     .find({
@@ -162,9 +170,9 @@ export const getTimesForBlockHeights = async (heights: number[]) => {
       }
     })
     .toArray();
-  const timesByHeight = {};
+  const timesByHeight: Record<number, number> = {};
   blocks.forEach(block => {
-    timesByHeight[block.height] = block.time.getTime();
+    timesByHeight[parseInt(block.height, 10)] = parseInt(block.time.getTime(), 10);
   });
   return timesByHeight;
 };

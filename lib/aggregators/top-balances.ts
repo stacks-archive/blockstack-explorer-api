@@ -1,25 +1,29 @@
 import * as c32check from 'c32check';
-import Aggregator from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import { getUnlockedSupply, getTopBalances } from '../core-db-pg/queries';
 import { microStacksToStacks } from '../utils';
 
-export interface TopBalanceAccount {
+export type TopBalanceAccount = {
   stxAddress: string;
   btcAddress: string;
   balance: string;
   distribution: number;
+};
+
+export type TopBalancesAggregatorOpts = {
+  count: number;
 }
 
-class TopBalancesAggregator extends Aggregator {
-  static key(count: number) {
-    return `${this.name}:${count}`;
+class TopBalancesAggregator extends AggregatorWithArgs<TopBalanceAccount[], TopBalancesAggregatorOpts> {
+  key({ count }: TopBalancesAggregatorOpts) {
+    return `${this.constructor.name}:${count}`;
   }
 
-  static expiry() {
+  expiry() {
     return 10 * 60; // 10 minutes
   }
 
-  static async setter(count: number): Promise<TopBalanceAccount[]> {
+  async setter({count}: TopBalancesAggregatorOpts): Promise<TopBalanceAccount[]> {
     const { unlockedSupply } = await getUnlockedSupply();
     const topBalances = await getTopBalances(count);
     return topBalances.map(account => ({
@@ -31,4 +35,4 @@ class TopBalancesAggregator extends Aggregator {
   }
 }
 
-export default TopBalancesAggregator;
+export default new TopBalancesAggregator();

@@ -8,7 +8,7 @@ if (process.env.SENTRY_DSN) {
 }
 
 const run = async () => {
-  await NameOpsAggregator.set();
+  await NameOpsAggregator.set({});
   await NamespaceAggregator.set();
   await HomePageAggregator.set();
 };

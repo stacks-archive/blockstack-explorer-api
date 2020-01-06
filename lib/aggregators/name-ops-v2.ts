@@ -1,25 +1,28 @@
-import BluebirdPromise from 'bluebird';
+import * as BluebirdPromise from 'bluebird';
 
-import Aggregator from './aggregator';
+import { Aggregator } from './aggregator';
 import {
   getAllNameOperations,
-  getSubdomainRegistrationsForTxid
+  getSubdomainRegistrationsForTxid,
+  Subdomain
 } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
-export interface NameOp {
+export type NameOp = {
   name: string;
   owner: string;
   time: number;
   block: number;
-}
+};
 
-class NameOpsAggregator extends Aggregator {
-  static expiry() {
+export type NameOpsAggregatorResult = NameOp[];
+
+class NameOpsAggregator extends Aggregator<NameOpsAggregatorResult> {
+  expiry() {
     return 10 * 60; // 10 minutes
   }
 
-  static async setter(): Promise<NameOp[]> {
+  async setter(): Promise<NameOpsAggregatorResult> {
     const history = await getAllNameOperations();
     const blockHeights = history.map(record => record.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
@@ -39,11 +42,11 @@ class NameOpsAggregator extends Aggregator {
         const subdomains = await getSubdomainRegistrationsForTxid(
           historyRecord.txid
         );
-        const results: NameOp[] = subdomains.map(subdomain => ({
+        const results: NameOp[] = subdomains.map((subdomain: Subdomain) => ({
           name: subdomain.name,
           owner: subdomain.owner,
           time,
-          block: parseInt(subdomain.blockHeight as string, 10)
+          block: subdomain.blockHeight
         }));
         return results;
       }
@@ -54,4 +57,4 @@ class NameOpsAggregator extends Aggregator {
   }
 }
 
-export default NameOpsAggregator;
+export default new NameOpsAggregator();

@@ -1,10 +1,10 @@
-import moment from 'moment';
-import accounting from 'accounting';
+import * as moment from 'moment';
+import * as accounting from 'accounting';
 import BigNumber from 'bignumber.js';
-import sortBy from 'lodash/sortBy';
-import NameOperations from './name-ops-v2';
+import { sortBy } from 'lodash';
+import NameOperations, { NameOp } from './name-ops-v2';
 
-import Aggregator from './aggregator';
+import { Aggregator } from './aggregator';
 
 import NameCounts from './total-names';
 
@@ -12,12 +12,21 @@ import { getUnlockedSupply } from '../core-db-pg/queries';
 import { microStacksToStacks, TOTAL_STACKS } from '../utils';
 import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
-class HomeInfo extends Aggregator {
-  static key() {
+export type HomeInfoResult = {
+  totalStacks: string;
+  unlockedSupply: string;
+  unlockedSupplyFormatted: string;
+  nameTotals: any;
+  nameOperationsOverTime: any[];
+  nameOperations: NameOp[];
+};
+
+class HomeInfo extends Aggregator<HomeInfoResult> {
+  key() {
     return 'HomeInfo:v2';
   }
 
-  static async setter() {
+  async setter() {
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
       NameOperations.setter()
@@ -25,8 +34,8 @@ class HomeInfo extends Aggregator {
 
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
-    const ticks = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp => parseInt(nameOp.time, 10));
+    const ticks: Record<number, { names: number; date: string }> = {};
+    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time);
 
     sortedNames.forEach(nameOp => {
       const { time } = nameOp;
@@ -64,9 +73,9 @@ class HomeInfo extends Aggregator {
     };
   }
 
-  static expiry() {
+  expiry() {
     return 10 * 60; // 10 minutes
   }
 }
 
-export default HomeInfo;
+export default new HomeInfo();

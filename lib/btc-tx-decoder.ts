@@ -1,11 +1,12 @@
 import {
   Transaction as BTCTransaction,
   TxOutput,
+  TxInput,
   address,
   networks,
   script
 } from 'bitcoinjs-lib';
-import { Transaction } from './bitcore-db/queries';
+import { BitCoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
 
 const getAddr = (out: TxOutput) => {
@@ -18,29 +19,51 @@ const getAddr = (out: TxOutput) => {
   return addr;
 };
 
-interface Output {
-  addr: string;
-  value: number;
-  [key: string]: any;
-}
-
-interface Input {
-  addr: string;
+export type RawTxInput = {
   txid: string;
-  [key: string]: any;
-}
+  index: number;
+  sequence: number;
+  addr: string;
+  script?: string;
+  inputTx?: BTCTransaction;
+};
+
+export type FormattedTxOutput = {
+  satoshi: number;
+  value: number;
+  n: number;
+  scriptPubKey: {
+    asm: string;
+    hex: string;
+    addresses: string[];
+  };
+  addr: string;
+};
+
+export type DecodeTxResult = BitCoreTransaction & {
+  version: number;
+  locktime: number;
+  ins: TxInput[];
+  outs: Partial<TxOutput>[];
+  
+  vin: RawTxInput[];
+  vout: FormattedTxOutput[];
+
+  blockheight: number;
+  value: number;
+  valueOut: number;
+};
 
 export const decodeTx = async (
   tx: BTCTransaction,
-  networkData: Transaction
-) => {
-  const fetchVins: Promise<Input>[] = tx.ins.map(
+  networkData: BitCoreTransaction
+): Promise<DecodeTxResult> => {
+  const fetchVins: Promise<RawTxInput>[] = tx.ins.map(
     async (input, index) => {
       const txid = input.hash.reverse().toString('hex');
       try {
         const inputTxHash = await fetchRawTxInfo(txid);
-        const inputTx = BTCTransaction.fromHex(inputTxHash as string);
-
+        const inputTx = BTCTransaction.fromHex(inputTxHash);
         return {
           txid,
           index,
@@ -60,14 +83,14 @@ export const decodeTx = async (
       }
     }
   )
-  let vin: Input[] = [];
+  let vin: RawTxInput[] = [];
   try {
     vin = await Promise.all(fetchVins);
   } catch (error) {
     console.error('error fetching vins', error);
   }
 
-  const format = (out: TxOutput, n: number) => {
+  const format = (out: TxOutput, n: number): FormattedTxOutput => {
     const vout = {
       satoshi: out.value,
       value: parseFloat((1e-8 * out.value).toFixed(8)),
@@ -75,18 +98,18 @@ export const decodeTx = async (
       scriptPubKey: {
         asm: script.toASM(out.script),
         hex: out.script.toString('hex'),
-        addresses: []
+        addresses: [] as string[]
       },
       addr: getAddr(out)
     };
     return vout;
   };
 
-  const vout: Output[] = tx.outs.map((out, n) => format(out as TxOutput, n));
+  const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out as TxOutput, n));
 
   const value = parseFloat((1e-8 * networkData.value).toFixed(8));
 
-  const decodedTx = {
+  const decodedTx: DecodeTxResult = {
     ...tx,
     vin,
     vout,
