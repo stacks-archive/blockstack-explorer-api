@@ -8,7 +8,7 @@ import {
   getBlock,
   getBlockTransactions,
   getBlockHash,
-  BitCoreTransaction,
+  BitcoreTransaction,
   Block
 } from '../bitcore-db/queries';
 import {
@@ -43,7 +43,7 @@ class BlockAggregator extends AggregatorWithArgs<Block, BlockAggregatorOpts> {
     if (!block) {
       return null;
     }
-    const transactions: BitCoreTransaction[] = await getBlockTransactions(hash);
+    const transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
     block.transactions = transactions.map(tx => ({
       ...tx,
       value: btcValue(tx.value)

@@ -179,7 +179,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
               ...historyEntry,
               ...h,
               ...decoded,
-              blockTime: blockTime,
+              blockTime,
               operation:
                 decoded.senderBitcoinAddress === address ? 'SENT' : 'RECEIVED'
             };

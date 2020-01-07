@@ -12,28 +12,37 @@ const chainQuery = {
   chain: 'BTC'
 };
 
-export type Block = {
-  nextBlockHash: string;
-  previousBlockHash: string;
+export type BitcoreBlock = {
+  bits: number;
+  chain: string;
+  hash: string;
+  height: number;
   merkleRoot: string;
+  network: string;
+  nextBlockHash: string;
+  nonce: number;
+  previousBlockHash: string;
+  processed: boolean;
+  reward: number;
+  size: number;
+  time: Date;
+  timeNormalized: Date;
+  transactionCount: number;
+  version: number;
+}
+
+export type Block = Omit<BitcoreBlock, 'time'> & {
   time: number;
   date: string;
-  bits: number;
-  nonce: number;
-  size: number;
-  transactionCount: number;
-  reward: number;
-  height: number;
-  hash: string;
   nameOperations?: HistoryInfoNameOp[];
-  txCount: number;
-  transactions?: BitCoreTransaction[];
+  txCount?: number;
+  transactions?: BitcoreTransaction[];
   rewardFormatted?: string;
 };
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const dateQuery = moment(date).utc();
   const beginning = dateQuery.startOf('day');
   const end = moment(beginning).endOf('day');
@@ -62,7 +71,7 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
 
 export const getBlock = async (hash: string): Promise<Block> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const blockResult = await collection.findOne({
     hash
   });
@@ -78,7 +87,7 @@ export const getBlock = async (hash: string): Promise<Block> => {
 
 export const getBlockByHeight = async (height: number): Promise<Block> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const blockResult = await collection.findOne({
     height
   });
@@ -93,12 +102,11 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
 };
 
 export const getBlockTransactions = async (
-  hash: string,
-  page = 0
-): Promise<BitCoreTransaction[]> => {
+  hash: string
+): Promise<BitcoreTransaction[]> => {
   const db = await getDB();
-  const txCollection = db.collection(Collections.Transactions);
-  const txResults: BitCoreTransaction[] = await txCollection
+  const txCollection = db.collection<BitcoreTransaction>(Collections.Transactions);
+  const txResults = await txCollection
     .find({
       blockHash: hash
     })
@@ -108,7 +116,7 @@ export const getBlockTransactions = async (
   return txResults;
 };
 
-export type BitCoreTransaction = {
+export type BitcoreTransaction = {
   txid: string;
   blockHeight: number;
   blockHash: string;
@@ -121,10 +129,10 @@ export type BitCoreTransaction = {
   value: number;
 };
 
-export const getTX = async (txid: string): Promise<BitCoreTransaction> => {
+export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Transactions);
-  const tx: BitCoreTransaction | null = await collection.findOne({
+  const collection = db.collection<BitcoreTransaction>(Collections.Transactions);
+  const tx = await collection.findOne({
     txid,
     ...chainQuery
   });
@@ -133,7 +141,7 @@ export const getTX = async (txid: string): Promise<BitCoreTransaction> => {
 
 export const getBlockHash = async (height: string): Promise<string> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const block = await collection.findOne({
     height: parseInt(height, 10),
     ...chainQuery
@@ -143,7 +151,7 @@ export const getBlockHash = async (height: string): Promise<string> => {
 
 export const getLatestBlock = async (): Promise<Block> => {
   const db = await getDB();
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const blockResult = await collection.findOne({}, { sort: { height: -1 } });
   const block: Block = {
     ...blockResult,
@@ -159,10 +167,11 @@ export const getTimeForBlock = async (height: number): Promise<number> => {
   return new Date(block.date).getTime();
 };
 
-export const getTimesForBlockHeights = async (heights: number[]) => {
+export const getTimesForBlockHeights = async (
+  heights: number[]
+): Promise<Record<number, number>> => {
   const db = await getDB();
-  // TODO: create type def
-  const collection = db.collection(Collections.Blocks);
+  const collection = db.collection<BitcoreBlock>(Collections.Blocks);
   const blocks = await collection
     .find({
       height: {
@@ -172,7 +181,7 @@ export const getTimesForBlockHeights = async (heights: number[]) => {
     .toArray();
   const timesByHeight: Record<number, number> = {};
   blocks.forEach(block => {
-    timesByHeight[parseInt(block.height, 10)] = parseInt(block.time.getTime(), 10);
+    timesByHeight[block.height] = block.time.getTime();
   });
   return timesByHeight;
 };

@@ -6,7 +6,7 @@ import {
   networks,
   script
 } from 'bitcoinjs-lib';
-import { BitCoreTransaction } from './bitcore-db/queries';
+import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
 
 const getAddr = (out: TxOutput) => {
@@ -40,7 +40,7 @@ export type FormattedTxOutput = {
   addr: string;
 };
 
-export type DecodeTxResult = BitCoreTransaction & {
+export type DecodeTxResult = BitcoreTransaction & {
   version: number;
   locktime: number;
   ins: TxInput[];
@@ -56,7 +56,7 @@ export type DecodeTxResult = BitCoreTransaction & {
 
 export const decodeTx = async (
   tx: BTCTransaction,
-  networkData: BitCoreTransaction
+  networkData: BitcoreTransaction
 ): Promise<DecodeTxResult> => {
   const fetchVins: Promise<RawTxInput>[] = tx.ins.map(
     async (input, index) => {
