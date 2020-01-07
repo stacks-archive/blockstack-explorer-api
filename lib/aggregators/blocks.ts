@@ -2,15 +2,17 @@ import * as moment from 'moment';
 import * as BluebirdPromise from 'bluebird';
 import * as multi from 'multi-progress';
 import { AggregatorWithArgs, Json } from './aggregator';
-import BlockAggregator from './block';
+import BlockAggregator, { BlockAggregatorResult } from './block';
 
-import { fetchBlocks } from '../client/core-api';
+import { fetchBlocks, BlockchainInfoBlock } from '../client/core-api';
 
 
 /** date */
 type BlockAggregatorOpts = string;
 
-class BlocksAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
+export type BlocksAggregatorResult = Partial<BlockAggregatorResult> & BlockchainInfoBlock;
+
+class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult[], BlockAggregatorOpts> {
   key(date: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
@@ -28,12 +30,12 @@ class BlocksAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
         { total: blocks.length }
       );
     }
-    return BluebirdPromise.map(blocks, async (_block: any) => {
+    const blocksResult = await BluebirdPromise.map(blocks, async (_block) => {
       try {
         const blockData = await BlockAggregator.fetch(_block.hash, multi);
         if (bar) bar.tick();
         return {
-          ...(blockData as any),
+          ...blockData,
           _block,
         };
       } catch (error) {
@@ -44,6 +46,7 @@ class BlocksAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
     }, {
       concurrency: process.env.API_CONCURRENCY ? parseInt(process.env.API_CONCURRENCY, 10) : 1,
     });
+    return blocksResult;
   }
 
   expiry(date: BlockAggregatorOpts) {

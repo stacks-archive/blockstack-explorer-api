@@ -176,9 +176,9 @@ export type FetchAddressInfoResult = BlockchainAddressInfo & {
 
 // TODO: [blockchain.info] check accidental 3rd party API usage
 export const fetchAddressInfo = async (address: string, limit = 10, offset = 0): Promise<FetchAddressInfoResult> => {
-  const result: FetchAddressInfoResult = await fetchJSON(
-    `${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`
-  );
+  const url = `${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`;
+  console.warn(`Warning: Blockchain.info API queried: ${url}`);
+  const result: FetchAddressInfoResult = await fetchJSON(url);
   return result
 };
 
@@ -439,6 +439,7 @@ export const fetchBlocks = async (date: string): Promise<BlockchainInfoBlock[]> 
     .endOf('day')
     .valueOf();
   const url = `${blockchainInfoApi}/blocks/${endOfDay}?format=json`;
+  console.warn(`Warning: Blockchain.info API queried: ${url}`);
   const { blocks }: { blocks: BlockchainInfoBlock[] } = await fetchJSON(url);
   return blocks;
 };
@@ -515,13 +516,20 @@ export type BlockchainInfoBlockTxOutput = {
 
 // TODO: [blockchain.info] check accidental 3rd party API usage
 const fetchBlockInfo = async (hash: string): Promise<BlockchainInfoRawBlock> => {
-  const data: BlockchainInfoRawBlock = await fetchJSON(`${blockchainInfoApi}/rawblock/${hash}`);
+  const url = `${blockchainInfoApi}/rawblock/${hash}`;
+  console.warn(`Warning: Blockchain.info API queried: ${url}`);
+  const data: BlockchainInfoRawBlock = await fetchJSON(url);
   return data
 };
 
-// TODO: define return type
+export type BlockchainInfoBlockResult = Omit<BlockchainInfoRawBlock, 'tx'> & {
+  nameOperations: BlockstackCoreBitcoinBlockNameOps[];
+  transactions: ConvertTxResult[];
+  txCount: number;
+};
+
 // TODO: [blockchain.info] check accidental 3rd party API usage
-export const fetchBlock = async (hashOrHeight: string | number) => {
+export const fetchBlock = async (hashOrHeight: string | number): Promise<BlockchainInfoBlockResult> => {
   let hash: string = hashOrHeight.toString();
   if (hashOrHeight.toString().length < 10) {
     hash = await fetchBlockHash(hashOrHeight as number);

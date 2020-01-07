@@ -26,7 +26,11 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
 
   async keyWithTag(args: TArgs): Promise<string> {
     const tag = await this.getCurrentGitTag();
-    return `${this.key(args)}-${tag}`;
+    const key = this.key(args);
+    if (tag) {
+      return `${key}-${tag}`
+    }
+    return key;
   }
 
   async set(args: TArgs, multi?: multi): Promise<TResult> {

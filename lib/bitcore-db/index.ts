@@ -10,10 +10,10 @@ export class BitcoreDB {
     let client: MongoClient;
     try {
       client = await MongoClient.connect(url, {
+        poolSize: 20,
         reconnectTries: Number.MAX_VALUE,
         reconnectInterval: 1000, // every 1 second
-        useNewUrlParser: true,
-        useUnifiedTopology: true
+        useNewUrlParser: true
       })
     } catch (error) {
       console.error(error);

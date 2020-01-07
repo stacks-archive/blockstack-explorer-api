@@ -3,31 +3,47 @@ import * as moment from 'moment';
 import * as Sentry from '@sentry/node';
 import * as multi from 'multi-progress';
 
-import { AggregatorWithArgs, Json } from './aggregator';
-import { fetchBlock, fetchTransactionSubdomains } from '../client/core-api';
+import { AggregatorWithArgs } from './aggregator';
+import { 
+  fetchBlock, fetchTransactionSubdomains, BlockchainInfoBlockResult, 
+  BlockstackCoreBitcoinBlockNameOps, SubdomainTransactionResult 
+} from '../client/core-api';
 
 /** hash */
 type BlockAggregatorOpts = string;
 
-class BlockAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
+export type BlockAggregatorNameOperationResult = BlockstackCoreBitcoinBlockNameOps & {
+  timeAgo: string;
+  time: number;
+  subdomains: SubdomainTransactionResult[];
+};
+
+export type BlockAggregatorResult = Omit<BlockchainInfoBlockResult, 'nameOperations'> & {
+  nameOperations: BlockAggregatorNameOperationResult[];
+};
+
+class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAggregatorOpts> {
   key(hash: BlockAggregatorOpts) {
     return `Block:${hash}`;
   }
 
   async setter(hash: BlockAggregatorOpts) {
-    const block = await fetchBlock(hash);
-    if (!block) {
+    const blockchainInfoBlock = await fetchBlock(hash);
+    if (!blockchainInfoBlock) {
       return null;
     }
-    block.transactions = block.transactions.slice(0, 10);
-    const { time } = block;
-    block.nameOperations = await Promise.map(
-      block.nameOperations,
-      async (_nameOp: any) => {
+    const { time } = blockchainInfoBlock;
+
+    const nameOperations = await Promise.map(
+      blockchainInfoBlock.nameOperations,
+      async (_nameOp) => {
         try {
-          const nameOp = { ..._nameOp };
-          nameOp.timeAgo = moment(time * 1000).fromNow(true);
-          nameOp.time = time * 1000;
+          const nameOp: BlockAggregatorNameOperationResult = { 
+            ..._nameOp,
+            timeAgo: moment(time * 1000).fromNow(true),
+            time: time * 1000,
+            subdomains: undefined
+          };
           if (
             nameOp.opcode === 'NAME_UPDATE' &&
             nameOp.name === 'id.blockstack'
@@ -46,7 +62,11 @@ class BlockAggregator extends AggregatorWithArgs<Json, BlockAggregatorOpts> {
       { concurrency: 1 }
     );
 
-    block.nameOperations = block.nameOperations.filter(Boolean);
+    const block: BlockAggregatorResult = {
+      ...blockchainInfoBlock,
+      transactions: blockchainInfoBlock.transactions.slice(0, 10),
+      nameOperations: nameOperations.filter(Boolean)
+    };
 
     return block;
   }
