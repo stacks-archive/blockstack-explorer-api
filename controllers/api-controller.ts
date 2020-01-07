@@ -1,7 +1,4 @@
-import { Request, Response, Router } from 'express';
-// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-// @ts-ignore
-import { decorateApp } from '@awaitjs/express';
+import { Request, Response, Router, NextFunction, RequestHandler } from 'express';
 import * as Sentry from '@sentry/node';
 
 import { getTotals, GetGenesisAccountsResult } from '../lib/addresses';
@@ -22,34 +19,36 @@ import StacksAddressAggregator from '../lib/aggregators/stacks-address';
 import HomeInfoAggregator from '../lib/aggregators/home-info';
 import NameAggregator from '../lib/aggregators/name';
 import BTCAddressAggregator from '../lib/aggregators/btc-address';
+import { Json } from '../lib/aggregators/aggregator';
 
-// const resJSON = (dataFn) => {}
-const respond = (dataFn: (req: Request, res: Response) => any) => async (req: Request, res: Response) => {
-  try {
-    const data = await dataFn(req, res);
-    if (!data) {
-      res.status(404);
+const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
+  return async (req: Request, res?: Response) => {
+    try {
+      const data = await dataFn(req, res);
+      if (!data) {
+        res.status(404);
+      }
+      res.json(data);
+    } catch (error) {
+      console.error(error);
+      Sentry.captureException(error);
+      res.status(404).json({ success: false });
     }
-    res.json(data);
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(404).json({ success: false });
   }
 };
 
 const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
-  const APIController = decorateApp(Router());
+  const APIController = Router();
   const totals = getTotals(Genesis);
 
-  APIController.getAsync('/accounts/global', (req: Request, res: Response) => res.json(totals));
+  APIController.get('/accounts/global', respond(() => totals));
 
-  APIController.getAsync(
+  APIController.get(
     '/accounts/:address',
-    respond((req: Request) => Genesis.accountsByAddress[req.params.address])
+    respond(req => Genesis.accountsByAddress[req.params.address])
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/name-operations',
     respond(async () => {
       const nameOperations = await NameOpsAggregator.get({});
@@ -59,31 +58,31 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     })
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/names/:name',
-    respond(async (req: Request) => NameAggregator.fetch({name: req.params.name, historyPage: req.query.page}))
+    respond(req => NameAggregator.fetch({name: req.params.name, historyPage: req.query.page}))
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/transactions/:tx',
-    respond((req: Request) => fetchTX(req.params.tx))
+    respond(req => fetchTX(req.params.tx))
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/addresses/:address',
-    respond(async (req: Request) =>
+    respond(req =>
       BTCAddressAggregator.fetch({address: req.params.address, txPage: req.query.page})
     )
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/blocks',
-    respond(async (req: Request) => BlocksAggregator.fetch(req.query.date))
+    respond(req => BlocksAggregator.fetch(req.query.date))
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/blocks/:hashOrHeight',
-    respond(async (req: Request) => {
+    respond(async (req) => {
       const { hashOrHeight } = req.params;
       let hash = hashOrHeight;
       if (hashOrHeight.toString().length < 10) {
@@ -93,31 +92,31 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     })
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/namespaces',
-    respond(async () => NamespaceAggregator.fetch())
+    respond(() => NamespaceAggregator.fetch())
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/names',
-    respond(async (req: Request) => fetchNames(req.query.page || 0))
+    respond(req => fetchNames(req.query.page || 0))
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/namespaces/:namespace',
-    respond(async (req: Request) =>
+    respond(req =>
       fetchNamespaceNames(req.params.namespace, req.query.page || 0)
     )
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/name-counts',
-    respond(async () => TotalNamesAggregator.fetch())
+    respond(() => TotalNamesAggregator.fetch())
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/stacks/addresses/:address',
-    respond(async (req: Request) => {
+    respond(async (req) => {
       let page = parseInt(req.params.page, 10);
       if (!page || !Number.isFinite(page) || page < 0) {
         page = 0;
@@ -127,14 +126,14 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     })
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/home',
-    respond(async () => HomeInfoAggregator.fetch())
+    respond(() => HomeInfoAggregator.fetch())
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/search/:query',
-    respond(async (req: Request) => {
+    respond(async (req) => {
       const { query } = req.params;
       const getOrFail = async (promise: Promise<any>) => {
         try {

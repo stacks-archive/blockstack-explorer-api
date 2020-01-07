@@ -41,7 +41,6 @@
     "ts-jest": "^24.1.0"
   },
   "dependencies": {
-    "@awaitjs/express": "^0.1.4",
     "@promster/express": "^3.4.1",
     "@promster/server": "^3.4.1",
     "@sentry/node": "^4.3.0",
