@@ -5,8 +5,20 @@ import {
   getTX,
   getBlock,
   getBlockHash,
-  getLatestBlock
+  getLatestBlock,
+  getAddressTransactions,
+  getAddressBtcBalance
 } from '../../lib/bitcore-db/queries';
+
+test('can fetch address txs', async () => {
+  const tx = await getAddressTransactions('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4', 0, 3);
+  console.log('ok');
+});
+
+test('can fetch address balance', async () => {
+  const result = await getAddressBtcBalance('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4');
+  console.log('ok' + result);
+});
 
 test('can fetch blocks', async () => {
   const blocks = await getBlocks('2013-02-01');

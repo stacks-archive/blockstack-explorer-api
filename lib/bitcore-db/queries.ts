@@ -4,7 +4,9 @@ import { HistoryInfoNameOp } from '../aggregators/block-v2';
 
 enum Collections {
   Blocks = 'blocks',
-  Transactions = 'transactions'
+  Transactions = 'transactions',
+  Events = 'events',
+  Coins = 'coins'
 }
 
 const chainQuery = {
@@ -35,6 +37,96 @@ export type BitcoreBlock = Omit<BitcoreBlockQueryResult, 'time'> & {
   time: number;
   date: string;
   txCount: number;
+};
+
+export type BitcoreAddressTx = {
+  address: string;
+  chain: string;
+  coinbase: boolean;
+  mintHeight: number;
+  mintIndex: number;
+  mintTxid: string;
+  network: string;
+  script: { 
+    buffer: Buffer; 
+  };
+  spentHeight: number;
+  value: number;
+};
+
+export const getAddressTransactions = async (address: string, page = 0, count = 20): Promise<BitcoreAddressTx[]> => {
+  const db = await getDB();
+  const collection = db.collection<BitcoreAddressTx>(Collections.Coins);
+  const txResult = await collection
+    .find({
+      address,
+      ...chainQuery
+    })
+    .limit(count)
+    .sort({ mintHeight: -1 })
+    .skip(page * count)
+    .toArray();
+  return txResult;
+};
+
+export type BitcoreAddressBalanceResult = {
+  confirmed: number; 
+  unconfirmed: number; 
+  balance: number;
+};
+
+export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddressBalanceResult> => {
+  const db = await getDB();
+
+  // minted by a transaction which can no longer confirm.
+  const conflicting = -3;
+
+  const collection = db.collection<BitcoreAddressTx>(Collections.Coins);
+  const result = await collection.aggregate<{ _id: string; balance: number }>(
+    [
+      {
+        $match: {
+          address,
+          ...chainQuery,
+          spentHeight: { $lt: 0 },
+          mintHeight: { $gt: conflicting }
+        }
+      },
+      {
+        $project: {
+          value: 1,
+          status: {
+            $cond: {
+              if: { $gte: ['$mintHeight', 0] },
+              then: 'confirmed',
+              else: 'unconfirmed'
+            }
+          },
+          _id: 0
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          balance: { $sum: '$value' }
+        }
+      }
+    ]
+  ).toArray();
+
+  const totals = result.reduce<BitcoreAddressBalanceResult>(
+    (acc, cur) => {
+      if (cur._id === 'unconfirmed') {
+        acc.unconfirmed += cur.balance;
+      } else if (cur._id === 'confirmed') {
+        acc.confirmed += cur.balance;
+      }
+      acc.balance += cur.balance;
+      return acc;
+    },
+    { confirmed: 0, unconfirmed: 0, balance: 0 }
+  );
+  return totals;
 };
 
 export const getBlocks = async (date: string, page = 0): Promise<BitcoreBlock[]> => {
