@@ -4,10 +4,10 @@ import { getUnlockedSupply, getTopBalances } from '../core-db-pg/queries';
 import { microStacksToStacks } from '../utils';
 
 export interface TopBalanceAccount {
-  stxAddress: string;
-  btcAddress: string;
-  balance: string;
-  distribution: number;
+  stxAddress: string
+  btcAddress: string
+  balance: string
+  distribution: number
 }
 
 class TopBalancesAggregator extends Aggregator {

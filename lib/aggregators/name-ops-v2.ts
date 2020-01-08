@@ -1,14 +1,17 @@
 import BluebirdPromise from 'bluebird';
 
 import Aggregator from './aggregator';
-import { getAllNameOperations, getSubdomainRegistrationsForTxid } from '../core-db-pg/queries';
+import {
+  getAllNameOperations,
+  getSubdomainRegistrationsForTxid
+} from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
 export interface NameOp {
-  name: string,
-  owner: string,
-  time: number,
-  block: number,
+  name: string
+  owner: string
+  time: number
+  block: number
 }
 
 class NameOpsAggregator extends Aggregator {
@@ -20,26 +23,31 @@ class NameOpsAggregator extends Aggregator {
     const history = await getAllNameOperations();
     const blockHeights = history.map(record => record.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const nameOps = await BluebirdPromise.map(history, async (historyRecord): Promise<NameOp | NameOp[]> => {
-      const time = blockTimes[historyRecord.block_id];
-      if (historyRecord.opcode === 'NAME_REGISTRATION') {
-        const row: NameOp = {
-          name: historyRecord.history_id,
-          owner: historyRecord.creator_address as string,
+    const nameOps = await BluebirdPromise.map(
+      history,
+      async (historyRecord): Promise<NameOp | NameOp[]> => {
+        const time = blockTimes[historyRecord.block_id];
+        if (historyRecord.opcode === 'NAME_REGISTRATION') {
+          const row: NameOp = {
+            name: historyRecord.history_id,
+            owner: historyRecord.creator_address,
+            time,
+            block: historyRecord.block_id
+          };
+          return row;
+        }
+        const subdomains = await getSubdomainRegistrationsForTxid(
+          historyRecord.txid
+        );
+        const results: NameOp[] = subdomains.map(subdomain => ({
+          name: subdomain.name,
+          owner: subdomain.owner,
           time,
-          block: historyRecord.block_id,
-        };
-        return row;
+          block: parseInt(subdomain.blockHeight as string, 10)
+        }));
+        return results;
       }
-      const subdomains = await getSubdomainRegistrationsForTxid(historyRecord.txid);
-      const results: NameOp[] = subdomains.map(subdomain => ({
-        name: subdomain.name,
-        owner: subdomain.owner,
-        time,
-        block: parseInt(subdomain.blockHeight as string, 10),
-      }));
-      return results;
-    });
+    );
 
     const flattened = nameOps.reduce<NameOp[]>((a, b) => a.concat(b), []);
     return flattened;

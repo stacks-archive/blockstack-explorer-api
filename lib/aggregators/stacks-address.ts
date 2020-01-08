@@ -6,13 +6,20 @@ import accounting from 'accounting';
 
 import Aggregator from './aggregator';
 import {
-  network, fetchRawTxInfo, fetchBlockHash, fetchBlockInfo,
+  network,
+  fetchRawTxInfo,
+  fetchBlockHash,
+  fetchBlockInfo
 } from '../client/core-api';
 import { decode } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
-  getAddressSTXTransactions, HistoryRecord, getVestingForAddress, getAccountVesting, getTokensGrantedInHardFork,
+  getAddressSTXTransactions,
+  HistoryRecord,
+  getVestingForAddress,
+  getAccountVesting,
+  getTokensGrantedInHardFork
 } from '../core-db-pg/queries';
 
 import { getAccounts } from '../addresses';
@@ -46,22 +53,32 @@ class StacksAddress extends Aggregator {
     const address = c32check.c32ToB58(addr);
     const token = 'STACKS';
 
-    const [{ tokens }, history, status, balance, Vesting, cumulativeVestedAtBlocks, tokensGranted] = await Promise.all([
+    const [
+      { tokens },
+      history,
+      status,
+      balance,
+      Vesting,
+      cumulativeVestedAtBlocks,
+      tokensGranted
+    ] = await Promise.all([
       network.getAccountTokens(address),
       this.getHistory(address),
       network.getAccountStatus(address, token),
       network.getAccountBalance(address, token),
       getVestingForAddress(address),
       this.getCumulativeVestedAtBlocks(address),
-      getTokensGrantedInHardFork(address),
+      getTokensGrantedInHardFork(address)
     ]);
 
     let unlockInfo = {};
     if (Vesting.vestingTotal && Vesting.vestingTotal > 0) {
       unlockInfo = {
-        formattedUnlockTotal: accounting.formatNumber(Vesting.vestingTotal * 10e-7),
+        formattedUnlockTotal: accounting.formatNumber(
+          Vesting.vestingTotal * 10e-7
+        ),
         unlockTotalStacks: stacksValue(Vesting.vestingTotal),
-        unlockTotal: Vesting.vestingTotal,
+        unlockTotal: Vesting.vestingTotal
       };
     }
 
@@ -97,42 +114,51 @@ class StacksAddress extends Aggregator {
     const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(history, async (h, index) => {
-      try {
-        let historyEntry: HistoryRecordWithData = {
-          ...h,
-          valueStacks: stacksValue(h.historyData.token_fee),
-          value: parseInt(h.historyData.token_fee, 10),
-        };
+    const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(
+      history,
+      async (h, index) => {
         const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
-        const { txid } = h;
         try {
-          const hex = await fetchRawTxInfo(txid);
-          const decoded = decode(hex);
-          historyEntry = {
-            ...historyEntry,
+          let historyEntry: HistoryRecordWithData = {
             ...h,
-            ...decoded,
-            blockTime,
-            operation: decoded.senderBitcoinAddress === address ? 'SENT' : 'RECEIVED',
+            valueStacks: stacksValue(h.historyData.token_fee),
+            value: parseInt(h.historyData.token_fee, 10)
           };
-          return historyEntry;
+          const { txid } = h;
+          try {
+            const hex = await fetchRawTxInfo(txid);
+            const decoded = decode(hex);
+            historyEntry = {
+              ...historyEntry,
+              ...h,
+              ...decoded,
+              blockTime,
+              operation:
+                decoded.senderBitcoinAddress === address ? 'SENT' : 'RECEIVED'
+            };
+            return historyEntry;
+          } catch (error) {
+            console.error('Error when fetching TX info:', error.message);
+            console.error(error);
+            return {
+              ...blockTime,
+              h
+            };
+          }
         } catch (error) {
           console.error('Error when fetching TX info:', error.message);
+          console.error(error);
           return {
             ...h,
             blockTime,
-          } as HistoryRecordWithData;
+          };
         }
-      } catch (error) {
-        console.error('Error when fetching history', error.message);
-        return null;
       }
-    });
+    );
     // return [compact(historyWithData.reverse()), totalUnlocked];
     return {
       records: compact(historyWithData.reverse()),
-      totalUnlocked,
+      totalUnlocked
     };
   }
 
@@ -142,15 +168,19 @@ class StacksAddress extends Aggregator {
       balance: '0',
       status: {
         debit_value: '0',
-        credit_value: '0',
+        credit_value: '0'
       },
       btcAddress,
-      transferUnlockDateFormatted: moment(account.transferUnlockDate).format('MMMM DD, YYYY'),
-      formattedUnlockTotal: accounting.formatNumber(account.vesting_total * 10e-7),
+      transferUnlockDateFormatted: moment(account.transferUnlockDate).format(
+        'MMMM DD, YYYY'
+      ),
+      formattedUnlockTotal: accounting.formatNumber(
+        account.vesting_total * 10e-7
+      ),
       unlockTotal: account.vesting_total,
       unlockTotalStacks: stacksValue(account.vesting_total),
       history: [],
-      ...account,
+      ...account
     };
   }
 

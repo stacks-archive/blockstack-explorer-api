@@ -11,20 +11,20 @@ import { blockToTime } from '../utils';
 // import BlocksAggregator from './blocks';
 
 interface CommonName {
-  name: string;
-  blockHeight: number;
-  owner: string;
+  name: string
+  blockHeight: number
+  owner: string
 }
 
 class NameOpsAggregator extends Aggregator {
-  static key(limit: number = 100, page: number = 0) {
+  static key(limit = 100, page = 0) {
     return `NameOpsAggregator:limit=${limit}:page=${page}`;
   }
 
-  static async setter(limit: number, page: number = 0) {
+  static async setter(limit: number, page = 0) {
     const [recentSubdomains] = await Promise.all([
       // getRecentNames(100),
-      getRecentSubdomains(100),
+      getRecentSubdomains(100)
     ]);
 
     // let allNames: CommonName[] = recentNames.map(name => ({
@@ -36,16 +36,16 @@ class NameOpsAggregator extends Aggregator {
     let allNames = recentSubdomains.map(subdomain => ({
       name: subdomain.name,
       blockHeight: subdomain.blockHeight,
-      owner: subdomain.owner,
+      owner: subdomain.owner
     }));
 
     allNames = sortBy(allNames, name => -name.blockHeight);
 
-    return allNames.map((name) => {
+    return allNames.map(name => {
       const time = blockToTime(name.blockHeight as number);
       return {
         time,
-        ...name,
+        ...name
       };
     });
   }

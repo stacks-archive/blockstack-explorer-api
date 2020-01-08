@@ -14,7 +14,7 @@ const run = async () => {
 };
 
 run()
-  .catch((e) => {
+  .catch(e => {
     console.error(e);
     process.exit();
   })

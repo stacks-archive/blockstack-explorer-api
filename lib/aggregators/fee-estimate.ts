@@ -6,7 +6,7 @@ export default class FeeEstimator extends Aggregator {
     const uri = 'https://bitcoinfees.earn.com/api/v1/fees/recommended';
     const { fastestFee } = await request({
       uri,
-      json: true,
+      json: true
     });
     return Math.ceil(fastestFee * 1.25);
   }

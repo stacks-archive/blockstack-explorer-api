@@ -20,7 +20,7 @@ class HomeInfo extends Aggregator {
   static async setter() {
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
-      NameOperations.setter(),
+      NameOperations.setter()
     ]);
 
     const startCount = counts.total - nameOperations.length;
@@ -32,19 +32,23 @@ class HomeInfo extends Aggregator {
       currentCount += 1;
       ticks[time] = {
         names: currentCount,
-        date: moment(time).utc().format('MM/DD/YYYY h:mm UTC'),
+        date: moment(time)
+          .utc()
+          .format('MM/DD/YYYY h:mm UTC')
       };
     });
 
-    const keys = Object.keys(ticks).map(date => parseInt(date, 10)).sort();
+    const keys = Object.keys(ticks)
+      .map(date => parseInt(date, 10))
+      .sort();
 
-    const nameOperationsOverTime = keys.map((time) => {
+    const nameOperationsOverTime = keys.map(time => {
       const tick = ticks[time];
       return {
         ...tick,
         x: time,
         y: tick.names,
-        time,
+        time
       };
     });
 
@@ -55,7 +59,7 @@ class HomeInfo extends Aggregator {
       unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
-      nameOperations,
+      nameOperations
     };
   }
 

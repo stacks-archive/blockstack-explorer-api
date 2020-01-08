@@ -6,10 +6,10 @@ import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
 interface Subdomain {
-  name: string,
-  blockHeight: number | string,
-  owner: string,
-  [key: string]: any,
+  name: string
+  blockHeight: number | string
+  owner: string
+  [key: string]: any
 }
 
 export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subdomain[]> => {
@@ -20,18 +20,18 @@ export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subd
   const results: Subdomain[] = res.rows.map(row => ({
     ...row,
     name: row.fully_qualified_subdomain,
-    blockHeight: parseInt(row.block_height, 10),
+    blockHeight: parseInt(row.block_height, 10)
   }));
   return results;
 };
 
 interface NameRecord {
-  name: string,
-  preorderBlockHeight: number,
-  address: string,
-  firstRegistered: number,
-  txid: string,
-  [key: string]: any,
+  name: string
+  preorderBlockHeight: number
+  address: string
+  firstRegistered: number
+  txid: string
+  [key: string]: any
 }
 
 export const getRecentNames = async (limit: number, page = 0): Promise<NameRecord[]> => {
@@ -46,7 +46,7 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
     preorderBlockHeight: row.preorder_block_number,
     txid: row.txid,
     firstRegistered: row.first_registered,
-    address: row.address,
+    address: row.address
   }));
   return results;
 };
@@ -58,13 +58,13 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
 // };
 
 export interface StacksTransaction {
-  txid: string,
-  historyId: string,
-  blockHeight: number,
-  op: string,
-  opcode: string,
-  historyData: any,
-  [key: string]: any,
+  txid: string
+  historyId: string
+  blockHeight: number
+  op: string
+  opcode: string
+  historyData: any
+  [key: string]: any
 }
 
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
@@ -73,7 +73,7 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
   // const rows = await getAll(DB.Blockstack, sql, params);
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: StacksTransaction[] = rows.map((row) => {
+  const results: StacksTransaction[] = rows.map(row => {
     let historyData;
     try {
       historyData = JSON.parse(row.history_data);
@@ -87,30 +87,31 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
       blockHeight: row.block_id,
       op: row.op,
       opcode: row.opcode,
-      historyData,
+      historyData
     };
   });
   return results;
 };
 
 export interface HistoryRecord {
-  block_id: number,
-  op: string,
-  opcode: string,
-  txid: string,
-  history_id: string,
-  creator_address: string | null,
-  history_data: string,
-  vtxindex: number,
+  block_id: number
+  op: string
+  opcode: string
+  txid: string
+  history_id: string
+  creator_address: string | null
+  history_data: string
+  vtxindex: number
   historyData: {
-    [key: string]: any,
+    [key: string]: any
   }
 }
 
 export const getNameOperationsForBlock = async (
-  blockHeight: number,
+  blockHeight: number
 ): Promise<HistoryRecord[]> => {
-  const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
+  const sql =
+    "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
   const params = [blockHeight];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
@@ -118,11 +119,11 @@ export const getNameOperationsForBlock = async (
   //   ...row,
   //   historyData: JSON.parse(row.history_data),
   // }));
-  const results: HistoryRecord[] = rows.map((row) => {
+  const results: HistoryRecord[] = rows.map(row => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...row,
-      ...historyData,
+      ...historyData
     };
   });
   return results;
@@ -136,47 +137,53 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
   const results: Subdomain[] = rows.map(row => ({
     ...row,
     name: row.fully_qualified_subdomain,
-    blockHeight: parseInt(row.block_height, 10),
+    blockHeight: parseInt(row.block_height, 10)
   }));
   return results;
 };
 
 export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
-  const sql = "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
+  const sql =
+    "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
   const db = await getDB();
   const { rows } = await db.query(sql);
   return rows as HistoryRecord[];
 };
 
 export interface HistoryRecordWithSubdomains extends HistoryRecord {
-  subdomains?: string[],
+  subdomains?: string[]
 }
 
 export const getAllHistoryRecords = async (limit: number, page = 0) => {
-  const sql = "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
+  const sql =
+    "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
   const params = [limit, limit * page];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(rows as HistoryRecord[], async (row) => {
-    const historyData = JSON.parse(row.history_data);
-    if (row.opcode === 'NAME_UPDATE') {
-      const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
+  const results: HistoryRecordWithSubdomains[] = await BluebirdPromise.map(
+    rows as HistoryRecord[],
+    async row => {
+      const historyData = JSON.parse(row.history_data);
+      if (row.opcode === 'NAME_UPDATE') {
+        const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
+        return {
+          ...row,
+          historyData,
+          subdomains: subdomains.map(sub => sub.name)
+        };
+      }
       return {
         ...row,
-        historyData,
-        subdomains: subdomains.map(sub => sub.name),
+        historyData
       };
     }
-    return {
-      ...row,
-      historyData,
-    };
-  });
+  );
   return results;
 };
 
 export const getNameHistory = async (name: string) => {
-  const sql = 'select * from history WHERE history_id = $1 ORDER BY block_id DESC';
+  const sql =
+    'select * from history WHERE history_id = $1 ORDER BY block_id DESC';
   const params = [name];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
@@ -184,7 +191,7 @@ export const getNameHistory = async (name: string) => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...historyData,
-      ...row,
+      ...row
     };
   });
   return results;
@@ -209,8 +216,8 @@ export const getVestingTotalForAddress = async (_address: string) => {
 };
 
 export interface UnlockedSupply {
-  blockHeight: string;
-  unlockedSupply: BigNumber;
+  blockHeight: string
+  unlockedSupply: BigNumber
 }
 
 export async function getUnlockedSupply(): Promise<UnlockedSupply> {
@@ -246,8 +253,8 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
 }
 
 export interface BalanceInfo {
-  address: string;
-  balance: BigNumber;
+  address: string
+  balance: BigNumber
 }
 
 export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
@@ -274,7 +281,9 @@ export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
   return balances;
 }
 
-export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | null> => {
+export const getHistoryFromTxid = async (
+  txid: string
+): Promise<HistoryRecord | null> => {
   const sql = 'SELECT * from history where txid = $1';
   const params = [txid];
   const db = await getDB();
@@ -283,7 +292,7 @@ export const getHistoryFromTxid = async (txid: string): Promise<HistoryRecord | 
   if (!row) return null;
   return {
     ...row,
-    historyData: JSON.parse(row.history_data),
+    historyData: JSON.parse(row.history_data)
   };
 };
 
@@ -294,7 +303,7 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
   const { rows } = await db.query(sql, params);
   const history: HistoryRecord[] = rows.map(row => ({
     ...row,
-    historyData: JSON.parse(row.history_data),
+    historyData: JSON.parse(row.history_data)
   }));
   return history;
 };
@@ -311,21 +320,26 @@ interface AccountVesting {
   block_id: number
 }
 
-export const getAccountVesting = async (btcAddress: string): Promise<AccountVesting[]> => {
-  const sql = 'SELECT * FROM account_vesting where address = $1 ORDER BY block_id ASC;';
+export const getAccountVesting = async (
+  btcAddress: string
+): Promise<AccountVesting[]> => {
+  const sql =
+    'SELECT * FROM account_vesting where address = $1 ORDER BY block_id ASC;';
   const db = await getDB();
   const params = [btcAddress];
   const { rows }: { rows: AccountVesting[] } = await db.query(sql, params);
   return rows;
 };
 
-export const getVestingForAddress = async (btcAddress: string): Promise<Vesting> => {
+export const getVestingForAddress = async (
+  btcAddress: string
+): Promise<Vesting> => {
   const latestBlock = await getLatestBlock();
   const rows = await getAccountVesting(btcAddress);
   let totalUnlocked = 0;
   let totalLocked = 0;
   let vestingTotal = 0;
-  rows.forEach((row) => {
+  rows.forEach(row => {
     const value = parseInt(row.vesting_value, 10);
     vestingTotal += value;
     if (row.block_id <= latestBlock.height) {
@@ -337,7 +351,7 @@ export const getVestingForAddress = async (btcAddress: string): Promise<Vesting>
   return {
     totalUnlocked,
     totalLocked,
-    vestingTotal,
+    vestingTotal
   };
 };
 
@@ -345,12 +359,17 @@ interface Account {
   credit_value: string
 }
 
-export const getTokensGrantedInHardFork = async (btcAddress: string): Promise<number> => {
-  const sql = 'SELECT * FROM blockstack_core.accounts where address = $1 and block_id = 373601 LIMIT 10;';
+export const getTokensGrantedInHardFork = async (
+  btcAddress: string
+): Promise<number> => {
+  const sql =
+    'SELECT * FROM blockstack_core.accounts where address = $1 and block_id = 373601 LIMIT 10;';
   const db = await getDB();
   const params = [btcAddress];
   const { rows }: { rows: Account[] } = await db.query(sql, params);
   let total = 0;
-  rows.forEach((row) => { total += parseInt(row.credit_value, 10); });
+  rows.forEach(row => {
+    total += parseInt(row.credit_value, 10);
+  });
   return total;
 };
