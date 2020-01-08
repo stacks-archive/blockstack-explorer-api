@@ -179,34 +179,69 @@ Controller.get('/transactions/all', async (req: Request, res: Response) => {
   }
 });
 
+
+export type Genesis2019 = {
+  accounts: Genesis2019Account[];
+  total: number;
+};
+
+export type Genesis2019Account = {
+  address: string;
+  lock_send: number;
+  metadata: string;
+  receive_whitelisted: boolean;
+  type: string;
+  value: number;
+  vesting: { [blockHeight: string]: number };
+  vesting_total: number;
+  unlockUntil?: string;
+  totalFormatted?: string;
+  unlockPerMonthFormatted?: string;
+};
+
+export type Genesis2019AddressInfo = {
+  accounts: Genesis2019Account[];
+  total: number;
+  totalFormatted: string;
+};
+
+export const getGenesis2019AddressInfo = async (stacksAddress: string): Promise<Genesis2019AddressInfo> => {
+  const uri = `${process.env.HF_URL}/${stacksAddress}`;
+  const genesis2019: Genesis2019 = await request.get({
+    uri,
+    json: true
+  });
+  const { accounts: _accounts, total } = genesis2019;
+  const accounts = _accounts.map((_account) => {
+    const account = { ..._account };
+    const vestingBlocks = Object.keys(account.vesting);
+    const lastVestingMonth = blockToTime(
+      parseInt(vestingBlocks[(vestingBlocks.length - 1)], 10)
+    );
+    account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
+    account.totalFormatted = formatNumber(
+      stacksValue(account.value + account.vesting_total)
+    );
+    account.unlockPerMonthFormatted = formatNumber(
+      stacksValue(account.vesting[vestingBlocks[0]])
+    );
+    return account;
+  });
+  const totalFormatted = formatNumber(stacksValue(total));
+  return {
+    accounts,
+    total,
+    totalFormatted
+  };
+};
+
 Controller.get(
   '/genesis-2019/:stacksAddress',
   async (req: Request, res: Response) => {
     const { stacksAddress } = req.params;
-    const uri = `${process.env.HF_URL}/${stacksAddress}`;
     try {
-      const { accounts: _accounts, total } = await request.get({
-        uri,
-        json: true
-      });
-      // TODO: lots of unknown types here
-      const accounts = _accounts.map((_account: any) => {
-        const account = { ..._account };
-        const vestingBlocks: any = Object.keys(account.vesting);
-        const lastVestingMonth = blockToTime(
-          vestingBlocks[String((vestingBlocks.length - 1))]
-        );
-        account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
-        account.totalFormatted = formatNumber(
-          stacksValue(account.value + account.vesting_total)
-        );
-        account.unlockPerMonthFormatted = formatNumber(
-          stacksValue(account.vesting[vestingBlocks[0]])
-        );
-        return account;
-      });
-      const totalFormatted = formatNumber(stacksValue(total));
-      res.json({ accounts, total, totalFormatted });
+      const info = await getGenesis2019AddressInfo(stacksAddress);
+      res.json(info);
     } catch (error) {
       console.error(error);
       Sentry.captureException(error);
