@@ -1,6 +1,6 @@
 import { AggregatorWithArgs } from './aggregator';
 import { fetchAddress, BlockchainAddressInfo } from '../client/core-api';
-import { transformTx } from '../transformers/transaction';
+import { transformTx, TransformedBlockchainInfoTx } from '../transformers/transaction';
 
 type BTCAddressAggregatorOpts = {
   address: string;
@@ -11,7 +11,7 @@ type BTCAddressAggregatorResult = BlockchainAddressInfo & {
   totalSent: number;
   totalReceived: number;
   balance: number;
-  fullTransactions: any;
+  fullTransactions: TransformedBlockchainInfoTx[];
 }
 
 class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {

@@ -157,6 +157,7 @@ export type BlockchainInfoTx = {
     value: string;
     hash: string;
     script: string;
+    addr?: string;
   }[];
 };
 

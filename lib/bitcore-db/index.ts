@@ -23,13 +23,7 @@ export class BitcoreDB {
     const db = client.db('bitcore');
     return new BitcoreDB(db);
   }
-
-  assert(condition: any, msg?: string): asserts condition {
-    if (!condition) {
-      throw new Error(msg);
-    }
-  }
-
+  
   // Forces a type to be specified.
   collection<T extends { [key: string]: any } | unknown = void>(
     name: string
