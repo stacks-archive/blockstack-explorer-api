@@ -8,10 +8,10 @@ import {
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
 export interface NameOp {
-  name: string
-  owner: string
-  time: number
-  block: number
+  name: string;
+  owner: string;
+  time: number;
+  block: number;
 }
 
 class NameOpsAggregator extends Aggregator {

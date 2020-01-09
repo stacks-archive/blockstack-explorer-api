@@ -12,22 +12,22 @@ const chainQuery = {
 };
 
 export interface Block {
-  nextBlockHash: string
-  previousBlockHash: string
-  merkleRoot: string
-  time: number
-  date: Date
-  bits: number
-  nonce: number
-  size: number
-  transactionCount: number
-  reward: number
-  height: number
-  hash: string
-  nameOperations?: any[]
-  txCount: number
-  transactions?: Transaction[]
-  rewardFormatted?: string
+  nextBlockHash: string;
+  previousBlockHash: string;
+  merkleRoot: string;
+  time: number;
+  date: Date;
+  bits: number;
+  nonce: number;
+  size: number;
+  transactionCount: number;
+  reward: number;
+  height: number;
+  hash: string;
+  nameOperations?: any[];
+  txCount: number;
+  transactions?: Transaction[];
+  rewardFormatted?: string;
 }
 
 export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
@@ -51,6 +51,7 @@ export const getBlocks = async (date: string, page = 0): Promise<Block[]> => {
 
   const blocks: Block[] = blocksResult.map(block => ({
     ...block,
+    time: block.time.getTime() / 1000,
     date: block.time,
     txCount: block.transactionCount
   }));
@@ -90,7 +91,10 @@ export const getBlockByHeight = async (height: number): Promise<Block> => {
   return block;
 };
 
-export const getBlockTransactions = async (hash: string, page = 0): Promise<Transaction[]> => {
+export const getBlockTransactions = async (
+  hash: string,
+  page = 0
+): Promise<Transaction[]> => {
   const db = await getDB();
   const txCollection = db.collection(Collections.Transactions);
   const txResults: Transaction[] = await txCollection
@@ -104,16 +108,16 @@ export const getBlockTransactions = async (hash: string, page = 0): Promise<Tran
 };
 
 export interface Transaction {
-  txid: string
-  blockHeight: number
-  blockHash: string
-  blockTime: Date
-  coinbase: boolean
-  fee: number
-  size: number
-  inputCount: number
-  outputCount: number
-  value: number
+  txid: string;
+  blockHeight: number;
+  blockHash: string;
+  blockTime: Date;
+  coinbase: boolean;
+  fee: number;
+  size: number;
+  inputCount: number;
+  outputCount: number;
+  value: number;
 }
 
 export const getTX = async (txid: string): Promise<Transaction> => {

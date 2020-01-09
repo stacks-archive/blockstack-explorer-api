@@ -19,15 +19,15 @@ const getAddr = (out: TxOutput) => {
 };
 
 interface Output {
-  addr: string
-  value: number
-  [key: string]: any
+  addr: string;
+  value: number;
+  [key: string]: any;
 }
 
 interface Input {
-  addr: string
-  txid: string
-  [key: string]: any
+  addr: string;
+  txid: string;
+  [key: string]: any;
 }
 
 export const decodeTx = async (

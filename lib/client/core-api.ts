@@ -1,6 +1,5 @@
 import request from 'request-promise';
 import moment from 'moment';
-import accounting from 'accounting';
 import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import RPCClient from 'bitcoin-core';

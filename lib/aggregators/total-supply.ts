@@ -5,12 +5,12 @@ import { microStacksToStacks, TOTAL_STACKS, MICROSTACKS_IN_STACKS } from '../uti
 
 
 export interface TotalSupplyResult {
-  unlockedPercent: string
-  totalStacks: string
-  totalStacksFormatted: string
-  unlockedSupply: string
-  unlockedSupplyFormatted: string
-  blockHeight: string
+  unlockedPercent: string;
+  totalStacks: string;
+  totalStacksFormatted: string;
+  unlockedSupply: string;
+  unlockedSupplyFormatted: string;
+  blockHeight: string;
 }
 
 class TotalSupplyAggregator extends Aggregator {

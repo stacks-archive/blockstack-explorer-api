@@ -6,7 +6,7 @@ import { extractRootDomain } from '../utils';
 import { getNameHistory } from '../core-db-pg/queries';
 
 interface UserApp {
-  [key: string]: string
+  [key: string]: string;
 }
 
 class NameAggregator extends Aggregator {
@@ -72,5 +72,4 @@ class NameAggregator extends Aggregator {
   }
 }
 
-module.exports = NameAggregator;
 export default NameAggregator;

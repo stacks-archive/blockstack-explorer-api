@@ -1,6 +1,9 @@
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
-const request = require('request-promise');
+import * as util from 'util';
+import * as child_process from 'child_process';
+import request from 'request-promise';
+
+const exec = util.promisify(child_process.exec);
+
 
 const gaiaRead = 'http://testnet.blockstack.org:4000';
 const subdomainRegistrar = 'http://testnet.blockstack.org:30000';

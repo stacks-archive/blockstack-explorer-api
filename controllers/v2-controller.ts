@@ -19,13 +19,10 @@ import {
   getRecentSubdomains,
   StacksTransaction,
   getAllHistoryRecords,
-  HistoryRecordWithSubdomains,
-  getUnlockedSupply,
-  getTopBalances,
+  HistoryRecordWithSubdomains
 } from '../lib/core-db-pg/queries';
 
-// const { blockToTime } = require('../lib/utils');
-import { blockToTime, stacksValue, formatNumber, microStacksToStacks, TOTAL_STACKS } from '../lib/utils';
+import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
 
 const Controller = express.Router();

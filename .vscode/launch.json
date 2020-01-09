@@ -31,12 +31,14 @@
               "--no-cache",
               "--testTimeout=0",
               "--detectOpenHandles",
+              "--testPathIgnorePatterns=core-db",
+              "--ci",
               "--config",
               "${workspaceRoot}/jest.config.js"
             ],
             "console": "integratedTerminal",
             "env": {
-                "NODE_ENV": "development"
+                "NODE_ENV": "test"
             }
           }
     ]

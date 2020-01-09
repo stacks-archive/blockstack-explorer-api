@@ -1,7 +1,6 @@
-// import { btcValue } from '../utils';
-const { btcValue } = require('../utils');
+import { btcValue } from '../utils';
 
-const transformTx = (tx, addr) => {
+export const transformTx = (tx, addr) => {
   const vin = addr
     ? tx.inputs.find(
       v => v.prev_out && v.prev_out.addr && v.prev_out.addr === addr
@@ -24,5 +23,3 @@ const transformTx = (tx, addr) => {
     ...tx
   };
 };
-
-module.exports = transformTx;

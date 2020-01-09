@@ -13,31 +13,32 @@
     "test-watch": "NODE_ENV=test jest --verbose=false --ci --testPathIgnorePatterns core-db --watch",
     "seed": "ts-node scripts/seed-db.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint --ext .ts,.js . -f unix"
+    "lint": "eslint --ext .ts,.js . -f codeframe",
+    "lint-fix": "eslint --ext .ts,.js . -f codeframe --fix"
   },
   "devDependencies": {
     "@blockstack/prettier-config": "^0.0.3",
     "@types/accounting": "^0.4.1",
     "@types/cors": "^2.8.4",
     "@types/express": "^4.16.1",
-    "@types/jest": "^24.0.11",
+    "@types/jest": "^24.0.23",
     "@types/lodash": "^4.14.123",
     "@types/morgan": "^1.7.35",
-    "@types/node": "^11.13.0",
+    "@types/node": "^12.12.11",
+    "@types/redis": "^2.8.14",
     "@types/request-promise": "^4.1.42",
-    "@types/sqlite3": "^3.1.5",
-    "@typescript-eslint/eslint-plugin": "^2.6.1",
-    "@typescript-eslint/parser": "^2.6.1",
-    "eslint": "^5.7.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-config-prettier": "^6.5.0",
-    "eslint-import-resolver-typescript": "^1.1.1",
-    "eslint-plugin-import": "^2.16.0",
-    "eslint-plugin-jest": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^2.8.1-alpha.10",
+    "@typescript-eslint/parser": "^2.8.0",
+    "eslint": "^6.6.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-config-prettier": "^6.7.0",
+    "eslint-import-resolver-typescript": "^2.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jest": "^23.0.4",
     "eslint-plugin-prettier": "^3.1.1",
-    "jest": "^24.7.1",
+    "jest": "^24.9.0",
     "prettier": "^1.18.2",
-    "ts-jest": "^24.0.2"
+    "ts-jest": "^24.1.0"
   },
   "dependencies": {
     "@awaitjs/express": "^0.1.4",
@@ -72,7 +73,7 @@
     "request": "^2.88.0",
     "request-promise": "^4.2.2",
     "split-on-first": "^1.1.0",
-    "ts-node": "^8.1.0",
-    "typescript": "^3.4.2"
+    "ts-node": "^8.5.2",
+    "typescript": "^3.7.2"
   }
 }

@@ -6,10 +6,10 @@ import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 
 interface Subdomain {
-  name: string
-  blockHeight: number | string
-  owner: string
-  [key: string]: any
+  name: string;
+  blockHeight: number | string;
+  owner: string;
+  [key: string]: any;
 }
 
 export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subdomain[]> => {
@@ -26,12 +26,12 @@ export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subd
 };
 
 interface NameRecord {
-  name: string
-  preorderBlockHeight: number
-  address: string
-  firstRegistered: number
-  txid: string
-  [key: string]: any
+  name: string;
+  preorderBlockHeight: number;
+  address: string;
+  firstRegistered: number;
+  txid: string;
+  [key: string]: any;
 }
 
 export const getRecentNames = async (limit: number, page = 0): Promise<NameRecord[]> => {
@@ -58,13 +58,13 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
 // };
 
 export interface StacksTransaction {
-  txid: string
-  historyId: string
-  blockHeight: number
-  op: string
-  opcode: string
-  historyData: any
-  [key: string]: any
+  txid: string;
+  historyId: string;
+  blockHeight: number;
+  op: string;
+  opcode: string;
+  historyData: any;
+  [key: string]: any;
 }
 
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
@@ -94,17 +94,17 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
 };
 
 export interface HistoryRecord {
-  block_id: number
-  op: string
-  opcode: string
-  txid: string
-  history_id: string
-  creator_address: string | null
-  history_data: string
-  vtxindex: number
+  block_id: number;
+  op: string;
+  opcode: string;
+  txid: string;
+  history_id: string;
+  creator_address: string | null;
+  history_data: string;
+  vtxindex: number;
   historyData: {
-    [key: string]: any
-  }
+    [key: string]: any;
+  };
 }
 
 export const getNameOperationsForBlock = async (
@@ -144,19 +144,23 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
 
 export const getAllNameOperations = async (): Promise<HistoryRecord[]> => {
   const sql =
-    "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') ORDER BY block_id DESC LIMIT 100";
+    `SELECT * FROM history 
+    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
+    ORDER BY block_id DESC LIMIT 100`;
   const db = await getDB();
   const { rows } = await db.query(sql);
   return rows as HistoryRecord[];
 };
 
 export interface HistoryRecordWithSubdomains extends HistoryRecord {
-  subdomains?: string[]
+  subdomains?: string[];
 }
 
 export const getAllHistoryRecords = async (limit: number, page = 0) => {
-  const sql =
-    "select * from history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER') ORDER BY block_id DESC LIMIT $1 OFFSET $2";
+  const sql = 
+    `select * from history 
+    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER')  
+    ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
   const params = [limit, limit * page];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
@@ -187,7 +191,7 @@ export const getNameHistory = async (name: string) => {
   const params = [name];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
-  const results: HistoryRecord[] = rows.map((row) => {
+  const results: HistoryRecord[] = rows.map(row => {
     const historyData = JSON.parse(row.history_data);
     return {
       ...historyData,
@@ -216,8 +220,8 @@ export const getVestingTotalForAddress = async (_address: string) => {
 };
 
 export interface UnlockedSupply {
-  blockHeight: string
-  unlockedSupply: BigNumber
+  blockHeight: string;
+  unlockedSupply: BigNumber;
 }
 
 export async function getUnlockedSupply(): Promise<UnlockedSupply> {
@@ -253,8 +257,8 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
 }
 
 export interface BalanceInfo {
-  address: string
-  balance: BigNumber
+  address: string;
+  balance: BigNumber;
 }
 
 export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
@@ -309,15 +313,15 @@ export const getAddressSTXTransactions = async (btcAddress: string): Promise<His
 };
 
 interface Vesting {
-  totalUnlocked: number
-  totalLocked: number
-  vestingTotal: number
+  totalUnlocked: number;
+  totalLocked: number;
+  vestingTotal: number;
 }
 
 interface AccountVesting {
-  address: string
-  vesting_value: string
-  block_id: number
+  address: string;
+  vesting_value: string;
+  block_id: number;
 }
 
 export const getAccountVesting = async (
@@ -356,7 +360,7 @@ export const getVestingForAddress = async (
 };
 
 interface Account {
-  credit_value: string
+  credit_value: string;
 }
 
 export const getTokensGrantedInHardFork = async (

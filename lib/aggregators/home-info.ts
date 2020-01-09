@@ -26,8 +26,9 @@ class HomeInfo extends Aggregator {
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
     const ticks = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time, 10);
-    sortedNames.forEach((nameOp) => {
+    const sortedNames = sortBy(nameOperations.slice(), nameOp => parseInt(nameOp.time, 10));
+
+    sortedNames.forEach(nameOp => {
       const { time } = nameOp;
       currentCount += 1;
       ticks[time] = {
@@ -68,5 +69,4 @@ class HomeInfo extends Aggregator {
   }
 }
 
-module.exports = HomeInfo;
 export default HomeInfo;

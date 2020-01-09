@@ -7,7 +7,7 @@ import { blockToTime } from '../lib/utils';
 dotenv.config();
 
 interface Months {
-  [month: string]: number
+  [month: string]: number;
 }
 
 const run = async () => {

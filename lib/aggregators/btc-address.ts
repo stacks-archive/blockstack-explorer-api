@@ -1,7 +1,7 @@
 import Aggregator from './aggregator';
 
 import { fetchAddress } from '../client/core-api';
-import transformTx from '../transformers/transaction';
+import { transformTx } from '../transformers/transaction';
 
 class BTCAddressAggregator extends Aggregator {
   static key(address, txPage = 0) {
@@ -29,5 +29,4 @@ class BTCAddressAggregator extends Aggregator {
   }
 }
 
-module.exports = BTCAddressAggregator;
 export default BTCAddressAggregator;

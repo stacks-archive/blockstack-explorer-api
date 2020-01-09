@@ -1,10 +1,13 @@
-import * as btc from 'bitcoinjs-lib';
+import btc from 'bitcoinjs-lib';
 import bigi from 'bigi';
-import * as c32check from 'c32check';
+import c32check from 'c32check';
 
 export const decode = rawTX => {
   const tx = btc.Transaction.fromHex(rawTX);
   const data = btc.script.decompile(tx.outs[0].script)[1];
+  if (!Buffer.isBuffer(data)) {
+    throw new Error(`Unexpected tx.outs[0].script type ${data}`);
+  }
 
   const operationType = data.slice(2, 3).toString(); // should be == '$' for token transfers.
   const consensusHash = data.slice(3, 19).toString('hex');
@@ -29,21 +32,19 @@ export const decode = rawTX => {
   const recipientC32Address = c32check.b58ToC32(recipientBitcoinAddress);
 
   const inputData = btc.script.decompile(tx.ins[0].script);
-  const hash = btc.crypto.hash160(inputData[inputData.length - 1]);
+  const input = inputData[inputData.length - 1];
+  if (!Buffer.isBuffer(input)) {
+    throw new Error(`Unexpected input type: ${input}`)
+  }
+  const hash = btc.crypto.hash160(input);
   const isPubKey = btc.script.isCanonicalPubKey(
-    inputData[inputData.length - 1]
+    input
   );
   const version = isPubKey
     ? btc.networks.bitcoin.pubKeyHash
     : btc.networks.bitcoin.scriptHash;
   const senderBitcoinAddress = btc.address.toBase58Check(hash, version);
   const senderC32Address = c32check.b58ToC32(senderBitcoinAddress);
-
-  // console.log(tx.ins[0]);
-
-  // const feesValue = tx.ins.reduce((sum, input) => {
-  //   console.log(input.value);
-  // }, 0);
 
   return {
     operationType,
@@ -56,6 +57,5 @@ export const decode = rawTX => {
     tokenSentHex,
     senderBitcoinAddress,
     sender: senderC32Address
-    // feesValue,
   };
 };

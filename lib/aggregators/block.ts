@@ -19,7 +19,7 @@ class BlockAggregator extends Aggregator {
     const { time } = block;
     block.nameOperations = await Promise.map(
       block.nameOperations,
-      async _nameOp => {
+      async (_nameOp: any) => {
         try {
           const nameOp = { ..._nameOp };
           nameOp.timeAgo = moment(time * 1000).fromNow(true);
@@ -56,5 +56,4 @@ class BlockAggregator extends Aggregator {
   }
 }
 
-module.exports = BlockAggregator;
 export default BlockAggregator;

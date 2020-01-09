@@ -27,5 +27,4 @@ class TotalNames extends Aggregator {
   }
 }
 
-module.exports = TotalNames;
 export default TotalNames;
