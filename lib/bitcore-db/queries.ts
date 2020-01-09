@@ -14,6 +14,21 @@ const chainQuery = {
   chain: 'BTC'
 };
 
+// eslint-disable-next-line max-len
+// From: https://github.com/bitpay/bitcore/blob/67427b5874600736c1c8fcd13b571b6dfbd70774/packages/bitcore-node/src/types/Coin.d.ts#L26
+const enum BitcoreSpentHeightIndicators {
+  /** The value below which numbers are simply used as indicators. */
+  minimum = 0,
+  /** The coin is spent by a transaction currently in the mempool but not yet included in a block. */
+  pending = -1,
+  /** The coin is unspent, and no transactions spending it have been seen. */
+  unspent = -2,
+  /** The coin was minted by a transaction which can no longer confirm. */
+  conflicting = -3,
+  /** An internal error occurred. (The database appears to be inconsistent.) */
+  error = -4
+}
+
 export type BitcoreBlockQueryResult = {
   bits: number;
   chain: string;
@@ -70,26 +85,24 @@ export const getAddressTransactions = async (address: string, page = 0, count = 
 };
 
 export type BitcoreAddressBalanceResult = {
-  confirmed: number; 
-  unconfirmed: number; 
-  balance: number;
+  balance: number; 
+  totalReceived: number; 
+  totalSent: number;
+  totalTransactions: number;
 };
 
 export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddressBalanceResult> => {
   const db = await getDB();
 
-  // minted by a transaction which can no longer confirm.
-  const conflicting = -3;
-
   const collection = db.collection<BitcoreAddressTx>(Collections.Coins);
-  const result = await collection.aggregate<{ _id: string; balance: number }>(
+  const result = await collection.aggregate<{ _id: string; balance: number; count: number }>(
     [
       {
         $match: {
           address,
           ...chainQuery,
-          spentHeight: { $lt: 0 },
-          mintHeight: { $gt: conflicting }
+          // spentHeight: { $lt: BitcoreSpentHeightIndicators.minimum },
+          mintHeight: { $gte: BitcoreSpentHeightIndicators.minimum }
         }
       },
       {
@@ -97,18 +110,19 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
           value: 1,
           status: {
             $cond: {
-              if: { $gte: ['$mintHeight', 0] },
-              then: 'confirmed',
-              else: 'unconfirmed'
+              if: { $gte: ['$spentHeight', 0] },
+              then: 'spent',
+              else: 'unspent'
             }
           },
-          _id: 0
+          _id: 0,
         }
       },
       {
         $group: {
           _id: '$status',
-          balance: { $sum: '$value' }
+          balance: { $sum: '$value' },
+          count: { $sum: 1 },
         }
       }
     ]
@@ -116,15 +130,16 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
 
   const totals = result.reduce<BitcoreAddressBalanceResult>(
     (acc, cur) => {
-      if (cur._id === 'unconfirmed') {
-        acc.unconfirmed += cur.balance;
-      } else if (cur._id === 'confirmed') {
-        acc.confirmed += cur.balance;
+      if (cur._id === 'unspent') {
+        acc.balance += cur.balance;
+      } else if (cur._id === 'spent') {
+        acc.totalSent += cur.balance;
       }
-      acc.balance += cur.balance;
+      acc.totalReceived += cur.balance;
+      acc.totalTransactions += cur.count;
       return acc;
     },
-    { confirmed: 0, unconfirmed: 0, balance: 0 }
+    { balance: 0, totalReceived: 0, totalSent: 0, totalTransactions: 0 }
   );
   return totals;
 };

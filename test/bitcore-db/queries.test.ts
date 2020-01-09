@@ -17,7 +17,10 @@ test('can fetch address txs', async () => {
 
 test('can fetch address balance', async () => {
   const result = await getAddressBtcBalance('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4');
-  console.log('ok' + result);
+  expect(result.balance).toBeGreaterThan(0);
+  expect(result.totalReceived).toBeGreaterThan(0);
+  expect(result.totalSent).toBeGreaterThan(0);
+  expect(result.totalTransactions).toBeGreaterThan(10);
 });
 
 test('can fetch blocks', async () => {

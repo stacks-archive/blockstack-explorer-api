@@ -57,7 +57,10 @@
         "--no-cache",
         "--testTimeout=0",
         "--detectOpenHandles",
-        "--testPathIgnorePatterns=core-db",
+        "--collectCoverage=false",
+        "--forceExit",
+        // "--testPathIgnorePatterns=core-db",
+        // "--testNamePattern=onlytest",
         "--ci",
         "--config",
         "${workspaceRoot}/jest.config.js"
