@@ -54,7 +54,8 @@ export type BitcoreBlock = Omit<BitcoreBlockQueryResult, 'time'> & {
   txCount: number;
 };
 
-export type BitcoreAddressTx = {
+
+export type BitcoreAddressCoinsQueryResult = {
   address: string;
   chain: string;
   coinbase: boolean;
@@ -69,20 +70,90 @@ export type BitcoreAddressTx = {
   value: number;
 };
 
-export const getAddressTransactions = async (address: string, page = 0, count = 20): Promise<BitcoreAddressTx[]> => {
+export type BitcoreAddressTxInfo = {
+  address: string;
+  blockHeight: number;
+  blockHash: string;
+  confirmations: number;
+  date: string;
+  txid: string;
+  totalTransferred: number;
+  fee: number;
+  action: 'sent' | 'received';
+};
+
+export type BitcoreAddressTxInfoQueryResult = BitcoreAddressCoinsQueryResult & {
+  txInfo: BitcoreTransactionQueryResult;
+  spentTxInfo?: BitcoreTransactionQueryResult;
+};
+
+export const getAddressTransactions = async (
+  address: string, page = 0, count = 20
+): Promise<BitcoreAddressTxInfo[]> => {
+  const tip = await getLatestBlock();
   const db = await getDB();
-  const collection = db.collection<BitcoreAddressTx>(Collections.Coins);
-  const txResult = await collection
-    .find({
-      address,
-      ...chainQuery
-    })
+  const collection = db.collection<BitcoreAddressTxInfoQueryResult>(Collections.Coins);
+  const result = await collection
+    .aggregate([
+      {
+        $match: {
+          address,
+          ...chainQuery
+        },
+      },
+      {
+        $lookup: {
+          from: Collections.Transactions,
+          localField: 'mintTxid',
+          foreignField: 'txid',
+          as: 'txInfo'
+        }
+      },
+      { 
+        $unwind: {
+          path: "$txInfo",
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+      {
+        $lookup: {
+          from: Collections.Transactions,
+          localField: 'spentTxid',
+          foreignField: 'txid',
+          as: 'spentTxInfo'
+        }
+      },
+      { 
+        $unwind: {
+          path: "$spentTxInfo",
+          preserveNullAndEmptyArrays: true,
+        }
+      },
+    ])
     .limit(count)
     .sort({ mintHeight: -1 })
     .skip(page * count)
     .toArray();
-  return txResult;
+
+  const txs = result.map(tx => {
+    const isSpend = !!tx.spentTxInfo;
+    const result: BitcoreAddressTxInfo = {
+      address: tx.address,
+      blockHeight: tx.mintHeight,
+      blockHash: tx.txInfo.blockHash,
+      confirmations: tip.height - tx.txInfo.blockHeight + 1,
+      date: tx.txInfo.blockTime.toISOString(),
+      txid: tx.mintTxid,
+      totalTransferred: isSpend ? tx.spentTxInfo.value : tx.txInfo.value,
+      fee: tx.txInfo.fee,
+      action: isSpend ? 'sent' : 'received',
+    };
+    return result;
+  });
+
+  return txs;
 };
+
 
 export type BitcoreAddressBalanceResult = {
   balance: number; 
@@ -94,7 +165,7 @@ export type BitcoreAddressBalanceResult = {
 export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddressBalanceResult> => {
   const db = await getDB();
 
-  const collection = db.collection<BitcoreAddressTx>(Collections.Coins);
+  const collection = db.collection<BitcoreAddressCoinsQueryResult>(Collections.Coins);
   const result = await collection.aggregate<{ _id: string; balance: number; count: number }>(
     [
       {
@@ -236,7 +307,7 @@ export type BitcoreTransaction = {
   value: number;
 };
 
-type BitcoreTransactionQueryResult = {
+export type BitcoreTransactionQueryResult = {
   txid: string;
   blockHeight: number;
   blockHash: string;

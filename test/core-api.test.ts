@@ -4,8 +4,11 @@ import {
   fetchAddress,
   fetchTX,
   fetchBlock,
-  fetchBlocks
+  fetchBlocks,
+  fetchAddressInfo
 } from '../lib/client/core-api';
+import { getAddressTransactions, getLatestBlock } from '../lib/bitcore-db/queries';
+import { transformTx } from '../lib/transformers/transaction';
 
 jest.setTimeout(10000);
 
@@ -35,6 +38,49 @@ test('fetches an address', async t => {
   const address = await fetchAddress('1G8XTwZkUzu7DJYDW4oA4JX5shnW8LcpC2');
   expect(address.names[0]).toEqual('hankstoever.id');
   t();
+});
+
+test('fetches address tx info with bitcore', async () => {
+  const infoA = await fetchAddressInfo('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4');
+  const bchainInfoTXs = infoA.txs;
+  const bchainInfoTX = transformTx(bchainInfoTXs[2], '16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4');
+  const bitcoreTXs = await getAddressTransactions('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4', 0, Number.MAX_SAFE_INTEGER);
+  const bitcoreTX = bitcoreTXs.find(t => t.txid === '7daa187ae06803d4def226503cbfee0b054dc4c4be07d203fa9c0445dd21d60d');
+
+  expect(bitcoreTX.action).toBe('sent');
+  expect(bitcoreTX.address).toBe('16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4');
+  expect(bitcoreTX.blockHash).toBe('00000000000000000007bdef8e74912573d72f1793509e003f8bcb0c14c2901a');
+  expect(bitcoreTX.blockHeight).toBe(606697);
+  expect(bitcoreTX.confirmations).toBeGreaterThan(100);
+  expect(bitcoreTX.date).toBe('2019-12-05T00:15:25.000Z');
+  expect(bitcoreTX.fee).toBe(1424);
+  expect(bitcoreTX.totalTransferred).toBe(395584);
+  expect(bitcoreTX.txid).toBe('7daa187ae06803d4def226503cbfee0b054dc4c4be07d203fa9c0445dd21d60d');
+
+  /* Data needed:
+          block height
+          date time
+          txid hash
+          block hash
+          total transferred btc
+          from address
+          confirmations count
+          fees btc
+          from address
+          to addresses and btc amounts
+          sent or received status
+  */
+
+
+
+  /*
+    front-end single tx page uses:
+      single.js { blockheight, valueOut, confirmations, vin, vout, feeBTC }
+      transaction.js { blockTime, blockheight, vin, vout, id }
+      transaction-details.js { valueOut, confirmations, fees, vin, vout }
+  */
+
+  console.log('ok');
 });
 
 test.skip('fetches a TX', async () => {
