@@ -80,11 +80,16 @@ export type BitcoreAddressTxInfo = {
   totalTransferred: number;
   fee: number;
   action: 'sent' | 'received';
+  outputs: {
+    address: string | false; 
+    value: number;
+  }[];
 };
 
 export type BitcoreAddressTxInfoQueryResult = BitcoreAddressCoinsQueryResult & {
   txInfo: BitcoreTransactionQueryResult;
   spentTxInfo?: BitcoreTransactionQueryResult;
+  spentTxs?: BitcoreAddressCoinsQueryResult[];
 };
 
 export const getAddressTransactions = async (
@@ -129,6 +134,14 @@ export const getAddressTransactions = async (
           preserveNullAndEmptyArrays: true,
         }
       },
+      {
+        $lookup: {
+          from: Collections.Coins,
+          localField: 'spentTxid',
+          foreignField: 'mintTxid',
+          as: 'spentTxs'
+        }
+      },
     ])
     .limit(count)
     .sort({ mintHeight: -1 })
@@ -147,6 +160,10 @@ export const getAddressTransactions = async (
       totalTransferred: isSpend ? tx.spentTxInfo.value : tx.txInfo.value,
       fee: tx.txInfo.fee,
       action: isSpend ? 'sent' : 'received',
+      outputs: isSpend ? tx.spentTxs.map(tx => ({
+        address: tx.address === 'false' ? false : tx.address,
+        value: tx.value
+      })) : []
     };
     return result;
   });
