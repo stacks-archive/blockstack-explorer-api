@@ -9,7 +9,7 @@ import {
   getBlockTransactions,
   getBlockHash,
   BitcoreTransaction,
-  Block
+  BitcoreBlock
 } from '../bitcore-db/queries';
 import {
   getNameOperationsForBlock,
@@ -29,12 +29,18 @@ export type HistoryInfoNameOp = NameOperationsForBlockResult & {
   subdomains?: Subdomain[];
 }
 
-class BlockAggregator extends AggregatorWithArgs<Block, BlockAggregatorOpts> {
+export type BlockAggregatorResult = BitcoreBlock & {
+  transactions: BitcoreTransaction[];
+  nameOperations: NameOperationsForBlockResult[];
+  rewardFormatted: string;
+};
+
+class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAggregatorOpts> {
   key(hashOrHeight: BlockAggregatorOpts) {
     return `Block:${hashOrHeight}`;
   }
 
-  async setter(hashOrHeight: BlockAggregatorOpts) {
+  async setter(hashOrHeight: BlockAggregatorOpts): Promise<BlockAggregatorResult> {
     let hash = hashOrHeight;
     if (hash.toString().length < 10) {
       hash = await getBlockHash(hashOrHeight);
@@ -43,15 +49,15 @@ class BlockAggregator extends AggregatorWithArgs<Block, BlockAggregatorOpts> {
     if (!block) {
       return null;
     }
-    const transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
-    block.transactions = transactions.map(tx => ({
+    let transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
+    transactions = transactions.map(tx => ({
       ...tx,
       value: btcValue(tx.value)
     }));
     // const nameOperations = await fetchNameOperations(block.height);
-    const nameOperations = await getNameOperationsForBlock(block.height);
+    let nameOperations = await getNameOperationsForBlock(block.height);
     const { time } = block;
-    block.nameOperations = await BluebirdPromise.map(
+    nameOperations = await BluebirdPromise.map(
       nameOperations,
       async _nameOp => {
         try {
@@ -73,12 +79,16 @@ class BlockAggregator extends AggregatorWithArgs<Block, BlockAggregatorOpts> {
       },
       { concurrency: 1 }
     );
+    nameOperations = nameOperations.filter(Boolean);
+    const rewardFormatted = formatNumber(btcValue(block.reward));
 
-    block.rewardFormatted = formatNumber(btcValue(block.reward));
-
-    block.nameOperations = block.nameOperations.filter(Boolean);
-
-    return block;
+    const result = {
+      ...block,
+      nameOperations,
+      transactions,
+      rewardFormatted
+    };
+    return result;
   }
 
   expiry() {

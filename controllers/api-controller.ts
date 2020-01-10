@@ -117,7 +117,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
   APIController.get(
     '/stacks/addresses/:address',
     respond(async (req) => {
-      let page = parseInt(req.params.page, 10);
+      let page = parseInt(req.query.page, 10);
       if (!page || !Number.isFinite(page) || page < 0) {
         page = 0;
       }

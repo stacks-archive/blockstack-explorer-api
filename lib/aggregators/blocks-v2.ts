@@ -3,16 +3,20 @@ import * as BlueBirdPromise from 'bluebird';
 import * as multi from 'multi-progress';
 
 import { AggregatorWithArgs } from './aggregator';
-import BlockAggregator from './block-v2';
+import BlockAggregator, { BlockAggregatorResult } from './block-v2';
 
-import { getBlocks, Block } from '../bitcore-db/queries';
+import { getBlocks, BitcoreBlock } from '../bitcore-db/queries';
 
 export type BlockAggregatorOpts = {
   date: string | undefined;
   page: number;
 }
 
-class BlocksAggregator extends AggregatorWithArgs<Block[], BlockAggregatorOpts> {
+export type BlocksAggregatorResult = Partial<BlockAggregatorResult> & BitcoreBlock & {
+  _block?: BitcoreBlock;
+};
+
+class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult[], BlockAggregatorOpts> {
   key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
@@ -21,24 +25,24 @@ class BlocksAggregator extends AggregatorWithArgs<Block[], BlockAggregatorOpts> 
     return `Blocks:${date}:${page}`;
   }
 
-  async setter({date, page}: BlockAggregatorOpts) {
+  async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult[]> {
     const blocks = await getBlocks(date, page);
     const concurrency = process.env.API_CONCURRENCY
       ? parseInt(process.env.API_CONCURRENCY, 10)
       : 1;
-    const getBlock = async (_block: Block) => {
+    const result = await BlueBirdPromise.map(blocks, async (block) => {
       try {
-        const blockData = await BlockAggregator.fetch(_block.hash);
+        const blockData = await BlockAggregator.fetch(block.hash);
         return {
           ...blockData,
-          _block
+          _block: block
         };
       } catch (error) {
         console.error(error);
-        return _block;
+        return block;
       }
-    }
-    return BlueBirdPromise.map(blocks, getBlock, { concurrency });
+    }, { concurrency });
+    return result;
   }
 
   expiry({date}: BlockAggregatorOpts) {
