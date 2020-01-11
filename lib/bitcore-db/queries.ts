@@ -1,6 +1,5 @@
 import * as moment from 'moment';
 import { getDB } from './index';
-import { HistoryInfoNameOp } from '../aggregators/block-v2';
 
 enum Collections {
   Blocks = 'blocks',
@@ -29,7 +28,7 @@ const enum BitcoreSpentHeightIndicators {
   error = -4
 }
 
-export type BitcoreBlockQueryResult = {
+type BlockQueryResult = {
   bits: number;
   chain: string;
   hash: string;
@@ -48,14 +47,53 @@ export type BitcoreBlockQueryResult = {
   version: number;
 }
 
-export type BitcoreBlock = Omit<BitcoreBlockQueryResult, 'time'> & {
+export type BitcoreBlock = {
+  hash: string;
+  height: number;
   time: number;
-  date: string;
+  size: number;
   txCount: number;
+  reward: number;
 };
 
+function parseBlockQueryResult(result: BlockQueryResult): BitcoreBlock {
+  return {
+    hash: result.hash,
+    height: result.height,
+    time: Math.round(result.time.getTime() / 1000),
+    size: result.size,
+    txCount: result.transactionCount,
+    reward: result.reward,
+  };
+}
 
-export type BitcoreAddressCoinsQueryResult = {
+function parseTransactionQueryResult(
+  result: TransactionAggregatedQueryResult, 
+  tipHeight: number
+): BitcoreTransaction {
+  const tx: BitcoreTransaction = {
+    txid: result.txid,
+    blockHeight: result.blockHeight,
+    blockHash: result.blockHash,
+    blockTime: Math.round(result.blockTime.getTime() / 1000),
+    confirmations: tipHeight - result.blockHeight + 1,
+    value: result.value,
+    fee: result.fee,
+    size: result.size,
+    inputs: result.txInputs.map(tx => ({
+      address: tx.address === 'false' ? false : tx.address,
+      value: tx.value
+    })),
+    outputs: result.txOutputs.map(tx => ({
+      address: tx.address === 'false' ? false : tx.address,
+      script: tx.script.buffer.toString('base64'),
+      value: tx.value
+    }))
+  };
+  return tx;
+}
+
+type CoinsQueryResult = {
   address: string;
   chain: string;
   coinbase: boolean;
@@ -70,34 +108,45 @@ export type BitcoreAddressCoinsQueryResult = {
   value: number;
 };
 
-export type BitcoreAddressTxInfo = {
-  address: string;
+export type BitcoreTransaction = {
   blockHeight: number;
   blockHash: string;
+  blockTime: number;
   confirmations: number;
-  date: string;
   txid: string;
-  totalTransferred: number;
+  value: number;
   fee: number;
-  action: 'sent' | 'received';
+  size: number;
+  inputs: {
+    address: string | false;
+    value: number;
+  }[];
   outputs: {
     address: string | false; 
     value: number;
+    /** base64 string */
+    script: string;
   }[];
 };
 
-export type BitcoreAddressTxInfoQueryResult = BitcoreAddressCoinsQueryResult & {
-  txInfo: BitcoreTransactionQueryResult;
-  spentTxInfo?: BitcoreTransactionQueryResult;
-  spentTxs?: BitcoreAddressCoinsQueryResult[];
+export type BitcoreAddressTxInfo = BitcoreTransaction & {
+  address: string;
+  totalTransferred: number;
+  action: 'sent' | 'received';
+};
+
+type AddressTxInfoQueryResult = CoinsQueryResult & {
+  mintTx: TransactionQueryResult;
+  spentTx?: TransactionQueryResult;
+  txOutputs: CoinsQueryResult[];
 };
 
 export const getAddressTransactions = async (
   address: string, page = 0, count = 20
 ): Promise<BitcoreAddressTxInfo[]> => {
-  const tip = await getLatestBlock();
+  const tip = await getLatestBlockHeight();
   const db = await getDB();
-  const collection = db.collection<BitcoreAddressTxInfoQueryResult>(Collections.Coins);
+  const collection = db.collection<AddressTxInfoQueryResult>(Collections.Coins);
   const result = await collection
     .aggregate([
       {
@@ -111,12 +160,12 @@ export const getAddressTransactions = async (
           from: Collections.Transactions,
           localField: 'mintTxid',
           foreignField: 'txid',
-          as: 'txInfo'
+          as: 'mintTx'
         }
       },
-      { 
+      {
         $unwind: {
-          path: "$txInfo",
+          path: "$mintTx",
           preserveNullAndEmptyArrays: true,
         }
       },
@@ -125,12 +174,12 @@ export const getAddressTransactions = async (
           from: Collections.Transactions,
           localField: 'spentTxid',
           foreignField: 'txid',
-          as: 'spentTxInfo'
+          as: 'spentTx'
         }
       },
-      { 
+      {
         $unwind: {
-          path: "$spentTxInfo",
+          path: "$spentTx",
           preserveNullAndEmptyArrays: true,
         }
       },
@@ -139,7 +188,7 @@ export const getAddressTransactions = async (
           from: Collections.Coins,
           localField: 'spentTxid',
           foreignField: 'mintTxid',
-          as: 'spentTxs'
+          as: 'txOutputs'
         }
       },
     ])
@@ -149,19 +198,23 @@ export const getAddressTransactions = async (
     .toArray();
 
   const txs = result.map(tx => {
-    const isSpend = !!tx.spentTxInfo;
+    const isSpend = !!tx.spentTx;
     const result: BitcoreAddressTxInfo = {
       address: tx.address,
-      blockHeight: tx.mintHeight,
-      blockHash: tx.txInfo.blockHash,
-      confirmations: tip.height - tx.txInfo.blockHeight + 1,
-      date: tx.txInfo.blockTime.toISOString(),
-      txid: tx.mintTxid,
-      totalTransferred: isSpend ? tx.spentTxInfo.value : tx.txInfo.value,
-      fee: tx.txInfo.fee,
       action: isSpend ? 'sent' : 'received',
-      outputs: isSpend ? tx.spentTxs.map(tx => ({
+      totalTransferred: isSpend ? tx.spentTx.value : tx.mintTx.value,
+      size: isSpend ? tx.spentTx.size : tx.mintTx.size,
+      value: tx.value,
+      blockHeight: tx.mintHeight,
+      blockHash: tx.mintTx.blockHash,
+      confirmations: tip - tx.mintTx.blockHeight + 1,
+      blockTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
+      txid: tx.mintTxid,
+      fee: tx.mintTx.fee,
+      inputs: [],
+      outputs: isSpend ? tx.txOutputs.map(tx => ({
         address: tx.address === 'false' ? false : tx.address,
+        script: tx.script.buffer.toString('base64'),
         value: tx.value
       })) : []
     };
@@ -172,17 +225,17 @@ export const getAddressTransactions = async (
 };
 
 
-export type BitcoreAddressBalanceResult = {
+export type BitcoreAddressBalance = {
   balance: number; 
   totalReceived: number; 
   totalSent: number;
   totalTransactions: number;
 };
 
-export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddressBalanceResult> => {
+export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddressBalance> => {
   const db = await getDB();
 
-  const collection = db.collection<BitcoreAddressCoinsQueryResult>(Collections.Coins);
+  const collection = db.collection<CoinsQueryResult>(Collections.Coins);
   const result = await collection.aggregate<{ _id: string; balance: number; count: number }>(
     [
       {
@@ -216,7 +269,7 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
     ]
   ).toArray();
 
-  const totals = result.reduce<BitcoreAddressBalanceResult>(
+  const totals = result.reduce<BitcoreAddressBalance>(
     (acc, cur) => {
       if (cur._id === 'unspent') {
         acc.balance += cur.balance;
@@ -234,7 +287,7 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
 
 export const getBlocks = async (date: string, page = 0): Promise<BitcoreBlock[]> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const dateQuery = moment(date).utc();
   const beginning = dateQuery.startOf('day');
   const end = moment(beginning).endOf('day');
@@ -251,80 +304,50 @@ export const getBlocks = async (date: string, page = 0): Promise<BitcoreBlock[]>
     .skip(page * 100)
     .toArray();
 
-  const blocks: BitcoreBlock[] = blocksResult.map(block => ({
-    ...block,
-    time: block.time.getTime() / 1000,
-    date: block.time.toISOString(),
-    txCount: block.transactionCount
-  }));
-
+  const blocks = blocksResult.map(block => parseBlockQueryResult(block));
   return blocks;
 };
 
 export const getBlock = async (hash: string): Promise<BitcoreBlock> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blockResult = await collection.findOne({
     hash
   });
-  const block: BitcoreBlock = {
-    ...blockResult,
-    time: blockResult.time.getTime() / 1000,
-    date: blockResult.time.toISOString(),
-    txCount: blockResult.transactionCount
-  };
-
+  const block = parseBlockQueryResult(blockResult);
   return block;
 };
 
 export const getBlockByHeight = async (height: number): Promise<BitcoreBlock> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blockResult = await collection.findOne({
     height
   });
-  const block: BitcoreBlock = {
-    ...blockResult,
-    time: blockResult.time.getTime() / 1000,
-    date: blockResult.time.toISOString(),
-    txCount: blockResult.transactionCount
-  };
-
+  const block = parseBlockQueryResult(blockResult);
   return block;
 };
 
 export const getBlockTransactions = async (
-  hash: string
+  hash: string,
+  page = 0,
+  count = 20,
 ): Promise<BitcoreTransaction[]> => {
+  const tip = await getLatestBlockHeight();
   const db = await getDB();
-  const txCollection = db.collection<BitcoreTransactionQueryResult>(Collections.Transactions);
+  const txCollection = db.collection<TransactionAggregatedQueryResult>(Collections.Transactions);
   const txResults = await txCollection
-    .find({
-      blockHash: hash
-    })
-    .limit(10)
+    .aggregate(createAggregateTxQuery({blockHash: hash}))
+    .limit(count)
+    .sort({ blockHeight: -1 })
+    .skip(page * count)
     .toArray();
-  const result = txResults.map(tx => ({
-    ...tx,
-    blockTime: tx.blockTime.toISOString()
-  }));
+
+  const result = txResults.map(tx => parseTransactionQueryResult(tx, tip));
   return result;
 };
 
-export type BitcoreTransaction = {
-  txid: string;
-  blockHeight: number;
-  blockHash: string;
-  blockTime: string;
-  coinbase: boolean;
-  fee: number;
-  size: number;
-  inputCount: number;
-  outputCount: number;
-  value: number;
-};
-
-export type BitcoreTransactionQueryResult = {
+type TransactionQueryResult = {
   txid: string;
   blockHeight: number;
   blockHash: string;
@@ -337,6 +360,56 @@ export type BitcoreTransactionQueryResult = {
   value: number;
 };
 
+type TransactionAggregatedQueryResult = TransactionQueryResult & {
+  txInputs: CoinsQueryResult[];
+  txOutputs: CoinsQueryResult[];
+};
+
+const createAggregateTxQuery = (match: object) => {
+  return [
+    {
+      $match: {
+        ...chainQuery,
+        ...match
+      },
+    },
+    {
+      $lookup: {
+        from: Collections.Coins,
+        localField: 'txid',
+        foreignField: 'spentTxid',
+        as: 'txInputs'
+      }
+    },
+    {
+      $lookup: {
+        from: Collections.Coins,
+        localField: 'txid',
+        foreignField: 'mintTxid',
+        as: 'txOutputs'
+      }
+    },
+  ]
+};
+
+export const getTX = async (txid: string): Promise<BitcoreTransaction | null> => {
+  const tip = await getLatestBlockHeight();
+  const db = await getDB();
+  const collection = db.collection<TransactionAggregatedQueryResult>(Collections.Transactions);
+  const results = await collection
+    .aggregate(createAggregateTxQuery({txid}))
+    .limit(1)
+    .toArray();
+
+  if (!results || results.length === 0) {
+    return null;
+  }
+  const result = results[0];
+  const tx = parseTransactionQueryResult(result, tip);
+  return tx;
+};
+
+/*
 export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
   const db = await getDB();
   const collection = db.collection<BitcoreTransactionQueryResult>(Collections.Transactions);
@@ -350,53 +423,61 @@ export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
   } 
   return result;
 };
+*/
+
 
 export const getBlockHash = async (height: string): Promise<string> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const block = await collection.findOne({
     height: parseInt(height, 10),
     ...chainQuery
+  }, { 
+    projection: { _id: 0, hash: 1 } 
   });
   return block.hash;
 };
 
+export const getLatestBlockHeight = async (): Promise<number> => {
+  const db = await getDB();
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
+  const blockResult = await collection.findOne({
+    ...chainQuery,
+    processed: true,
+  }, { 
+    projection: { _id: 0, height: 1 }, 
+    sort: { height: -1 } 
+  });
+  return blockResult.height;
+};
+
 export const getLatestBlock = async (): Promise<BitcoreBlock> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blockResult = await collection.findOne({
     ...chainQuery,
     processed: true,
   }, { sort: { height: -1 } });
-  const block: BitcoreBlock = {
-    ...blockResult,
-    time: blockResult.time.getTime() / 1000,
-    date: blockResult.time.toISOString(),
-    txCount: blockResult.transactionCount
-  };
+  const block = parseBlockQueryResult(blockResult);
   return block;
-};
-
-export const getTimeForBlock = async (height: number): Promise<number> => {
-  const block = await getBlockByHeight(height);
-  return new Date(block.date).getTime();
 };
 
 export const getTimesForBlockHeights = async (
   heights: number[]
 ): Promise<Record<number, number>> => {
   const db = await getDB();
-  const collection = db.collection<BitcoreBlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blocks = await collection
     .find({
       height: {
         $in: heights
       }
     })
+    .project({ _id: 0, height: 1, time: 1 })
     .toArray();
   const timesByHeight: Record<number, number> = {};
   blocks.forEach(block => {
-    timesByHeight[block.height] = block.time.getTime();
+    timesByHeight[block.height] = Math.round(block.time.getTime() / 1000);
   });
   return timesByHeight;
 };

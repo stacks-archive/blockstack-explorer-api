@@ -56,14 +56,13 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
     }));
     // const nameOperations = await fetchNameOperations(block.height);
     let nameOperations = await getNameOperationsForBlock(block.height);
-    const { time } = block;
     nameOperations = await BluebirdPromise.map(
       nameOperations,
       async _nameOp => {
         try {
           const nameOp: HistoryInfoNameOp = { ..._nameOp };
-          nameOp.timeAgo = moment(time * 1000).fromNow(true);
-          nameOp.time = time * 1000;
+          nameOp.timeAgo = moment(block.time * 1000).fromNow(true);
+          nameOp.time = block.time * 1000;
           if (nameOp.opcode === 'NAME_UPDATE') {
             const { txid } = nameOp;
             // const subdomains = await fetchTransactionSubdomains(txid);

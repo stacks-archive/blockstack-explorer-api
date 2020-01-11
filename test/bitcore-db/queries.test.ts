@@ -19,14 +19,26 @@ test('can fetch address txs', async () => {
   expect(bitcoreTX.blockHash).toBe('00000000000000000007bdef8e74912573d72f1793509e003f8bcb0c14c2901a');
   expect(bitcoreTX.blockHeight).toBe(606697);
   expect(bitcoreTX.confirmations).toBeGreaterThan(100);
-  expect(bitcoreTX.date).toBe('2019-12-05T00:15:25.000Z');
+  expect(bitcoreTX.blockTime).toBe(1575504925);
   expect(bitcoreTX.fee).toBe(1424);
   expect(bitcoreTX.totalTransferred).toBe(395584);
   expect(bitcoreTX.txid).toBe('7daa187ae06803d4def226503cbfee0b054dc4c4be07d203fa9c0445dd21d60d');
   expect(bitcoreTX.outputs).toEqual([
-    { address: false, value: 0 },
-    { address: "16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4", value: 235584 },
-    { address: "1111111111111111111114oLvT2", value: 160000 }
+    {
+      address: false,
+      script: 'aidpZD8HJDHofkh30kk0hAH4ziPFnlUX/wOZsJXEG+PNxFtG5gWmcow=',
+      value: 0 
+    },
+    {
+      address: '16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4',
+      script: 'dqkUPqLEL1HAtN/oSUFnCTll8pia+S+IrA==',
+      value: 235584
+    },
+    {
+      address: '1111111111111111111114oLvT2',
+      script: 'dqkUAAAAAAAAAAAAAAAAAAAAAAAAAACIrA==',
+      value: 160000
+    }
   ]);
 });
 
@@ -40,11 +52,11 @@ test('can fetch address balance', async () => {
 
 test('can fetch blocks', async () => {
   const blocks = await getBlocks('2013-02-01');
-  const date = moment(blocks[0].time).utc();
+  const date = moment(blocks[0].time * 1000).utc();
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
   expect(blocks.length).toEqual(100);
-  expect(blocks[0].txCount).toEqual(blocks[0].transactionCount);
+  expect(blocks[0].txCount).toEqual(blocks[0].txCount);
 }, 15000);
 
 test('can fetch blocks with a page', async () => {
@@ -54,6 +66,44 @@ test('can fetch blocks with a page', async () => {
 }, 15000);
 
 test('can fetch a TX', async () => {
+  const tx = await getTX(
+    '910c70050565c4ae17e65e5d487d3c5f17888ba14b672a5c21ec0f2cd8dabf79'
+  );
+  expect(tx.blockHash).toBe('00000000000000000001327c3a31a1718704ab2100248e167f01ff6aaa37f751');
+  expect(tx.blockHeight).toBe(606704);
+  expect(tx.blockTime).toBe(1575507813);
+  expect(tx.confirmations).toBeGreaterThan(1000);
+  expect(tx.fee).toBe(4416);
+  expect(tx.size).toBe(276);
+  expect(tx.txid).toBe('910c70050565c4ae17e65e5d487d3c5f17888ba14b672a5c21ec0f2cd8dabf79');
+  expect(tx.value).toBe(395584);
+  expect(tx.inputs).toEqual([
+    {
+      address: '16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4',
+      value: 400000
+    }
+  ]);
+  expect(tx.outputs).toEqual([
+    {
+      address: false, 
+      script: "aidpZD8HJDHofkh30kk0hAH4ziPFnlUX/wOZsJXEG+PNxFtG5gWmcow=", 
+      value: 0 
+    },
+    {
+      address: "16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4", 
+      script: "dqkUPqLEL1HAtN/oSUFnCTll8pia+S+IrA==", 
+      value: 235584 
+    },
+    {
+      address: "1111111111111111111114oLvT2", 
+      script: "dqkUAAAAAAAAAAAAAAAAAAAAAAAAAACIrA==", 
+      value: 160000 
+    }
+  ]);
+  expect(tx.outputs.reduce((prev, cur) => cur.value + prev, 0)).toBe(tx.value);
+});
+
+test('can fetch a TX 2', async () => {
   const tx = await getTX(
     'df2b060fa2e5e9c8ed5eaf6a45c13753ec8c63282b2688322eba40cd98ea067a'
   );

@@ -105,8 +105,8 @@ export const getTotals = ({ accounts }: { accounts: GenesisAccountInfo[] }) => {
   });
 
   const blocks = Object.keys(totals.vestedAtBlocks)
-    .sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-    .map(b => parseInt(b, 10));
+    .map(b => parseInt(b, 10))
+    .sort((a, b) => a - b);
 
   blocks.forEach(block => {
     const amount = totals.vestedAtBlocks[block];
