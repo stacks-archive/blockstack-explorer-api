@@ -7,6 +7,7 @@ export type TransformedBlockchainInfoTx = BlockchainInfoTx & {
   value: number;
   action: string;
   txid: string;
+  time: number;
 };
 
 export const transformTx = (tx: BlockchainInfoTx, addr: string): TransformedBlockchainInfoTx => {

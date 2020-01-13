@@ -62,7 +62,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
         try {
           const nameOp: HistoryInfoNameOp = { ..._nameOp };
           nameOp.timeAgo = moment(block.time * 1000).fromNow(true);
-          nameOp.time = block.time * 1000;
+          nameOp.time = block.time;
           if (nameOp.opcode === 'NAME_UPDATE') {
             const { txid } = nameOp;
             // const subdomains = await fetchTransactionSubdomains(txid);

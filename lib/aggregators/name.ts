@@ -4,13 +4,14 @@ import { fetchName, FetchNameEntry } from '../client/core-api';
 import AppsAggregator, { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
 import { getNameHistory, NameHistoryResult } from '../core-db-pg/queries';
+import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
 type UserApps = {
   [appUrl: string]: string;
 }
 
 type NameAggregatorResult = {
-  nameRecord: NameHistoryResult[];
+  nameRecord: (NameHistoryResult & { time: number })[];
   userApps: {
     listed: BlockstackApp[];
     unlisted: string[];
@@ -25,7 +26,7 @@ type NameAggregatorInput = {
 
 class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggregatorInput> {
   key({ name, historyPage = 0 }: NameAggregatorInput) {
-    return `Names:${name}?historyPage=${historyPage}`;
+    return `Name:${name}?historyPage=${historyPage}`;
   }
 
   getAppsArray(apps: BlockstackApp[], userApps: UserApps = {}) {
@@ -45,16 +46,27 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
     };
   }
 
-  async setter({ name }: NameAggregatorInput): Promise<NameAggregatorResult> {
+  async setter({ name, historyPage = 0 }: NameAggregatorInput): Promise<NameAggregatorResult> {
     const [person, nameRecord] = await Promise.all([
       fetchName(name),
-      getNameHistory(name),
+      getNameHistory(name, historyPage),
     ]);
     let proofs;
     let userApps: {
       listed: BlockstackApp[];
       unlisted: string[];
     };
+
+    const nameRecordBlockHeights = nameRecord.map(record => record.block_id);
+    const blockTimes = await getTimesForBlockHeights(nameRecordBlockHeights);
+    const nameRecordWithTimes = nameRecord.map(record => {
+      const time = blockTimes[record.block_id];
+      const result = {
+        ...record,
+        time
+      };
+      return result
+    });
 
     if (person) {
       const { profile } = person;
@@ -76,7 +88,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
       // userApps = this.getAppsArray(appsList, profile.apps);
     }
     return {
-      nameRecord,
+      nameRecord: nameRecordWithTimes,
       userApps,
       proofs,
       ...person

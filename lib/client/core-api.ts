@@ -4,7 +4,7 @@ import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import * as RPCClient from 'bitcoin-core';
 import * as dotenv from 'dotenv';
-import { getTX, getLatestBlock } from '../bitcore-db/queries';
+import { getTX, getLatestBlock, getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, BitcoreAddressBalance, getLatestBlockHeight } from '../bitcore-db/queries';
 import { decodeTx, DecodeTxResult } from '../btc-tx-decoder';
 import { decode as decodeStx, StacksDecodeResult } from '../stacks-decoder';
 import { getHistoryFromTxid, HistoryRecordData } from '../core-db-pg/queries';
@@ -185,22 +185,27 @@ export const fetchAddressInfo = async (address: string, limit = 10, offset = 0):
 
 // const fetchAddressInsight = address => fetchJSON(`${explorerApi}/addr/${address}`);
 
-export type FetchAddressResult = FetchAddressCoreResult & FetchAddressInfoResult;
+export type FetchAddressResult = {
+  blockstackCoreData: FetchAddressCoreResult;
+  btcBalanceInfo: BitcoreAddressBalance;
+  btcTransactions: BitcoreAddressTxInfo[];
+};
 
-export const fetchAddress = async (address: string, limit = 0, offset = 0): Promise<FetchAddressResult | null> => {
-  const [coreData, insightData] = await Promise.all([
+export const fetchAddress = async (address: string, page = 0, count = 20): Promise<FetchAddressResult | null> => {
+  const [coreData, btcBalanceInfo, bitcoreTxs] = await Promise.all([
     fetchAddressCore(address),
-    fetchAddressInfo(address, limit, offset)
+    getAddressBtcBalance(address),
+    getAddressTransactions(address, page, count)
   ]);
-  if (!insightData) {
+  if (!bitcoreTxs) {
     return null;
   }
   return {
-    ...coreData,
-    ...insightData
+    blockstackCoreData: coreData,
+    btcBalanceInfo: btcBalanceInfo,
+    btcTransactions: bitcoreTxs,
   };
 };
-
 
 export type FetchNameResult = {
   [name: string]: FetchNameEntry;
@@ -386,10 +391,10 @@ export type FetchTxResult = DecodeTxResult & {
 
 export const fetchTX = async (hash: string): Promise<FetchTxResult> => {
   try {
-    const [tx, rawTx, latestBlock, history] = await Promise.all([
+    const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
       getTX(hash),
       fetchRawTxInfo(hash),
-      getLatestBlock(),
+      getLatestBlockHeight(),
       getHistoryFromTxid(hash)
     ]);
     const decodedTx = Transaction.fromHex(rawTx);
@@ -397,7 +402,7 @@ export const fetchTX = async (hash: string): Promise<FetchTxResult> => {
     const txData = {
       ...formattedTX,
       feeBTC: btcValue(formattedTX.fee),
-      confirmations: latestBlock.height - tx.blockHeight
+      confirmations: latestBlockHeight - tx.blockHeight
     };
     if (history && history.opcode === 'TOKEN_TRANSFER') {
       const tokenTransferHistory = history.historyData as HistoryDataTokenTransfer;

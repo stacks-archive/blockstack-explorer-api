@@ -5,14 +5,23 @@ import { transformTx, TransformedBlockchainInfoTx } from '../transformers/transa
 type BTCAddressAggregatorOpts = {
   address: string;
   txPage?: number;
-}
+};
 
-type BTCAddressAggregatorResult = BlockchainAddressInfo & {
+type BTCAddressTxInfo = {
+  txid: string;
+  value: number;
+  action: string;
+  time: number;
+};
+
+type BTCAddressAggregatorResult = {
   totalSent: number;
   totalReceived: number;
   balance: number;
-  fullTransactions: TransformedBlockchainInfoTx[];
-}
+  transactions: BTCAddressTxInfo[];
+  totalTransactionsCount: number;
+  names: string[];
+};
 
 class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {
   key({address, txPage = 0}: BTCAddressAggregatorOpts) {
@@ -21,18 +30,28 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
 
   async setter({address, txPage = 0}: BTCAddressAggregatorOpts) {
     const perPage = 10;
-    const fetchedAddress = await fetchAddress(address, perPage, perPage * txPage);
-    const fullTransactions = fetchedAddress.txs.map((tx) => transformTx(tx, address));
+    const fetchedAddress = await fetchAddress(address, txPage, perPage);
 
-    const { txs, ...rest } = fetchedAddress;
+    const txs: BTCAddressTxInfo[] = fetchedAddress.btcTransactions.map(tx => {
+      const action = tx.action.charAt(0).toUpperCase() + tx.action.slice(1)
+      const result : BTCAddressTxInfo = {
+        txid: tx.txid,
+        value: tx.totalTransferred,
+        action: action,
+        time: tx.blockTime,
+      };
+      return result;
+    });
 
-    return {
-      ...rest,
-      totalSent: fetchedAddress.total_sent * 10e-9,
-      totalReceived: fetchedAddress.total_received * 10e-9,
-      balance: fetchedAddress.final_balance * 10e-9,
-      fullTransactions
+    const result: BTCAddressAggregatorResult = {
+      totalSent: fetchedAddress.btcBalanceInfo.totalSent,
+      totalReceived: fetchedAddress.btcBalanceInfo.totalReceived,
+      balance: fetchedAddress.btcBalanceInfo.balance,
+      transactions: txs,
+      totalTransactionsCount: fetchedAddress.btcBalanceInfo.totalTransactions,
+      names: fetchedAddress.blockstackCoreData?.names || [],
     };
+    return result;
   }
 
   expiry() {

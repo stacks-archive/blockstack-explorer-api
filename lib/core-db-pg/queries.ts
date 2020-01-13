@@ -239,10 +239,11 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
 
 export type NameHistoryResult = HistoryRecordQueryRow & Partial<HistoryDataEntry>;
 
-export const getNameHistory = async (name: string): Promise<NameHistoryResult[]> => {
+export const getNameHistory = async (name: string, page = 0, limit = 500): Promise<NameHistoryResult[]> => {
   const sql =
-    'select * from history WHERE history_id = $1 ORDER BY block_id DESC';
-  const params = [name];
+    'select * from history WHERE history_id = $1 ORDER BY block_id DESC LIMIT $2 OFFSET $3';
+  const offset = page * limit;
+  const params = [name, limit, offset];
   const db = await getDB();
   const { rows } = await db.query(sql, params);
   const historyRecords: HistoryRecordQueryRow[] = rows;

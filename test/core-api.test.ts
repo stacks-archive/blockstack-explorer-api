@@ -33,7 +33,9 @@ describe('fetchName', () => {
 
 test('fetches an address', async t => {
   const address = await fetchAddress('1G8XTwZkUzu7DJYDW4oA4JX5shnW8LcpC2');
-  expect(address.names[0]).toEqual('hankstoever.id');
+  expect(address.btcBalanceInfo.totalReceived - address.btcBalanceInfo.totalSent).toBe(address.btcBalanceInfo.balance);
+  expect(address.btcBalanceInfo.totalTransactions).toBeGreaterThan(10);
+  expect(address.blockstackCoreData.names[0]).toEqual('hankstoever.id');
   t();
 });
 
@@ -65,7 +67,7 @@ test('fetches an older TX', async () => {
   expect(tx.valueOut).toEqual(4.29555498);
 }, 25000);
 
-test('fetches block info', async () => {
+test.skip('fetches block info', async () => {
   const hash =
     '00000000000000000010eb9ebfa53e0938a8247e8309d1abc026d8f82eecfb67';
   const height = 550348;

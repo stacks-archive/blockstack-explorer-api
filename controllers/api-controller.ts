@@ -60,7 +60,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/names/:name',
-    respond(req => NameAggregator.fetch({name: req.params.name, historyPage: req.query.page}))
+    respond(req => NameAggregator.fetch({name: req.params.name, historyPage: parseInt(req.query.page, 0)}))
   );
 
   APIController.get(
@@ -71,7 +71,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
   APIController.get(
     '/addresses/:address',
     respond(req =>
-      BTCAddressAggregator.fetch({address: req.params.address, txPage: req.query.page})
+      BTCAddressAggregator.fetch({address: req.params.address, txPage: parseInt(req.query.page, 10)})
     )
   );
 

@@ -144,6 +144,9 @@ type AddressTxInfoQueryResult = CoinsQueryResult & {
 export const getAddressTransactions = async (
   address: string, page = 0, count = 20
 ): Promise<BitcoreAddressTxInfo[]> => {
+  if (!count) {
+    count = 20;
+  }
   const tip = await getLatestBlockHeight();
   const db = await getDB();
   const collection = db.collection<AddressTxInfoQueryResult>(Collections.Coins);
@@ -192,9 +195,9 @@ export const getAddressTransactions = async (
         }
       },
     ])
-    .limit(count)
     .sort({ mintHeight: -1 })
     .skip(page * count)
+    .limit(count)
     .toArray();
 
   const txs = result.map(tx => {
