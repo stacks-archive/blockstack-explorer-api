@@ -40,6 +40,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
         try {
           const nameOp: BlockAggregatorNameOperationResult = { 
             ..._nameOp,
+            // TODO: this should be removed and formatted for display on the front-end.
             timeAgo: moment(time * 1000).fromNow(true),
             time: time * 1000,
             subdomains: undefined

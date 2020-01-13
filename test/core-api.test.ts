@@ -67,6 +67,7 @@ test('fetches an older TX', async () => {
   expect(tx.valueOut).toEqual(4.29555498);
 }, 25000);
 
+// TODO: replace with equivalent tests for block-v2 sources
 test.skip('fetches block info', async () => {
   const hash =
     '00000000000000000010eb9ebfa53e0938a8247e8309d1abc026d8f82eecfb67';
@@ -91,7 +92,8 @@ test.skip('fetches block info', async () => {
   expect(nameOperation.opcode).toBe('NAME_UPDATE');
 }, 30000);
 
-test('fetches blocks on a date', async () => {
+// TODO: replace with equivalent tests for blocks-v2 sources
+test.skip('fetches blocks on a date', async () => {
   const date = '2018-10-05';
   const blocks = await fetchBlocks(date);
   const [block] = blocks;

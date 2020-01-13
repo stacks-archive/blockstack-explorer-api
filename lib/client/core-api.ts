@@ -175,16 +175,6 @@ export type FetchAddressInfoResult = BlockchainAddressInfo & {
   txs: BlockchainInfoTx[];
 };
 
-// TODO: [blockchain.info] check accidental 3rd party API usage
-export const fetchAddressInfo = async (address: string, limit = 10, offset = 0): Promise<FetchAddressInfoResult> => {
-  const url = `${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`;
-  console.warn(`Warning: Blockchain.info API queried: ${url}`);
-  const result: FetchAddressInfoResult = await fetchJSON(url);
-  return result
-};
-
-// const fetchAddressInsight = address => fetchJSON(`${explorerApi}/addr/${address}`);
-
 export type FetchAddressResult = {
   blockstackCoreData: FetchAddressCoreResult;
   btcBalanceInfo: BitcoreAddressBalance;

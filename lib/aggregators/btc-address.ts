@@ -1,6 +1,5 @@
 import { AggregatorWithArgs } from './aggregator';
-import { fetchAddress, BlockchainAddressInfo } from '../client/core-api';
-import { transformTx, TransformedBlockchainInfoTx } from '../transformers/transaction';
+import { fetchAddress } from '../client/core-api';
 
 type BTCAddressAggregatorOpts = {
   address: string;

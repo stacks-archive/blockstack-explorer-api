@@ -218,6 +218,7 @@ export const getGenesis2019AddressInfo = async (stacksAddress: string): Promise<
     const lastVestingMonth = blockToTime(
       parseInt(vestingBlocks[(vestingBlocks.length - 1)], 10)
     );
+    // TODO: this should be an absolute timestamp, and formatted for display on the front-end.
     account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
     account.totalFormatted = formatNumber(
       stacksValue(account.value + account.vesting_total)

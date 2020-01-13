@@ -61,6 +61,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
       async _nameOp => {
         try {
           const nameOp: HistoryInfoNameOp = { ..._nameOp };
+          // TODO: this should be removed and formatted for display on the front-end.
           nameOp.timeAgo = moment(block.time * 1000).fromNow(true);
           nameOp.time = block.time;
           if (nameOp.opcode === 'NAME_UPDATE') {
