@@ -173,6 +173,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
           };
           const { txid } = h;
           try {
+            // TODO: refactor to perform a single bitcore query to return all txs
             const hex = await fetchRawTxInfo(txid);
             const decoded = decode(hex);
             historyEntry = {

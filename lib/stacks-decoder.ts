@@ -15,6 +15,7 @@ export type StacksDecodeResult = {
   sender: string;
 };
 
+// TODO: add ability to decode script buffers from bitcore
 export const decode = (rawTX: string): StacksDecodeResult => {
   const tx = btc.Transaction.fromHex(rawTX);
   const data = btc.script.decompile(tx.outs[0].script)[1];

@@ -159,6 +159,7 @@ export type NameOperationsForBlockResult = HistoryRecordQueryRow & (
 export const getNameOperationsForBlock = async (
   blockHeight: number
 ): Promise<NameOperationsForBlockResult[]> => {
+  // TODO: should this also include NAME_RENEWAL, NAME_IMPORT, NAME_TRANSFER ?
   const sql =
     "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
   const params = [blockHeight];

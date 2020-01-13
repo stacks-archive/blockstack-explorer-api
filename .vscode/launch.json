@@ -59,9 +59,7 @@
         "--detectOpenHandles",
         "--collectCoverage=false",
         "--forceExit",
-        // "--testPathIgnorePatterns=core-db",
-        // "--testNamePattern=onlytest",
-        "--ci",
+        // "--testNamePattern=testonly",
         "--config",
         "${workspaceRoot}/jest.config.js"
       ],

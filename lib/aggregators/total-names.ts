@@ -15,7 +15,9 @@ export type TotalNamesResult = {
 class TotalNames extends Aggregator<TotalNamesResult> {
   async setter() {
     const [names, subdomains] = await Promise.all([
+      // TODO: refactor to use pg query rather than core node API
       fetchTotalNames(),
+      // TODO: refactor to use pg query rather than core node API
       fetchTotalSubdomains()
     ]);
     const totals = {

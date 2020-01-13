@@ -14,8 +14,10 @@ type NamespaceAggregatorResult = {
 
 class NamespaceAggregator extends Aggregator<NamespaceAggregatorResult> {
   async setter() {
+    // TODO: refactor to use pg query rather than core node API
     const namespaces = await fetchNamespaces();
     const counts = await BluebirdPromise.map(namespaces, async (namespace: string) => {
+      // TODO: refactor to use pg query rather than core node API
       const count = await fetchNamespaceNameCount(namespace);
       return {
         namespace,

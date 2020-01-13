@@ -383,6 +383,7 @@ export const fetchTX = async (hash: string): Promise<FetchTxResult> => {
   try {
     const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
       getTX(hash),
+      // TODO: refactor to use bitcore
       fetchRawTxInfo(hash),
       getLatestBlockHeight(),
       getHistoryFromTxid(hash)

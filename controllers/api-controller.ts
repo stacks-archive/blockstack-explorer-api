@@ -99,12 +99,14 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/names',
+    // TODO: refactor to use pg query rather than core node API
     respond(req => fetchNames(req.query.page || 0))
   );
 
   APIController.get(
     '/namespaces/:namespace',
     respond(req =>
+      // TODO: refactor to use pg query rather than core node API
       fetchNamespaceNames(req.params.namespace, req.query.page || 0)
     )
   );

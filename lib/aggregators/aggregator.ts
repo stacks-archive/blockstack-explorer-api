@@ -64,7 +64,10 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
   abstract setter(args: TArgs, multi?: multi): Promise<TResult>;
 
   async fetch(args: TArgs, multi?: multi): Promise<TResult> {
-    const verbose = this.verbose(args, multi);
+    let verbose = this.verbose(args, multi);
+    if (process.env.NODE_ENV === 'development') {
+      verbose = true;
+    }
     const key = await this.keyWithTag(args);
     if (verbose) console.log(`Running aggregator: "${key}"`);
     const value = await this.get(args);

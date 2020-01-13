@@ -50,6 +50,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
             nameOp.name === 'id.blockstack'
           ) {
             const { txid } = nameOp;
+            // TODO: refactor to use pg query rather than core node API
             const subdomains = await fetchTransactionSubdomains(txid);
             nameOp.subdomains = subdomains;
           }
