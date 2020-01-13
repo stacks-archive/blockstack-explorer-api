@@ -29,7 +29,7 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
   async setter() {
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
-      NameOperations.setter()
+      NameOperations.setter({page: 0}),
     ]);
 
     const startCount = counts.total - nameOperations.length;

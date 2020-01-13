@@ -191,13 +191,15 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
   return results;
 };
 
-export const getAllNameOperations = async (): Promise<HistoryRecordQueryRow[]> => {
+export const getAllNameOperations = async (page = 0, limit = 100): Promise<HistoryRecordQueryRow[]> => {
   const sql =
     `SELECT * FROM history 
     WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
-    ORDER BY block_id DESC LIMIT 100`;
+    ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
+  const offset = page * limit;
+  const params = [limit, offset];
   const db = await getDB();
-  const { rows } = await db.query(sql);
+  const { rows } = await db.query(sql, params);
   const historyRows: HistoryRecordQueryRow[] = rows;
   return historyRows;
 };

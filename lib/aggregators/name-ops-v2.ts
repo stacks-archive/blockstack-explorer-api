@@ -1,6 +1,6 @@
 import * as BluebirdPromise from 'bluebird';
 
-import { Aggregator } from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import {
   getAllNameOperations,
   getSubdomainRegistrationsForTxid,
@@ -16,14 +16,21 @@ export type NameOp = {
 };
 
 export type NameOpsAggregatorResult = NameOp[];
+export type NameOpsAggregatorArgs = {
+  page: number;
+};
 
-class NameOpsAggregator extends Aggregator<NameOpsAggregatorResult> {
+class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
   expiry() {
     return 10 * 60; // 10 minutes
   }
 
-  async setter(): Promise<NameOpsAggregatorResult> {
-    const history = await getAllNameOperations();
+  key({page = 0}: NameOpsAggregatorArgs) {
+    return `NameOpsAggregator:${page || 0}`;
+  }
+
+  async setter({page = 0}: NameOpsAggregatorArgs): Promise<NameOpsAggregatorResult> {
+    const history = await getAllNameOperations(page);
     const blockHeights = history.map(record => record.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
     const nameOps = await BluebirdPromise.map(
