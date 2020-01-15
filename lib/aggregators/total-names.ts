@@ -2,6 +2,7 @@ import * as accounting from 'accounting';
 import { Aggregator } from './aggregator';
 
 import { fetchTotalNames, fetchTotalSubdomains } from '../client/core-api';
+import { getTotalSubdomainCount, getTotalNameCount } from '../core-db-pg/queries';
 
 export type TotalNamesResult = {
   namesFormatted: string;
@@ -14,16 +15,15 @@ export type TotalNamesResult = {
 
 class TotalNames extends Aggregator<TotalNamesResult> {
   async setter() {
-    const [names, subdomains] = await Promise.all([
-      // TODO: refactor to use pg query rather than core node API
+    const [namesCount, subdomainsCount] = await Promise.all([
+      // TODO: replace with pg-based getTotalNameCount() when ready
       fetchTotalNames(),
-      // TODO: refactor to use pg query rather than core node API
-      fetchTotalSubdomains()
+      getTotalSubdomainCount()
     ]);
     const totals = {
-      names: names.names_count,
-      subdomains: subdomains.names_count,
-      total: names.names_count + subdomains.names_count
+      names: namesCount.names_count,
+      subdomains: subdomainsCount,
+      total: namesCount.names_count + subdomainsCount
     };
     return {
       ...totals,

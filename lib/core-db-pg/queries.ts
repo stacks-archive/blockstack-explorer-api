@@ -35,7 +35,7 @@ export const getRecentSubdomains = async (limit: number, page = 0): Promise<Subd
   const sql = 'select * from subdomain_records ORDER BY block_height DESC LIMIT $1 OFFSET $2;';
   const params = [limit, page * limit];
   const db = await getDB();
-  const { rows }: { rows: SubdomainRecordQueryResult[] } = await db.query(sql, params);
+  const rows = await db.query<SubdomainRecordQueryResult>(sql, params);
   const results: Subdomain[] = rows.map(row => ({
     ...row,
     name: row.fully_qualified_subdomain,
@@ -83,8 +83,7 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const nameRows: NameRecordQueryResult[] = rows;
+  const nameRows = await db.query<NameRecordQueryResult>(sql, params);
   const results: NameRecord[] = nameRows.map(row => ({
     ...row,
     name: row.name,
@@ -111,13 +110,38 @@ export type StacksTransaction = {
   historyData: HistoryDataEntry;
 };
 
+/**
+ * Returns the Blockstack names (and/or subdomains) owned by a given address
+ */
+export const getAddressCoreNames = async(): Promise<{names: string[]; expiredNames: []}> => {
+  const sql = ``;
+  const db = await getDB();
+  // const result = await db.query<{ count: string }>(sql);
+  return null;
+};
+
+export const getTotalSubdomainCount = async(): Promise<number> => {
+  const sql = `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
+  const db = await getDB();
+  const result = await db.querySingle<{ count: string }>(sql);
+  return parseInt(result.count);
+};
+
+export const getTotalNameCount = async(): Promise<number> => {
+  // TODO: Needs to filter expired names, replicate logic from
+  // https://github.com/blockstack/blockstack-core/blob/9a9f65f5fe8e4435b3388e0b781982a85adffba3/blockstack/lib/nameset/db.py#L2678
+  const sql = `SELECT COUNT(DISTINCT name) FROM name_records`
+  const db = await getDB();
+  const result = await db.querySingle<{ count: string }>(sql);
+  return parseInt(result.count);
+};
+
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
   const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
   const params = [limit, page * limit];
   // const rows = await getAll(DB.Blockstack, sql, params);
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRows: HistoryRecordQueryRow[] = rows;
+  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results: StacksTransaction[] = historyRows.map(row => {
     let historyData: HistoryDataEntry;
     try {
@@ -156,6 +180,13 @@ export type NameOperationsForBlockResult = HistoryRecordQueryRow & (
   HistoryDataNamePreorder
 );
 
+// TODO: implement getNameOperationsForBlocks(blocksHeights: number[]);
+//       for use in blocks-v2 aggregator
+// export const getNameOperationsForBlocks = async (
+//   blockHeights: number[]
+// ): Promise<Record<number, NameOperationsForBlockResult[]>> => {
+// };
+
 export const getNameOperationsForBlock = async (
   blockHeight: number
 ): Promise<NameOperationsForBlockResult[]> => {
@@ -164,8 +195,7 @@ export const getNameOperationsForBlock = async (
     "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
   const params = [blockHeight];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRows: HistoryRecordQueryRow[] = rows;
+  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results = historyRows.map(row => {
     const historyData: (
       HistoryDataNameUpdate | 
@@ -179,11 +209,24 @@ export const getNameOperationsForBlock = async (
   return results;
 };
 
+export const getNameOperationCountForBlock = async (
+  blockHeight: number
+): Promise<number> => {
+  const sql =
+    `SELECT COUNT(*) FROM history 
+    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
+    AND block_id = $1`;
+  const params = [blockHeight];
+  const db = await getDB();
+  const result = await db.querySingle<{ count: number }>(sql, params);
+  return result.count;
+};
+
 export const getSubdomainRegistrationsForTxid = async (txid: string) => {
   const sql = 'SELECT * FROM subdomain_records WHERE txid = $1';
   const params = [txid];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
+  const rows = await db.query<SubdomainRecordQueryResult>(sql, params);
   const results: Subdomain[] = rows.map(row => ({
     ...row,
     name: row.fully_qualified_subdomain,
@@ -192,16 +235,32 @@ export const getSubdomainRegistrationsForTxid = async (txid: string) => {
   return results;
 };
 
-export const getAllNameOperations = async (page = 0, limit = 100): Promise<HistoryRecordQueryRow[]> => {
-  const sql =
-    `SELECT * FROM history 
-    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
-    ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
+export type NameRegistrationQueryRow = {
+  block_id: number;
+  history_id: string;
+  creator_address: string;
+  owner: string;
+  fully_qualified_subdomain: string;
+};
+
+export const getAllNameOperations = async (page = 0, limit = 100): Promise<NameRegistrationQueryRow[]> => {
+  const sql = `
+    SELECT 
+      h.block_id, h.history_id, h.creator_address,
+      s.owner, s.fully_qualified_subdomain
+    FROM history h
+    LEFT JOIN subdomain_records s
+    ON h.txid = s.txid
+    WHERE (
+      s.owner IS NOT NULL
+      OR h.opcode = 'NAME_REGISTRATION'
+    )
+    ORDER BY h.block_id DESC
+    LIMIT $1 OFFSET $2`;
   const offset = page * limit;
   const params = [limit, offset];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRows: HistoryRecordQueryRow[] = rows;
+  const historyRows = await db.query<NameRegistrationQueryRow>(sql, params);
   return historyRows;
 };
 
@@ -217,13 +276,13 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
     ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
   const params = [limit, limit * page];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRows: HistoryRecordQueryRow[] = rows;
+  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results: HistoryRecordResult[] = await BluebirdPromise.map(
     historyRows,
     async (row: HistoryRecordQueryRow) => {
       const historyData: HistoryDataEntry = JSON.parse(row.history_data);
       if (row.opcode === 'NAME_UPDATE') {
+        // TODO: use join query to avoid this
         const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
         return {
           ...row,
@@ -248,8 +307,7 @@ export const getNameHistory = async (name: string, page = 0, limit = 500): Promi
   const offset = page * limit;
   const params = [name, limit, offset];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRecords: HistoryRecordQueryRow[] = rows;
+  const historyRecords = await db.query<HistoryRecordQueryRow>(sql, params);
   const results = historyRecords.map(row => {
     const historyData: HistoryDataEntry = JSON.parse(row.history_data);
     const result: NameHistoryResult = {
@@ -267,9 +325,9 @@ export const getVestingTotalForAddress = async (_address: string): Promise<numbe
     const sql = 'SELECT * FROM account_vesting WHERE address = $1';
     const params = [addr];
     const db = await getDB();
-    const { rows } = await db.query(sql, params);
-    const vestingTotal: number = rows.reduce((prev, row) => {
-      const vestAtBlock: string = row.vesting_value;
+    const rows = await db.query<{vesting_value: string}>(sql, params);
+    const vestingTotal = rows.reduce((prev, row) => {
+      const vestAtBlock = row.vesting_value;
       return prev + parseInt(vestAtBlock, 10);
     }, 0);
     return vestingTotal;
@@ -304,11 +362,11 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
       CAST(totals.credit_value AS bigint) - CAST(totals.debit_value AS bigint)
     ) AS val FROM totals`;
   const db = await getDB();
-  const { rows } = await db.query(sql);
+  const rows = await db.query<{val: string}>(sql);
   if (!rows || rows.length !== 2) {
     throw new Error('Failed to retrieve total_supply in accounts query');
   }
-  const blockHeight: string = rows[0].val;
+  const blockHeight = rows[0].val;
   const unlockedSupply = new BigNumber(rows[1].val);
   return {
     blockHeight,
@@ -337,7 +395,7 @@ export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
     LIMIT $1`;
   const db = await getDB();
   const params = [count];
-  const { rows } = await db.query(sql, params);
+  const rows = await db.query<BalanceInfo>(sql, params);
   const balances: BalanceInfo[] = rows.map(row => ({
     address: row.address,
     balance: new BigNumber(row.balance),
@@ -355,8 +413,7 @@ export const getHistoryFromTxid = async (
   const sql = 'SELECT * from history where txid = $1';
   const params = [txid];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRecords: HistoryRecordQueryRow[] = rows;
+  const historyRecords = await db.query<HistoryRecordQueryRow>(sql, params);
   const [row] = historyRecords;
   if (!row) return null;
   return {
@@ -378,8 +435,7 @@ export const getAddressSTXTransactions = async (
   const offset = page * limit;
   const params = [`%${btcAddress}%`, limit, offset];
   const db = await getDB();
-  const { rows } = await db.query(sql, params);
-  const historyRecords: HistoryRecordQueryRow[] = rows;
+  const historyRecords = await db.query<HistoryRecordQueryRow>(sql, params);
   const history = historyRecords.map(row => ({
     ...row,
     historyData: JSON.parse(row.history_data) as HistoryDataEntry
@@ -406,7 +462,7 @@ export const getAccountVesting = async (
     'SELECT * FROM account_vesting where address = $1 ORDER BY block_id ASC;';
   const db = await getDB();
   const params = [btcAddress];
-  const { rows }: { rows: AccountVesting[] } = await db.query(sql, params);
+  const rows = await db.query<AccountVesting>(sql, params);
   return rows;
 };
 
@@ -445,7 +501,7 @@ export const getTokensGrantedInHardFork = async (
     'SELECT * FROM blockstack_core.accounts where address = $1 and block_id = 373601 LIMIT 10;';
   const db = await getDB();
   const params = [btcAddress];
-  const { rows }: { rows: Account[] } = await db.query(sql, params);
+  const rows = await db.query<Account>(sql, params);
   let total = 0;
   rows.forEach(row => {
     total += parseInt(row.credit_value, 10);

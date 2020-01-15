@@ -13,7 +13,7 @@ interface Months {
 const run = async () => {
   const sql = 'select * from name_records';
   const db = await getDB();
-  const { rows } = await db.query(sql);
+  const { rows } = await db.client.query(sql);
   const months: Months = {};
   rows.forEach(row => {
     const time = blockToTime(row.last_renewed);

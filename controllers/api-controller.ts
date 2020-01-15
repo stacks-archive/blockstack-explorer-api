@@ -7,13 +7,10 @@ import {
   fetchAddress,
   fetchNames,
   fetchNamespaceNames,
-  fetchBlockHash
 } from '../lib/client/core-api';
 
-import NameOpsAggregator from '../lib/aggregators/name-ops';
-import BlocksAggregator from '../lib/aggregators/blocks';
 import NamespaceAggregator from '../lib/aggregators/namespaces';
-import BlockAggregator from '../lib/aggregators/block';
+import BlockAggregator from '../lib/aggregators/block-v2';
 import TotalNamesAggregator from '../lib/aggregators/total-names';
 import StacksAddressAggregator from '../lib/aggregators/stacks-address';
 import HomeInfoAggregator from '../lib/aggregators/home-info';
@@ -49,16 +46,6 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
   );
 
   APIController.get(
-    '/name-operations',
-    respond(async () => {
-      const nameOperations = await NameOpsAggregator.get({});
-      return {
-        nameOperations
-      };
-    })
-  );
-
-  APIController.get(
     '/names/:name',
     respond(req => NameAggregator.fetch({name: req.params.name, historyPage: parseInt(req.query.page, 0)}))
   );
@@ -73,23 +60,6 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     respond(req =>
       BTCAddressAggregator.fetch({address: req.params.address, txPage: parseInt(req.query.page, 10)})
     )
-  );
-
-  APIController.get(
-    '/blocks',
-    respond(req => BlocksAggregator.fetch(req.query.date))
-  );
-
-  APIController.get(
-    '/blocks/:hashOrHeight',
-    respond(async (req) => {
-      const { hashOrHeight } = req.params;
-      let hash = hashOrHeight;
-      if (hashOrHeight.toString().length < 10) {
-        hash = await fetchBlockHash(parseInt(hashOrHeight, 10));
-      }
-      return BlockAggregator.fetch(hash);
-    })
   );
 
   APIController.get(
@@ -133,11 +103,22 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     respond(() => HomeInfoAggregator.fetch())
   );
 
+  type SearchResult = {
+    type: string;
+    id: string;
+  } | {
+    success: false;
+  };
+
   APIController.get(
     '/search/:query',
     respond(async (req) => {
+      
+      // TODO: add stx-address and name IDs to search array
+
       const { query } = req.params;
-      const getOrFail = async (promise: Promise<any>) => {
+
+      const getOrFail = async <T>(promise: Promise<T>) => {
         try {
           const result = await promise;
           return result;
@@ -146,51 +127,58 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
         }
       };
 
-      const blockSearch = async (hashOrHeight: string | number) => {
-        let hash = hashOrHeight;
-        if (hashOrHeight.toString().length < 10) {
-          hash = await fetchBlockHash(hashOrHeight as number);
-        }
-        return BlockAggregator.fetch(hash as string);
+      const blockSearch = async (hashOrHeight: string) => {
+        return BlockAggregator.fetch(hashOrHeight);
       };
 
-      const fetches = [
-        getOrFail(fetchTX(query)),
-        getOrFail(fetchAddress(query)),
-        getOrFail(blockSearch(query))
-      ];
+      const searchResult = new Promise<SearchResult>((resolve, reject) => {
+        Promise.all([
+          getOrFail(fetchTX(query)).then(tx => {
+            if (tx) {
+              resolve({
+                type: 'tx',
+                id: tx.txid
+              });
+              return true;
+            }
+            return null;
+          }),
+          getOrFail(fetchAddress(query)).then(btcAddress => {
+            if (btcAddress) {
+              resolve({
+                type: 'btc-address',
+                id: query
+              });
+              return true;
+            }
+            return null;
+          }),
+          getOrFail(blockSearch(query)).then(block => {
+            if (block) {
+              resolve({
+                type: 'block',
+                id: block.hash
+              });
+              return true;
+            }
+            return null;
+          }),
+        ]).then(results => {
+          if (results.every(r => !r)) {
+            reject(new Error('Failed to find match'));
+          }
+        })
+      });
 
-      const [tx, btcAddress, block] = await Promise.all(fetches);
-
-      if (tx) {
+      try {
+        const result = await searchResult;
+        return result;
+      } catch (error) {
         return {
-          pathname: '/transaction/single',
-          as: `/tx/${query}`,
-          id: query,
-          data: JSON.stringify(tx)
+          success: false
         };
       }
-      if (btcAddress) {
-        return {
-          pathname: '/address/single',
-          as: `/address/${query}`,
-          id: query,
-          address: query,
-          data: btcAddress
-        };
-      }
-      if (block) {
-        return {
-          pathname: '/blocks/single',
-          as: `/block/${block.hash}`,
-          data: block,
-          hash: query
-        };
-      }
 
-      return {
-        success: false
-      };
     })
   );
 

@@ -3,8 +3,6 @@ import {
   fetchName,
   fetchAddress,
   fetchTX,
-  fetchBlock,
-  fetchBlocks
 } from '../lib/client/core-api';
 
 jest.setTimeout(10000);
@@ -68,6 +66,7 @@ test('fetches an older TX', async () => {
 }, 25000);
 
 // TODO: replace with equivalent tests for block-v2 sources
+/*
 test.skip('fetches block info', async () => {
   const hash =
     '00000000000000000010eb9ebfa53e0938a8247e8309d1abc026d8f82eecfb67';
@@ -91,8 +90,10 @@ test.skip('fetches block info', async () => {
   const [nameOperation] = block.nameOperations;
   expect(nameOperation.opcode).toBe('NAME_UPDATE');
 }, 30000);
+*/
 
 // TODO: replace with equivalent tests for blocks-v2 sources
+/*
 test.skip('fetches blocks on a date', async () => {
   const date = '2018-10-05';
   const blocks = await fetchBlocks(date);
@@ -103,3 +104,4 @@ test.skip('fetches blocks on a date', async () => {
   );
   expect(block.time).toEqual(1538698836);
 }, 10000);
+*/

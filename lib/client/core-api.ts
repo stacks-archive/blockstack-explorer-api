@@ -4,7 +4,10 @@ import { network as BlockstackNetwork } from 'blockstack';
 import { Transaction } from 'bitcoinjs-lib';
 import * as RPCClient from 'bitcoin-core';
 import * as dotenv from 'dotenv';
-import { getTX, getLatestBlock, getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, BitcoreAddressBalance, getLatestBlockHeight } from '../bitcore-db/queries';
+import { 
+  getTX, getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
+  BitcoreAddressBalance, getLatestBlockHeight,
+} from '../bitcore-db/queries';
 import { decodeTx, DecodeTxResult } from '../btc-tx-decoder';
 import { decode as decodeStx, StacksDecodeResult } from '../stacks-decoder';
 import { getHistoryFromTxid, HistoryRecordData } from '../core-db-pg/queries';
@@ -35,9 +38,6 @@ moment.updateLocale('en', {
 });
 
 const coreApi = process.env.CORE_API_URL || 'https://core.blockstack.org';
-// const explorerApi = 'https://insight.blockstack.systems/insight-api';
-const explorerApi = 'https://insight.bitpay.com/api';
-const blockchainInfoApi = 'https://blockchain.info';
 const bitcoreApi = process.env.BITCORE_URL;
 
 const PUBLIC_TESTNET_HOST = 'testnet.blockstack.org';
@@ -183,11 +183,13 @@ export type FetchAddressResult = {
 
 export const fetchAddress = async (address: string, page = 0, count = 20): Promise<FetchAddressResult | null> => {
   const [coreData, btcBalanceInfo, bitcoreTxs] = await Promise.all([
+    // TODO: refactor to use pg query rather than core node API
     fetchAddressCore(address),
     getAddressBtcBalance(address),
     getAddressTransactions(address, page, count)
   ]);
-  if (!bitcoreTxs) {
+
+  if (!bitcoreTxs || !btcBalanceInfo || !btcBalanceInfo.totalTransactions) {
     return null;
   }
   return {
@@ -428,26 +430,6 @@ export type BlockchainInfoBlock = {
   main_chain: boolean;
 };
 
-// TODO: [blockchain.info] check accidental 3rd party API usage
-export const fetchBlocks = async (date: string): Promise<BlockchainInfoBlock[]> => {
-  const mom = date ? moment(date) : moment();
-  const endOfDay = mom
-    .utc()
-    .endOf('day')
-    .valueOf();
-  const url = `${blockchainInfoApi}/blocks/${endOfDay}?format=json`;
-  console.warn(`Warning: Blockchain.info API queried: ${url}`);
-  const { blocks }: { blocks: BlockchainInfoBlock[] } = await fetchJSON(url);
-  return blocks;
-};
-
-// TODO: [bitpay.com] check accidental 3rd party API usage
-export const fetchBlockHash = async (height: number): Promise<string> => {
-  const data: { blockHash: string } = await fetchJSON(`${explorerApi}/block-index/${height}`);
-  return data.blockHash;
-};
-
-
 export type BlockchainInfoRawBlock = {
   ver: number;
   next_block: any[];
@@ -511,40 +493,10 @@ export type BlockchainInfoBlockTxOutput = {
   addr?: string;
 };
 
-// TODO: [blockchain.info] check accidental 3rd party API usage
-const fetchBlockInfo = async (hash: string): Promise<BlockchainInfoRawBlock> => {
-  const url = `${blockchainInfoApi}/rawblock/${hash}`;
-  console.warn(`Warning: Blockchain.info API queried: ${url}`);
-  const data: BlockchainInfoRawBlock = await fetchJSON(url);
-  return data
-};
-
 export type BlockchainInfoBlockResult = Omit<BlockchainInfoRawBlock, 'tx'> & {
   nameOperations: BlockstackCoreBitcoinBlockNameOps[];
   transactions: ConvertTxResult[];
   txCount: number;
-};
-
-// TODO: [blockchain.info] check accidental 3rd party API usage
-export const fetchBlock = async (hashOrHeight: string | number): Promise<BlockchainInfoBlockResult> => {
-  let hash: string = hashOrHeight.toString();
-  if (hashOrHeight.toString().length < 10) {
-    hash = await fetchBlockHash(hashOrHeight as number);
-  }
-  const blockInfo = await fetchBlockInfo(hash);
-  if (!blockInfo) {
-    return null;
-  }
-  const block = {
-    ...blockInfo,
-    nameOperations: await fetchNameOperations(blockInfo.height),
-    transactions: blockInfo.tx.map(convertTx)
-  }
-  const { tx, ...rest } = block;
-  return {
-    ...rest,
-    txCount: block.n_tx
-  };
 };
 
 export type NamespaceNameCountResult = {
@@ -590,7 +542,9 @@ export type SubdomainTransactionResult = {
   zonefile_hash: string;
   zonefile_offset: number;
 };
-export const fetchTransactionSubdomains = async (txid: string): Promise<SubdomainTransactionResult[]> => {
+
+// TODO: unused, remove
+const fetchTransactionSubdomains = async (txid: string): Promise<SubdomainTransactionResult[]> => {
   const data: SubdomainTransactionResult[] = await fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
   return data;
 }
@@ -606,6 +560,10 @@ export const fetchTotalNames = async (): Promise<TotalNamesResult> => {
 export type TotalSubdomainsResult = {
   names_count: number;
 };
+
+/**
+ * @deprecated Use the faster query `getTotalSubdomainCount()` from the pg db queries module.
+ */
 export const fetchTotalSubdomains = async (): Promise<TotalSubdomainsResult> => {
   const data: TotalSubdomainsResult = await fetchJSON(`${coreApi}/v1/blockchains/bitcoin/subdomains_count`);
   return data;

@@ -59,7 +59,7 @@
         "--detectOpenHandles",
         "--collectCoverage=false",
         "--forceExit",
-        // "--testNamePattern=testonly",
+        "--testNamePattern=testonly",
         "--config",
         "${workspaceRoot}/jest.config.js"
       ],

@@ -41,9 +41,14 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
   }
 
   async setter(hashOrHeight: BlockAggregatorOpts): Promise<BlockAggregatorResult> {
-    let hash = hashOrHeight;
-    if (hash.toString().length < 10) {
+    let hash: string;
+    if (hashOrHeight.toString().length < 10) {
       hash = await getBlockHash(hashOrHeight);
+    } else {
+      hash = hashOrHeight;
+    }
+    if (!hash) {
+      return null;
     }
     const block = await getBlock(hash);
     if (!block) {
