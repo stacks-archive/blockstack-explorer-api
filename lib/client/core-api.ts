@@ -189,9 +189,6 @@ export const fetchAddress = async (address: string, page = 0, count = 20): Promi
     getAddressTransactions(address, page, count)
   ]);
 
-  if (!bitcoreTxs || !btcBalanceInfo || !btcBalanceInfo.totalTransactions) {
-    return null;
-  }
   return {
     blockstackCoreData: coreData,
     btcBalanceInfo: btcBalanceInfo,
