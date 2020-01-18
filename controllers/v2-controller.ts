@@ -61,7 +61,7 @@ Controller.getAsync('/blocks', async (req, res) => {
     date,
     page: page ? parseInt(page, 10) : 0
   });
-  res.json({ blocks });
+  res.json(blocks);
 });
 
 export type GetStxAddressResult = {

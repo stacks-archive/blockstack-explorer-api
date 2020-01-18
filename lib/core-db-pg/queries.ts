@@ -199,14 +199,38 @@ export type HistoryRecordQueryRow = {
   value_hash: string | null;
 }
 
-export type NameOperationsForBlockResult = HistoryRecordQueryRow & HistoryDataNameOp;
+export const getNameOperationsForBlocks = async (
+  blockHeights: number[]
+) => {
+  const sql = `
+    SELECT records.block_id, COUNT(*)::int as name_ops
+    FROM (
+      SELECT 
+        h.block_id, h.history_id,
+        s.owner
+      FROM history h
+      LEFT JOIN subdomain_records s
+      ON h.txid = s.txid
+      WHERE (
+        s.owner IS NOT NULL
+        OR h.opcode in (
+          'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+        )
+      )
+    ) as records WHERE records.block_id = ANY($1::int[])
+    GROUP BY records.block_id`;
+  const params = [blockHeights];
+  const db = await getDB();
+  const historyRows = await db.query<{block_id: number; name_ops: number}>(sql, params);
+  const results: { [block_id: number]: number } = {};
+  historyRows.forEach(row => {
+    results[row.block_id] = row.name_ops;
+  });
+  return results;
+};
 
-// TODO: implement getNameOperationsForBlocks(blocksHeights: number[]);
-//       for use in blocks-v2 aggregator
-// export const getNameOperationsForBlocks = async (
-//   blockHeights: number[]
-// ): Promise<Record<number, NameOperationsForBlockResult[]>> => {
-// };
+
+export type NameOperationsForBlockResult = HistoryRecordQueryRow & HistoryDataNameOp;
 
 export const getNameOperationsForBlock = async (
   blockHeight: number

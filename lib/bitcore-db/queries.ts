@@ -288,27 +288,51 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
   return totals;
 };
 
-export const getBlocks = async (date: string, page = 0): Promise<BitcoreBlock[]> => {
+export const getBlocks = async (date: string, page = 0, limit = 100) => {
   const db = await getDB();
-  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
+  const collection = db.collection<{
+    blocks: BlockQueryResult[]; 
+    pageInfo: { count: number };
+  }>(Collections.Blocks);
   const dateQuery = moment(date).utc();
   const beginning = dateQuery.startOf('day');
   const end = moment(beginning).endOf('day');
-  const blocksResult = await collection
-    .find({
-      time: {
-        $lte: end.toDate(),
-        $gte: beginning.toDate()
-      },
-      ...chainQuery
-    })
-    .limit(100)
-    .sort({ height: -1 })
-    .skip(page * 100)
-    .toArray();
 
-  const blocks = blocksResult.map(block => parseBlockQueryResult(block));
-  return blocks;
+  const results = await collection.aggregate([
+    { 
+      $match: { 
+        time: {
+          $lte: end.toDate(),
+          $gte: beginning.toDate()
+        },
+        ...chainQuery,
+      },
+    },
+    {
+      $facet: {
+        blocks: [
+          { $sort: { height: -1 } },
+          { $skip: page * limit },
+          { $limit: limit },
+        ],
+        pageInfo: [
+          { $group: { _id: null, count: { $sum: 1 } } },
+        ]
+      }
+    },
+    {
+      $unwind: {
+        path: '$pageInfo', 
+        preserveNullAndEmptyArrays: true 
+      }
+    },
+  ]).toArray();
+
+  const result = results[0];
+  return {
+    blocks: result.blocks.map(block => parseBlockQueryResult(block)),
+    totalCount: result.pageInfo.count,
+  };
 };
 
 export const getBlock = async (hash: string): Promise<BitcoreBlock> => {

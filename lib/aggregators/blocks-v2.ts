@@ -6,17 +6,27 @@ import { AggregatorWithArgs } from './aggregator';
 import BlockAggregator, { BlockAggregatorResult } from './block-v2';
 
 import { getBlocks, BitcoreBlock } from '../bitcore-db/queries';
+import { getNameOperationsForBlocks } from '../core-db-pg/queries';
 
 export type BlockAggregatorOpts = {
   date: string | undefined;
   page: number;
 }
 
-export type BlocksAggregatorResult = Partial<BlockAggregatorResult> & BitcoreBlock & {
-  _block?: BitcoreBlock;
+export type BlocksAggregatorResult = {
+  blocks: {
+    totalNameOperations: any;
+    hash: string;
+    height: number;
+    time: number;
+    size: number;
+    txCount: number;
+    reward: number;
+  }[];
+  availableCount: number;
 };
 
-class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult[], BlockAggregatorOpts> {
+class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockAggregatorOpts> {
   key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
@@ -25,24 +35,18 @@ class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult[], Bloc
     return `Blocks:${date}:${page}`;
   }
 
-  async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult[]> {
-    const blocks = await getBlocks(date, page);
-    const concurrency = process.env.API_CONCURRENCY
-      ? parseInt(process.env.API_CONCURRENCY, 10)
-      : 1;
-    const result = await BlueBirdPromise.map(blocks, async (block) => {
-      try {
-        const blockData = await BlockAggregator.fetch(block.hash);
-        return {
-          ...blockData,
-          _block: block
-        };
-      } catch (error) {
-        console.error(error);
-        return block;
-      }
-    }, { concurrency });
-    return result;
+  async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult> {
+    const blocksResult = await getBlocks(date, page);
+    const blockHeights = blocksResult.blocks.map(block => block.height);
+    const nameOpts = await getNameOperationsForBlocks(blockHeights);
+    const blocks = blocksResult.blocks.map(block => {
+      const nameOps = nameOpts[block.height] || 0;
+      return Object.assign(block, { totalNameOperations: nameOps });
+    })
+    return {
+      blocks: blocks,
+      availableCount: blocksResult.totalCount,
+    };
   }
 
   expiry({date}: BlockAggregatorOpts) {

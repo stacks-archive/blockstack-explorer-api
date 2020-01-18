@@ -51,7 +51,8 @@ test('can fetch address balance', async () => {
 });
 
 test('can fetch blocks', async () => {
-  const blocks = await getBlocks('2013-02-01');
+  const result = await getBlocks('2013-02-01');
+  const blocks = result.blocks;
   const date = moment(blocks[0].time * 1000).utc();
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
   expect(date.format('YYYY-MM-DD')).toEqual('2013-02-01');
@@ -59,9 +60,11 @@ test('can fetch blocks', async () => {
   expect(blocks[0].txCount).toEqual(blocks[0].txCount);
 }, 15000);
 
-test('can fetch blocks with a page', async () => {
-  const blocks = await getBlocks('2013-02-01', 1);
-  const firstPage = await getBlocks('2013-02-01', 0);
+test('can fetch blocks with a page testonly', async () => {
+  const result = await getBlocks('2013-02-01', 1);
+  const blocks = result.blocks;
+  const firstPageResult = await getBlocks('2013-02-01', 0);
+  const firstPage = firstPageResult.blocks;
   expect(blocks[0].hash).not.toEqual(firstPage[firstPage.length - 1].hash);
 }, 15000);
 

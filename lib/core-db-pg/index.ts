@@ -21,7 +21,7 @@ export class PgDB {
     this.client = client;
   }
 
-  async query<T = void>(sql: string, params?: (string | number)[]): Promise<T[]> {
+  async query<T = void>(sql: string, params?: (string | number | number[])[]): Promise<T[]> {
     const result = await this.client.query<T>(sql, params);
     return result.rows;
   }
