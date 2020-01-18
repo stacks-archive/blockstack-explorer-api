@@ -12,7 +12,7 @@ import { decodeTx, DecodeTxResult } from '../btc-tx-decoder';
 import { decode as decodeStx, StacksDecodeResult } from '../stacks-decoder';
 import { getHistoryFromTxid, HistoryRecordData } from '../core-db-pg/queries';
 import { getStxAddresses, GetStxAddressResult } from '../../controllers/v2-controller';
-import { stacksValue, formatNumber, btcValue } from '../utils';
+import { stacksValue, btcValue } from '../utils';
 import { HistoryDataTokenTransfer } from '../core-db-pg/history-data-types';
 
 
@@ -372,12 +372,12 @@ export const fetchRawTxInfo = async (hash: string): Promise<string> => {
 };
 
 export type FetchTxResult = DecodeTxResult & {
-  feeBTC: number;
+  feeBTC: string;
   confirmations: number;
 } & Partial<GetStxAddressResult & HistoryRecordData & {
   memo: string;
   stxDecoded: StacksDecodeResult;
-  valueStacks: number;
+  valueStacks: string;
   valueStacksFormatted: string;
 }>;
 
@@ -413,7 +413,7 @@ export const fetchTX = async (hash: string): Promise<FetchTxResult> => {
           : null,
         stxDecoded,
         valueStacks,
-        valueStacksFormatted: formatNumber(valueStacks)
+        valueStacksFormatted: stacksValue(tokenTransferHistory.token_fee, true)
       };
     } else {
       return txData;

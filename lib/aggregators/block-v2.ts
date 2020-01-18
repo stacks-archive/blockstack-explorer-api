@@ -17,7 +17,7 @@ import {
   Subdomain,
   NameOperationsForBlockResult
 } from '../core-db-pg/queries';
-import { btcValue, formatNumber } from '../utils';
+import { btcValue } from '../utils';
 
 
 /** hashOrHeight */
@@ -57,7 +57,6 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
     let transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
     transactions = transactions.map(tx => ({
       ...tx,
-      value: btcValue(tx.value)
     }));
     // const nameOperations = await fetchNameOperations(block.height);
     let nameOperations = await getNameOperationsForBlock(block.height);
@@ -85,7 +84,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
       { concurrency: 1 }
     );
     nameOperations = nameOperations.filter(Boolean);
-    const rewardFormatted = formatNumber(btcValue(block.reward));
+    const rewardFormatted = btcValue(block.reward, true);
 
     const result = {
       ...block,

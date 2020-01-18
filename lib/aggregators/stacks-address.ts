@@ -27,7 +27,7 @@ import BN = require('bn.js');
 export type HistoryRecordWithData = HistoryRecordData & {
   operation?: string;
   blockTime?: number;
-  valueStacks: number;
+  valueStacks: string;
   value: number;
   sender?: string;
   recipient?: string;
@@ -36,7 +36,7 @@ export type HistoryRecordWithData = HistoryRecordData & {
 export type StacksAddressResult = {
   cumulativeVestedAtBlocks: Record<number, number>;
   totalUnlocked: number;
-  totalUnlockedStacks: number;
+  totalUnlockedStacks: string;
   tokens: string[];
   btcAddress: string;
   address: string;
@@ -56,7 +56,7 @@ export type StacksAddressResult = {
   totalReceived: number;
   vestingTotal: number;
   totalLocked: number;
-  totalLockedStacks: number;
+  totalLockedStacks: string;
   tokensGranted: number;
 };
 
@@ -120,9 +120,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
     let unlockInfo = {};
     if (Vesting.vestingTotal && Vesting.vestingTotal > 0) {
       unlockInfo = {
-        formattedUnlockTotal: accounting.formatNumber(
-          Vesting.vestingTotal * 10e-7
-        ),
+        formattedUnlockTotal: stacksValue(Vesting.vestingTotal, true),
         unlockTotalStacks: stacksValue(Vesting.vestingTotal),
         unlockTotal: Vesting.vestingTotal
       };
@@ -223,9 +221,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
       transferUnlockDateFormatted: moment(account.transferUnlockDate).format(
         'MMMM DD, YYYY'
       ),
-      formattedUnlockTotal: accounting.formatNumber(
-        account.vesting_total * 10e-7
-      ),
+      formattedUnlockTotal: stacksValue(account.vesting_total, true),
       unlockTotal: account.vesting_total,
       unlockTotalStacks: stacksValue(account.vesting_total),
       history: [] as any[],

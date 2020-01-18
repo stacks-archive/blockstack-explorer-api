@@ -16,6 +16,7 @@ export type StacksDecodeResult = {
 };
 
 // TODO: add ability to decode script buffers from bitcore
+//       and/or replace with pg TOKEN_TRANSFER history lookup
 export const decode = (rawTX: string): StacksDecodeResult => {
   const tx = btc.Transaction.fromHex(rawTX);
   const data = btc.script.decompile(tx.outs[0].script)[1];
@@ -73,3 +74,13 @@ export const decode = (rawTX: string): StacksDecodeResult => {
     sender: senderC32Address
   };
 };
+
+/**
+ * @param addr Bitcoin address
+ */
+export const getSTXAddress = (addr: string): string => {
+  const result = c32check.b58ToC32(
+    btc.address.fromOutputScript(Buffer.from(addr, 'hex'), btc.networks.bitcoin)
+  );
+  return result;
+}

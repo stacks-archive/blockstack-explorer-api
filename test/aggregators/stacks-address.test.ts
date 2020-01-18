@@ -23,7 +23,7 @@ test('can get basic STX address info', async () => {
   }
   expect(historyItem.txid).toBeTruthy();
   expect(historyItem.opcode).toBeTruthy();
-  expect(historyItem.valueStacks).toBeGreaterThan(0);
+  expect(historyItem.value).toBeGreaterThan(0);
   expect(historyItem.opcode).toEqual('TOKEN_TRANSFER');
   expect(historyItem.block_id).toEqual(600459);
   expect(historyItem.sender).toEqual(
@@ -33,7 +33,8 @@ test('can get basic STX address info', async () => {
     'SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93'
   );
   expect(historyItem.operation).toEqual('RECEIVED');
-  expect(historyItem.valueStacks).toEqual(8649);
+  expect(historyItem.value).toEqual(8649000000);
+  expect(historyItem.valueStacks).toEqual('8649.000000');
   expect(historyItem.blockTime).toEqual(1571710607);
 }, 15000);
 

@@ -428,8 +428,31 @@ export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
 };
 */
 
+export const lookupBlockOrTxHash = async (hash: string): Promise<('tx' | 'block') | null> => {
+  const db = await getDB();
+  const collection = db.collection<TransactionQueryResult>(Collections.Transactions);
+  const result = await collection.findOne({
+    ...chainQuery,
+    $or: [ 
+      { txid: hash }, 
+      { blockHash: hash } 
+    ]
+  });
+  if (!result) {
+    return null;
+  }
+  if (result.txid === hash) {
+    return 'tx'
+  }
+  if (result.blockHash === hash) {
+    return 'block';
+  }
+  const error = `Unexpected lookupBlockOrTxHash result: ${JSON.stringify(result)}`;
+  console.error(error);
+  throw new Error(error);
+};
 
-export const getBlockHash = async (height: string): Promise<string> => {
+export const getBlockHash = async (height: string): Promise<string | null> => {
   const db = await getDB();
   const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const block = await collection.findOne({
@@ -438,6 +461,9 @@ export const getBlockHash = async (height: string): Promise<string> => {
   }, { 
     projection: { _id: 0, hash: 1 } 
   });
+  if (!block) {
+    return null;
+  }
   return block.hash;
 };
 

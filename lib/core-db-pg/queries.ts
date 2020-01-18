@@ -5,7 +5,7 @@ import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 import { 
   HistoryDataEntry, HistoryDataNameUpdate, 
-  HistoryDataNameRegistration, HistoryDataNamePreorder 
+  HistoryDataNameRegistration, HistoryDataNamePreorder, HistoryDataTokenTransfer 
 } from './history-data-types';
 
 export type Subdomain = SubdomainRecordQueryResult & {
@@ -103,7 +103,6 @@ export const getRecentNames = async (limit: number, page = 0): Promise<NameRecor
 
 export type StacksTransaction = {
   txid: string;
-  historyId: string;
   blockHeight: number;
   op: string;
   opcode: string;
@@ -136,6 +135,35 @@ export const getTotalNameCount = async(): Promise<number> => {
   return parseInt(result.count);
 };
 
+// TODO: Use this instead of the core node API query or manual raw btc tx parsing
+export const getStacksTransaction = async (txid: string): Promise<StacksTransaction | null> => {
+  const sql = `SELECT * FROM history WHERE opcode = 'TOKEN_TRANSFER' AND txid = $1 LIMIT 10`;
+  const params = [txid];
+  const db = await getDB();
+  const results = await db.query<HistoryRecordQueryRow>(sql, params);
+  if (results.length === 0) {
+    return null;
+  }
+  if (results.length > 1) {
+    const error = `Multiple TOKEN_TRANSFER rows matching txid ${txid}`;
+    console.error(error);
+    throw new Error(error);
+  }
+  const row = results[0];
+  let historyData: HistoryDataTokenTransfer;
+  try {
+    historyData = JSON.parse(row.history_data);
+  } catch (error) {
+    console.error('Error parsing tx history data');
+    console.error(error);
+  }
+  return {
+    ...row,
+    blockHeight: row.block_id,
+    historyData
+  };
+};
+
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
   const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
   const params = [limit, page * limit];
@@ -143,19 +171,16 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
   const db = await getDB();
   const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results: StacksTransaction[] = historyRows.map(row => {
-    let historyData: HistoryDataEntry;
+    let historyData: HistoryDataTokenTransfer;
     try {
       historyData = JSON.parse(row.history_data);
     } catch (error) {
-      console.error('Error parsing history data', error);
+      console.error('Error parsing tx history data');
+      console.error(error);
     }
     return {
       ...row,
-      txid: row.txid,
-      historyId: row.history_id,
       blockHeight: row.block_id,
-      op: row.op,
-      opcode: row.opcode,
       historyData
     };
   });

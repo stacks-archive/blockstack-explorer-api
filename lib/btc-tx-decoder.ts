@@ -6,6 +6,7 @@ import {
   networks,
   script
 } from 'bitcoinjs-lib';
+import BigNumber from 'bignumber.js';
 import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
 
@@ -107,6 +108,8 @@ export const decodeTx = async (
 
   const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out as TxOutput, n));
 
+  // TODO: investigate floating point issue
+  // const value = new BigNumber(networkData.value).shiftedBy(8).toNumber();
   const value = parseFloat((1e-8 * networkData.value).toFixed(8));
 
   const decodedTx: DecodeTxResult = {
