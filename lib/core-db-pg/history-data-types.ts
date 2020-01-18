@@ -243,3 +243,12 @@ export type HistoryDataEntry = (HistoryDataTokenTransfer
 | HistoryDataNamespaceReady 
 | HistoryDataNamespacePreorder 
 | HistoryDataNamespaceReveal);
+
+export type HistoryDataNameOp = (
+  | HistoryDataNameRegistration 
+  | HistoryDataNamePreorder 
+  | HistoryDataNameUpdate 
+  | HistoryDataNameRenewal 
+  | HistoryDataNameImport 
+  | HistoryDataNameTransfer 
+);

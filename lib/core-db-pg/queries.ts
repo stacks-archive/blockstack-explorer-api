@@ -5,7 +5,7 @@ import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 import { 
   HistoryDataEntry, HistoryDataNameUpdate, 
-  HistoryDataNameRegistration, HistoryDataNamePreorder, HistoryDataTokenTransfer 
+  HistoryDataNameRegistration, HistoryDataNamePreorder, HistoryDataTokenTransfer, HistoryDataNameOp 
 } from './history-data-types';
 
 export type Subdomain = SubdomainRecordQueryResult & {
@@ -199,11 +199,7 @@ export type HistoryRecordQueryRow = {
   value_hash: string | null;
 }
 
-export type NameOperationsForBlockResult = HistoryRecordQueryRow & (
-  HistoryDataNameUpdate | 
-  HistoryDataNameRegistration | 
-  HistoryDataNamePreorder
-);
+export type NameOperationsForBlockResult = HistoryRecordQueryRow & HistoryDataNameOp;
 
 // TODO: implement getNameOperationsForBlocks(blocksHeights: number[]);
 //       for use in blocks-v2 aggregator
@@ -215,17 +211,15 @@ export type NameOperationsForBlockResult = HistoryRecordQueryRow & (
 export const getNameOperationsForBlock = async (
   blockHeight: number
 ): Promise<NameOperationsForBlockResult[]> => {
-  // TODO: should this also include NAME_RENEWAL, NAME_IMPORT, NAME_TRANSFER ?
   const sql =
-    "SELECT * FROM history WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') AND block_id = $1";
+    `SELECT * FROM history WHERE opcode in (
+      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+    ) AND block_id = $1`;
   const params = [blockHeight];
   const db = await getDB();
   const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results = historyRows.map(row => {
-    const historyData: (
-      HistoryDataNameUpdate | 
-      HistoryDataNameRegistration | 
-      HistoryDataNamePreorder) = JSON.parse(row.history_data);
+    const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
     return {
       ...row,
       ...historyData
@@ -239,7 +233,9 @@ export const getNameOperationCountForBlock = async (
 ): Promise<number> => {
   const sql =
     `SELECT COUNT(*) FROM history 
-    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER') 
+    WHERE opcode in (
+      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+    ) 
     AND block_id = $1`;
   const params = [blockHeight];
   const db = await getDB();
@@ -278,7 +274,9 @@ export const getAllNameOperations = async (page = 0, limit = 100): Promise<NameR
     ON h.txid = s.txid
     WHERE (
       s.owner IS NOT NULL
-      OR h.opcode = 'NAME_REGISTRATION'
+      OR h.opcode in (
+        'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+      )
     )
     ORDER BY h.block_id DESC
     LIMIT $1 OFFSET $2`;
@@ -297,7 +295,10 @@ export type HistoryRecordResult = (HistoryRecordQueryRow & {
 export const getAllHistoryRecords = async (limit: number, page = 0): Promise<HistoryRecordResult[]> => {
   const sql = 
     `select * from history 
-    WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'TOKEN_TRANSFER')  
+    WHERE opcode in (
+      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
+      'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
+    )  
     ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
   const params = [limit, limit * page];
   const db = await getDB();
@@ -324,21 +325,46 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
   return results;
 };
 
-export type NameHistoryResult = HistoryRecordQueryRow & Partial<HistoryDataEntry>;
-
-export const getNameHistory = async (name: string, page = 0, limit = 500): Promise<NameHistoryResult[]> => {
-  const sql =
-    'select * from history WHERE history_id = $1 ORDER BY block_id DESC LIMIT $2 OFFSET $3';
+export const getNameHistory = async (name: string, page = 0, limit = 20) => {
+  const sql = `
+    SELECT * FROM (
+      SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
+      s.owner, s.fully_qualified_subdomain
+      FROM history h
+      LEFT JOIN subdomain_records s
+      ON h.txid = s.txid
+      WHERE (
+        (h.opcode = 'NAME_UPDATE' AND s.owner IS NOT NULL)
+        OR h.opcode IN (
+          'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 
+          'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+        )
+      )
+      ORDER BY h.block_id DESC
+    ) AS record
+    WHERE record.history_id = $1 OR record.fully_qualified_subdomain = $1
+    LIMIT $2 OFFSET $3`;
   const offset = page * limit;
   const params = [name, limit, offset];
   const db = await getDB();
-  const historyRecords = await db.query<HistoryRecordQueryRow>(sql, params);
-  const results = historyRecords.map(row => {
-    const historyData: HistoryDataEntry = JSON.parse(row.history_data);
-    const result: NameHistoryResult = {
-      ...historyData,
-      ...row
-    };
+  const historyRows = await db.query<NameRegistrationQueryRow & { 
+    history_data: string;
+    txid: string;
+  }>(sql, params);
+  const results = historyRows.map(row => {
+    const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
+    const isSubdomain = !!row.fully_qualified_subdomain
+    const address = isSubdomain ? row.owner : (row.creator_address || historyData.address);
+    const result = {
+      opcode: isSubdomain ? '' : historyData.opcode,
+      block_id: row.block_id,
+      txid: row.txid,
+      name: isSubdomain ? row.fully_qualified_subdomain : row.history_id,
+      owner: address,
+      address: address,
+      sender: historyData.sender,
+    }
     return result;
   });
   return results;

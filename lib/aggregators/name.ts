@@ -1,9 +1,9 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
 import { AggregatorWithArgs } from './aggregator';
 import { fetchName, FetchNameEntry } from '../client/core-api';
-import AppsAggregator, { BlockstackApp } from './app-co-apps';
+import { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
-import { getNameHistory, NameHistoryResult } from '../core-db-pg/queries';
+import { getNameHistory } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
 type UserApps = {
@@ -11,7 +11,16 @@ type UserApps = {
 }
 
 type NameAggregatorResult = {
-  nameRecord: (NameHistoryResult & { time: number })[];
+  nameRecord: {
+    time: number;
+    opcode: string;
+    block_id: number;
+    txid: string;
+    name: string;
+    owner: string;
+    address: string;
+    sender: string;
+  }[];
   userApps: {
     listed: BlockstackApp[];
     unlisted: string[];
