@@ -22,6 +22,7 @@ import TopBalancesAggregator from '../lib/aggregators/top-balances';
 import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
 import { getSTXAddress } from '../lib/stacks-decoder';
 import { StatusCodeError } from 'request-promise/errors';
+import * as searchUtil from '../lib/search-util';
 
 const baseRouter = Router();
 
@@ -224,36 +225,63 @@ Controller.getAsync(
   }
 );
 
-Controller.getAsync('/search/hash/:hash', async (req, res) => {
-  const hashString: string = req.params.hash;
-  const hashLookup = await lookupBlockOrTxHash(hashString);
-  const result: { found?: boolean; hash?: string; type?: string } = {
-    hash: hashString,
-  };
-  if (!hashLookup) {
-    result.found = false;
-    res.status(404).json(result);
+Controller.getAsync('/search/:term', async (req, res) => {
+  const query: string = req.params.term && req.params.term.trim();
+  // Fast test if query can only be a possible user ID.
+  const blockstackID = searchUtil.isValidBlockstackName(query);
+  if (blockstackID) {
+    res.json({ found: true, type: 'name', name: blockstackID });
+    return;
+  }
+
+  // Fast test if query can only be a STX address.
+  const stxAddress = searchUtil.isValidStxAddress(query);
+  if (stxAddress) {
+    res.json({ found: true, type: 'stacks-address', address: stxAddress });
+    return;
+  }
+
+  // Fast test if the query can be a value hex hash string.
+  const hash = searchUtil.isValidSha256Hash(query);
+  if (hash) {
+    // Determine what the hash corresponds to -- currently, search allows looking
+    // up a btc block, btc tx, or Stacks tx by hash.
+    const hashLookup = await lookupBlockOrTxHash(hash);
+    if (!hashLookup) {
+      res.status(404).json({ found: false, isHash: true });
+      return
+    }
+    if (hashLookup === 'block') {
+      res.json({ found: true, type: 'btc-block', hash: hash });
+      return;
+    } else if (hashLookup === 'tx') {
+      res.json({ found: true, type: 'btc-tx', hash: hash });
+      return;
+    } else {
+      throw new Error(`Unexpected lookupBlockOrTxHash result: ${JSON.stringify(hashLookup)}`);
+    }
+  }
+
+  // TODO: [stacks-v2] support for searching Stacks blocks by height
+  const blockHeight = searchUtil.isValidBtcBlockHeight(query);
+  if (blockHeight) {
+    const hashLookup = await getBlockHash(blockHeight);
+    if (!hashLookup) {
+      res.status(404).json({ found: false });
+      return
+    }
+    res.json({ found: true, type: 'btc-block', hash: hashLookup });
     return
   }
-  result.found = true;
-  if (hashLookup === 'block') {
-    result.type = 'btc_block';
-  } else if (hashLookup === 'tx') {
-    result.type = 'btc_tx';
-  } else {
-    throw new Error(`Unexpected lookupBlockOrTxHash result: ${JSON.stringify(hashLookup)}`);
-  }
-  res.json(result);
-});
 
-Controller.getAsync('/search/hash-from-height/:height', async (req, res) => {
-  const heightString: string = req.params.height;
-  const hashLookup = await getBlockHash(heightString);
-  if (hashLookup) {
-    res.json({found: true, hash: hashLookup, height: heightString});
-  } else {
-    res.status(404).json({ success: false });
+  // Fast test if query can only be a BTC address.
+  const btcAddress = searchUtil.isValidBtcAddress(query);
+  if (btcAddress) {
+    res.json({ found: true, type: 'btc-address', address: btcAddress });
+    return;
   }
+
+  res.status(404).json({ found: false });
 });
 
 Controller.getAsync('/fee-estimate', async (req, res) => {

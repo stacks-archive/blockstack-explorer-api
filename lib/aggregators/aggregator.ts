@@ -101,7 +101,7 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
         if (err) {
           resolve('');
         }
-        resolve(stdout);
+        resolve((stdout || '').trim());
       });
     });
   }
