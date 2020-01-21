@@ -28,7 +28,7 @@ export const blockToTime = (block: number) => {
   const blocksSinceTimestamp = block - startBlock;
   const minutes = blocksSinceTimestamp * 10;
   const time = moment(start).add(minutes, 'minutes');
-  return time.valueOf();
+  return time.unix();
 };
 
 export const extractHostname = (url: string) => {

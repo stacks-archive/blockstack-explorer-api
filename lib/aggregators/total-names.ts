@@ -8,9 +8,9 @@ export type TotalNamesResult = {
   namesFormatted: string;
   totalFormatted: string;
   subdomainsFormatted: string;
-  names: any;
-  subdomains: any;
-  total: any;
+  names: number;
+  subdomains: number;
+  total: number;
 };
 
 class TotalNames extends Aggregator<TotalNamesResult> {

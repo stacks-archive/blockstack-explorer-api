@@ -6,7 +6,7 @@ import NameOperations, { NameOp } from './name-ops-v2';
 
 import { Aggregator } from './aggregator';
 
-import NameCounts from './total-names';
+import NameCounts, { TotalNamesResult } from './total-names';
 
 import { getUnlockedSupply } from '../core-db-pg/queries';
 import { microStacksToStacks, TOTAL_STACKS } from '../utils';
@@ -16,8 +16,14 @@ export type HomeInfoResult = {
   totalStacks: string;
   unlockedSupply: string;
   unlockedSupplyFormatted: string;
-  nameTotals: any;
-  nameOperationsOverTime: any[];
+  nameTotals: TotalNamesResult;
+  nameOperationsOverTime: {
+    x: number;
+    y: number;
+    time: number;
+    names: number;
+    date: string;
+  }[];
   nameOperations: NameOp[];
 };
 
@@ -42,7 +48,7 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
       currentCount += 1;
       ticks[time] = {
         names: currentCount,
-        date: moment(time)
+        date: moment.unix(time)
           .utc()
           .format('MM/DD/YYYY h:mm UTC')
       };
@@ -52,6 +58,8 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
       .map(date => parseInt(date, 10))
       .sort();
 
+    // TODO: this needs to use a pg query using a set period of time
+    // in order to construct a useful graph
     const nameOperationsOverTime = keys.map(time => {
       const tick = ticks[time];
       return {
