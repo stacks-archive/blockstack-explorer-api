@@ -346,7 +346,13 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
       };
     }
   );
-  return results;
+  const filtered = results.filter(record => {
+    if (record.opcode === 'NAME_UPDATE' && record.subdomains.length === 0) {
+      return false;
+    }
+    return true;
+  })
+  return filtered;
 };
 
 export const getNameHistory = async (name: string, page = 0, limit = 20) => {
