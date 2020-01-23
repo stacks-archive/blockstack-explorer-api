@@ -77,7 +77,19 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
     }
     if (verbose)
       console.log(`Cached value not found for "${key}". Fetching data.`);
-    return this.set(args);
+    const hrstart = process.hrtime();
+    try {
+      const result = await this.set(args);
+      return result;
+    } catch (error) {
+      console.error(`Error running aggregator: "${key}"`);
+      console.error(error);
+      throw error;
+    } finally {
+      const hrend = process.hrtime(hrstart);
+      const elapsedSeconds = (hrend[0] + (hrend[1] / 1e9)).toFixed(4);
+      console.log(`Fetching data for "${key}" took ${elapsedSeconds} seconds`);
+    }
   }
 
   expiry(args: TArgs): number | null {
