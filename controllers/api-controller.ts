@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/node';
 
 import { getTotals, GetGenesisAccountsResult } from '../lib/addresses';
 import {
-  fetchTX,
   fetchAddress,
   fetchNames,
   fetchNamespaceNames,
@@ -16,6 +15,7 @@ import StacksAddressAggregator from '../lib/aggregators/stacks-address';
 import HomeInfoAggregator from '../lib/aggregators/home-info';
 import NameAggregator from '../lib/aggregators/name';
 import BTCAddressAggregator from '../lib/aggregators/btc-address';
+import TransactionAggregator from '../lib/aggregators/transaction';
 import { Json } from '../lib/aggregators/aggregator';
 
 const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
@@ -52,7 +52,10 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/transactions/:tx',
-    respond(req => fetchTX(req.params.tx))
+    respond(req => {
+      const normalized = req.params.tx?.trim().toLowerCase() || '';
+      return TransactionAggregator.fetch({hash: normalized }) 
+    })
   );
 
   APIController.get(
@@ -133,7 +136,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
       const searchResult = new Promise<SearchResult>((resolve, reject) => {
         Promise.all([
-          getOrFail(fetchTX(query)).then(tx => {
+          getOrFail(TransactionAggregator.fetch({hash: query})).then(tx => {
             if (tx) {
               resolve({
                 type: 'tx',

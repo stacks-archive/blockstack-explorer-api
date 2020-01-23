@@ -1,19 +1,12 @@
 import * as request from 'request-promise';
 import * as moment from 'moment';
 import { network as BlockstackNetwork } from 'blockstack';
-import { Transaction } from 'bitcoinjs-lib';
 import * as RPCClient from 'bitcoin-core';
 import * as dotenv from 'dotenv';
 import { 
-  getTX, getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
-  BitcoreAddressBalance, getLatestBlockHeight,
+  getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
+  BitcoreAddressBalance,
 } from '../bitcore-db/queries';
-import { decodeTx, DecodeTxResult } from '../btc-tx-decoder';
-import { decode as decodeStx, StacksDecodeResult } from '../stacks-decoder';
-import { getHistoryFromTxid, HistoryRecordData } from '../core-db-pg/queries';
-import { getStxAddresses, GetStxAddressResult } from '../../controllers/v2-controller';
-import { stacksValue, btcValue } from '../utils';
-import { HistoryDataTokenTransfer } from '../core-db-pg/history-data-types';
 
 
 dotenv.config();
@@ -363,58 +356,6 @@ export const fetchRawTxInfo = async (hash: string): Promise<string> => {
       throw err;
     });
     return txRaw as string;
-  } catch (error) {
-    throw error;
-  }
-};
-
-export type FetchTxResult = DecodeTxResult & {
-  feeBTC: string;
-  confirmations: number;
-} & Partial<GetStxAddressResult & HistoryRecordData & {
-  memo: string;
-  stxDecoded: StacksDecodeResult;
-  valueStacks: string;
-  valueStacksFormatted: string;
-}>;
-
-export const fetchTX = async (hash: string): Promise<FetchTxResult> => {
-  try {
-    const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
-      getTX(hash),
-      // TODO: refactor to use bitcore
-      fetchRawTxInfo(hash),
-      getLatestBlockHeight(),
-      getHistoryFromTxid(hash)
-    ]);
-    const decodedTx = Transaction.fromHex(rawTx);
-    const formattedTX = await decodeTx(decodedTx, tx);
-    const txData = {
-      ...formattedTX,
-      feeBTC: btcValue(formattedTX.fee),
-      confirmations: latestBlockHeight - tx.blockHeight
-    };
-    if (history && history.opcode === 'TOKEN_TRANSFER') {
-      const tokenTransferHistory = history.historyData as HistoryDataTokenTransfer;
-      const stxAddresses = getStxAddresses(history);
-      const stxDecoded = decodeStx(rawTx);
-      const valueStacks = stacksValue(
-        parseInt(tokenTransferHistory.token_fee, 10)
-      );
-      return {
-        ...txData,
-        ...stxAddresses,
-        ...history,
-        memo: tokenTransferHistory.scratch_area
-          ? Buffer.from(tokenTransferHistory.scratch_area, 'hex').toString()
-          : null,
-        stxDecoded,
-        valueStacks,
-        valueStacksFormatted: stacksValue(tokenTransferHistory.token_fee, true)
-      };
-    } else {
-      return txData;
-    }
   } catch (error) {
     throw error;
   }

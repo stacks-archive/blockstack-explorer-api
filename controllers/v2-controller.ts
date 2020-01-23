@@ -45,7 +45,7 @@ const Controller = Object.assign(baseRouter, { getAsync });
 
 Controller.getAsync('/blocks/:hash', async (req, res) => {
   const { hash } = req.params;
-  const block = await BlockAggregator.setter(hash);
+  const block = await BlockAggregator.fetch(hash);
   res.json({ block });
 });
 
@@ -56,9 +56,9 @@ Controller.getAsync('/blocks', async (req, res) => {
       .utc()
       .format('YYYY-MM-DD');
   }
-  console.log(date);
+  // console.log(date);
   const { page } = req.query;
-  const blocks = await BlocksAggregator.setter({
+  const blocks = await BlocksAggregator.fetch({
     date,
     page: page ? parseInt(page, 10) : 0
   });
