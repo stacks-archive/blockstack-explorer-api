@@ -120,10 +120,19 @@ export const getAddressCoreNames = async(): Promise<{names: string[]; expiredNam
 };
 
 export const getTotalSubdomainCount = async(): Promise<number> => {
-  const sql = `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
+  // Note: this query is quite slow given ~2 million rows
+  // const sql = `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
+  // Instead, get total count, then subtract by count of non-accepted
+  const sql = `
+    SELECT count(*) FROM subdomain_records
+    UNION ALL
+    SELECT count(*) FROM subdomain_records WHERE accepted != 1`;
   const db = await getDB();
-  const result = await db.querySingle<{ count: string }>(sql);
-  return parseInt(result.count);
+  const result = await db.query<{ count: string }>(sql);
+  const allRecordsCount = parseInt(result[0].count, 10);
+  const nonAcceptedCount = parseInt(result[1].count, 10);
+  const totalCountValid = allRecordsCount - nonAcceptedCount;
+  return totalCountValid;
 };
 
 export const getTotalNameCount = async(): Promise<number> => {
