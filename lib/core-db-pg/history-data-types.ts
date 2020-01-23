@@ -233,16 +233,18 @@ export type HistoryDataNamespaceReveal = {
   vtxindex: number;
 };
 
-export type HistoryDataEntry = (HistoryDataTokenTransfer 
-| HistoryDataNameRegistration 
-| HistoryDataNamePreorder 
-| HistoryDataNameUpdate 
-| HistoryDataNameRenewal 
-| HistoryDataNameImport 
-| HistoryDataNameTransfer 
-| HistoryDataNamespaceReady 
-| HistoryDataNamespacePreorder 
-| HistoryDataNamespaceReveal);
+export type HistoryDataEntry = (
+  | HistoryDataTokenTransfer 
+  | HistoryDataNameRegistration 
+  | HistoryDataNamePreorder 
+  | HistoryDataNameUpdate 
+  | HistoryDataNameRenewal 
+  | HistoryDataNameImport 
+  | HistoryDataNameTransfer 
+  | HistoryDataNamespaceReady 
+  | HistoryDataNamespacePreorder 
+  | HistoryDataNamespaceReveal
+);
 
 export type HistoryDataNameOp = (
   | HistoryDataNameRegistration 

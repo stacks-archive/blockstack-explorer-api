@@ -2,14 +2,13 @@ import * as BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import * as moment from 'moment';
 import { compact } from 'lodash';
-import * as accounting from 'accounting';
 
 import { AggregatorWithArgs } from './aggregator';
 import {
   network,
   fetchRawTxInfo
 } from '../client/core-api';
-import { decode } from '../stacks-decoder';
+import { decode, StacksDecodeResult } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
@@ -18,13 +17,13 @@ import {
   getAccountVesting,
   getTokensGrantedInHardFork,
   Vesting,
-  HistoryRecordData
+  StacksHistoryRecordData
 } from '../core-db-pg/queries';
 
 import { getAccounts, GenesisAccountInfoWithVesting } from '../addresses';
 import BN = require('bn.js');
 
-export type HistoryRecordWithData = HistoryRecordData & {
+export type HistoryRecordWithData = StacksHistoryRecordData & {
   operation?: string;
   blockTime?: number;
   valueStacks: string;
@@ -159,49 +158,37 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
     const totalUnlocked = 0;
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const historyWithData: HistoryRecordWithData[] = await BluebirdPromise.map(
-      history,
-      async (h) => {
-        const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
-        try {
-          let historyEntry: HistoryRecordWithData = {
-            ...h,
-            valueStacks: stacksValue(h.historyData.token_fee),
-            value: parseInt(h.historyData.token_fee, 10)
-          };
-          const { txid } = h;
-          try {
-            // TODO: refactor to perform a single bitcore query to return all txs
-            const hex = await fetchRawTxInfo(txid);
-            const decoded = decode(hex);
-            historyEntry = {
-              ...historyEntry,
-              ...h,
-              ...decoded,
-              blockTime,
-              operation:
-                decoded.senderBitcoinAddress === address ? 'SENT' : 'RECEIVED'
-            };
-            return historyEntry;
-          } catch (error) {
-            console.error('Error when fetching TX info:', error.message);
-            console.error(error);
-            return {
-              ...h,
-              blockTime
-            } as HistoryRecordWithData;
-          }
-        } catch (error) {
-          console.error('Error when fetching TX info:', error.message);
-          console.error(error);
-          return {
-            ...h,
-            blockTime,
-          } as HistoryRecordWithData;
+    const historyWithData = history.map((h) => {
+      const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
+      try {
+        let operation: string;
+        if (h.historyData.address === address) {
+          operation = 'SENT';
+        } else if (h.historyData.recipient_address === address) {
+          operation = 'RECEIVED';
+        } else {
+          console.error(`Unexpected stx tx data, not a send or receive: ${JSON.stringify(h)}`)
+          operation = 'UNKNOWN'
         }
+        const historyEntry: HistoryRecordWithData = {
+          ...h,
+          sender: c32check.b58ToC32(h.historyData.address),
+          recipient: c32check.b58ToC32(h.historyData.recipient_address),
+          valueStacks: stacksValue(h.historyData.token_fee),
+          value: parseInt(h.historyData.token_fee, 10),
+          blockTime,
+          operation
+        };
+        return historyEntry;
+      } catch (error) {
+        console.error(`Error when decoding TX info: ${error.message}`);
+        console.error(error);
+        return {
+          ...h,
+          blockTime
+        } as HistoryRecordWithData;
       }
-    );
-    // return [compact(historyWithData.reverse()), totalUnlocked];
+    });
     return {
       records: compact(historyWithData.reverse()),
       totalUnlocked

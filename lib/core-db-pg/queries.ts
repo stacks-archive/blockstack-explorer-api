@@ -494,7 +494,7 @@ export async function getTopBalances(count: number): Promise<BalanceInfo[]> {
 }
 
 export type HistoryRecordData = HistoryRecordQueryRow & { 
-  historyData: HistoryDataEntry ;
+  historyData: HistoryDataEntry;
 };
 
 export const getHistoryFromTxid = async (
@@ -512,15 +512,20 @@ export const getHistoryFromTxid = async (
   };
 };
 
+export type StacksHistoryRecordData = HistoryRecordQueryRow & { 
+  historyData: HistoryDataTokenTransfer;
+};
+
 export const getAddressSTXTransactions = async (
   btcAddress: string, 
   page: number, 
   limit = 50
-): Promise<HistoryRecordData[]> => {
+): Promise<StacksHistoryRecordData[]> => {
   if (!page || !Number.isFinite(page) || page < 0) {
     page = 0;
   }
-  const sql = `SELECT * from history WHERE history_data LIKE $1 
+  const sql = `SELECT * from history WHERE 
+    opcode = 'TOKEN_TRANSFER' AND history_data LIKE $1 
     order by block_id DESC, vtxindex DESC LIMIT $2 OFFSET $3`;
   const offset = page * limit;
   const params = [`%${btcAddress}%`, limit, offset];
@@ -528,7 +533,7 @@ export const getAddressSTXTransactions = async (
   const historyRecords = await db.query<HistoryRecordQueryRow>(sql, params);
   const history = historyRecords.map(row => ({
     ...row,
-    historyData: JSON.parse(row.history_data) as HistoryDataEntry
+    historyData: JSON.parse(row.history_data) as HistoryDataTokenTransfer
   }));
   return history;
 };

@@ -60,7 +60,7 @@ test('can fetch blocks', async () => {
   expect(blocks[0].txCount).toEqual(blocks[0].txCount);
 }, 15000);
 
-test('can fetch blocks with a page testonly', async () => {
+test('can fetch blocks with a page', async () => {
   const result = await getBlocks('2013-02-01', 1);
   const blocks = result.blocks;
   const firstPageResult = await getBlocks('2013-02-01', 0);
