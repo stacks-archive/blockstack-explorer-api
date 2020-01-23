@@ -1,11 +1,10 @@
 import '../setup';
 import TransactionAggregator from '../../lib/aggregators/transaction';
 
-test.skip('fetches a TX', async () => {
+test('fetches a TX', async () => {
   const tx = await TransactionAggregator.setter({hash:
     'b5eec33c42920752d60203eae6b1a9bddab18f1f88ba9999352b93589d70e530'
   });
-  // console.log(tx);
   expect(tx.blockheight).toBe(517739);
   expect(tx.vout[0].scriptPubKey.hex).toBe(
     // eslint-disable-next-line max-len

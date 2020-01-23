@@ -20,6 +20,11 @@ export const btcValue = (value: number | string, formatted = false) => {
   }
 };
 
+export const btcValueUnsafe = (value: number | string): number => {
+  const parsed = new BigNumber(value).shiftedBy(-8)
+  return parsed.toNumber();
+};
+
 const startBlock = 538161;
 const start = moment(1535059015 * 1000);
 

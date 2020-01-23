@@ -9,11 +9,13 @@ import {
 import BigNumber from 'bignumber.js';
 import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
+import { btcValueUnsafe } from './utils';
 
-const getAddr = (out: TxOutput) => {
+const getAddr = (txOutScript: Buffer) => {
   let addr: string | null = null;
   try {
-    addr = address.fromOutputScript(out.script, networks.bitcoin);
+    addr = address.fromOutputScript(txOutScript, networks.bitcoin);
+    return addr;
   } catch (error) {
     // nothing
   }
@@ -67,16 +69,16 @@ export const decodeTx = async (
         const inputTx = BTCTransaction.fromHex(inputTxHash);
         return {
           txid,
-          index,
+          index: input.index,
           script: script.toASM(input.script),
           sequence: input.sequence,
-          addr: getAddr(inputTx.outs[0] as TxOutput),
+          addr: getAddr(inputTx.outs[input.index].script),
           inputTx
         };
       } catch (error) {
         return {
           txid,
-          index,
+          index: input.index,
           addr: '',
           // script: input.script ? script.toASM(input.script) : null,
           sequence: input.sequence
@@ -94,23 +96,21 @@ export const decodeTx = async (
   const format = (out: TxOutput, n: number): FormattedTxOutput => {
     const vout = {
       satoshi: out.value,
-      value: parseFloat((1e-8 * out.value).toFixed(8)),
+      value: btcValueUnsafe(out.value),
       n,
       scriptPubKey: {
         asm: script.toASM(out.script),
         hex: out.script.toString('hex'),
         addresses: [] as string[]
       },
-      addr: getAddr(out)
+      addr: getAddr(out.script)
     };
     return vout;
   };
 
   const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out as TxOutput, n));
-
-  // TODO: investigate floating point issue
-  // const value = new BigNumber(networkData.value).shiftedBy(8).toNumber();
-  const value = parseFloat((1e-8 * networkData.value).toFixed(8));
+  
+  const value = btcValueUnsafe(networkData.value);
 
   const decodedTx: DecodeTxResult = {
     ...tx,
