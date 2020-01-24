@@ -10,6 +10,8 @@ export type Json =
     | { [property: string]: Json }
     | Json[];
 
+const pendingAggregations: Map<string, Promise<any>> = new Map();
+
 export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Json> {
   key(args: TArgs): string {
     if (args) {
@@ -64,31 +66,55 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
   abstract setter(args: TArgs, multi?: multi): Promise<TResult>;
 
   async fetch(args: TArgs, multi?: multi): Promise<TResult> {
-    let verbose = this.verbose(args, multi);
-    if (process.env.NODE_ENV === 'development') {
-      verbose = true;
-    }
+    const isDevEnv = process.env.NODE_ENV === 'development';
+    const verbose = isDevEnv || this.verbose(args, multi);
     const key = await this.keyWithTag(args);
-    if (verbose) console.log(`Running aggregator: "${key}"`);
-    const value = await this.get(args);
-    if (value) {
-      if (verbose) console.log(`Found cached value for "${key}"`);
-      return value;
+    if (verbose) { 
+      console.log(`Running aggregator: "${key}"`); 
     }
-    if (verbose)
+    
+    if (!isDevEnv) {
+      const value = await this.get(args);
+      if (value) {
+        if (verbose) {
+          console.log(`Found cached value for "${key}"`);
+        }
+        return value;
+      }
+    }
+
+    const pendingAggregation: Promise<TResult> = pendingAggregations.get(key);
+    if (pendingAggregation !== undefined) {
+      if (verbose) {
+        console.log(`Found pending aggregation promise for "${key}". Re-using.`);
+      }
+      return pendingAggregation;
+    }
+
+    if (verbose) {
       console.log(`Cached value not found for "${key}". Fetching data.`);
+    }
+
     const hrstart = process.hrtime();
     try {
-      const result = await this.set(args);
+      const aggregationPromise = this.set(args);
+      pendingAggregations.set(key, aggregationPromise);
+      const result = await aggregationPromise;
       return result;
     } catch (error) {
       console.error(`Error running aggregator: "${key}"`);
       console.error(error);
       throw error;
     } finally {
+      pendingAggregations.delete(key);
       const hrend = process.hrtime(hrstart);
-      const elapsedSeconds = (hrend[0] + (hrend[1] / 1e9)).toFixed(4);
-      console.log(`Fetching data for "${key}" took ${elapsedSeconds} seconds`);
+      const elapsedSeconds = (hrend[0] + (hrend[1] / 1e9));
+      if (elapsedSeconds > 10) {
+        console.error(`Warning: aggregation for "${key}" took ${elapsedSeconds} seconds`);
+      }
+      if (verbose) {
+        console.log(`Fetching data for "${key}" took ${elapsedSeconds.toFixed(4)} seconds`);
+      }
     }
   }
 
