@@ -106,7 +106,7 @@ export type StacksTransaction = {
   blockHeight: number;
   op: string;
   opcode: string;
-  historyData: HistoryDataEntry;
+  historyData: HistoryDataTokenTransfer;
 };
 
 /**
@@ -120,8 +120,8 @@ export const getAddressCoreNames = async(): Promise<{names: string[]; expiredNam
 };
 
 export const getTotalSubdomainCount = async(): Promise<number> => {
-  // Note: this query is quite slow given ~2 million rows
-  // const sql = `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
+  // Note: this query is very slow given ~2 million rows
+  // `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
   // Instead, get total count, then subtract by count of non-accepted
   const sql = `
     SELECT count(*) FROM subdomain_records
@@ -208,7 +208,7 @@ export type HistoryRecordQueryRow = {
   value_hash: string | null;
 }
 
-export const getNameOperationsForBlocks = async (
+export const getNameOperationCountsForBlocks = async (
   blockHeights: number[]
 ) => {
   const sql = `
@@ -259,21 +259,6 @@ export const getNameOperationsForBlock = async (
     };
   });
   return results;
-};
-
-export const getNameOperationCountForBlock = async (
-  blockHeight: number
-): Promise<number> => {
-  const sql =
-    `SELECT COUNT(*) FROM history 
-    WHERE opcode in (
-      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-    ) 
-    AND block_id = $1`;
-  const params = [blockHeight];
-  const db = await getDB();
-  const result = await db.querySingle<{ count: number }>(sql, params);
-  return result.count;
 };
 
 export const getSubdomainRegistrationsForTxid = async (txid: string) => {

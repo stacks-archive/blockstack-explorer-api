@@ -1,13 +1,20 @@
 import '../setup';
-import { getNameOperationsForBlocks } from '../../lib/core-db-pg/queries';
+import { getNameOperationCountsForBlocks } from '../../lib/core-db-pg/queries';
 
-test('query name ops for blocks', async () => {
-  const blocks = new Array<number>(100);
-  for (let i = 0; i < 100; i++) {
-    blocks[i] = 608684 - i;
+test('query name ops for blocks testonly', async () => {
+  const blocks: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    blocks.push(608684 - i);
   }
-  // TODO: complete test check
-  const ff = await getNameOperationsForBlocks(blocks);
-  // console.log(ff);
+  const counts = await getNameOperationCountsForBlocks(blocks);
+  expect(counts).toEqual({
+    608675: 452,
+    608676: 301,
+    608677: 300,
+    608678: 900,
+    608680: 427,
+    608682: 284,
+    608684: 1284
+  });
 }, 100000);
 

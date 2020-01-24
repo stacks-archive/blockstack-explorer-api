@@ -1,6 +1,18 @@
 import '../setup';
 import TransactionAggregator from '../../lib/aggregators/transaction';
 
+test('fetches a TX with stx transfers', async () => {
+  const txid = '8eac5df3fdf739f62a105a2dbdbe20ffcde19a2cd0551c9770c8017a448da1b0';
+  const tx = await TransactionAggregator.setter({hash: txid});
+  expect(tx.stxDecoded.scratchData).toBe('Hi there!');
+  expect(tx.blockHeight).toBe(552436);
+  expect(tx.blockTime).toBe(1543883300);
+  expect(tx.senderSTX).toBe('SP2JR6E1WK19CN3X0PWWTZA4XZD9SX1A8ESCDX5RT');
+  expect(tx.recipientSTX).toBe('SP349TBCFCGAT1FHA2JY3H1Q7Y1CGYPYT55XDBR6D');
+  expect(tx.feeBTC).toBe('0.00011096');
+  expect(tx.valueStacks).toBe('0.000002');
+});
+
 test('fetches a TX', async () => {
   const tx = await TransactionAggregator.setter({hash:
     'b5eec33c42920752d60203eae6b1a9bddab18f1f88ba9999352b93589d70e530'

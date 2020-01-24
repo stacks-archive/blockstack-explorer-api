@@ -1,12 +1,9 @@
 import * as moment from 'moment';
-import * as BlueBirdPromise from 'bluebird';
 import * as multi from 'multi-progress';
 
 import { AggregatorWithArgs } from './aggregator';
-import BlockAggregator, { BlockAggregatorResult } from './block-v2';
-
-import { getBlocks, BitcoreBlock } from '../bitcore-db/queries';
-import { getNameOperationsForBlocks } from '../core-db-pg/queries';
+import { getBlocks } from '../bitcore-db/queries';
+import { getNameOperationCountsForBlocks } from '../core-db-pg/queries';
 
 export type BlockAggregatorOpts = {
   date: string | undefined;
@@ -38,7 +35,7 @@ class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockA
   async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult> {
     const blocksResult = await getBlocks(date, page);
     const blockHeights = blocksResult.blocks.map(block => block.height);
-    const nameOpts = await getNameOperationsForBlocks(blockHeights);
+    const nameOpts = await getNameOperationCountsForBlocks(blockHeights);
     const blocks = blocksResult.blocks.map(block => {
       const nameOps = nameOpts[block.height] || 0;
       return Object.assign(block, { totalNameOperations: nameOps });

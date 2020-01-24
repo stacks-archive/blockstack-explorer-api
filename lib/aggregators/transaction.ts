@@ -35,7 +35,7 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
     return 10 * 60; // 10 minutes
   }
 
-  async setter({ hash }: TransactionAggregatorOpts) {
+  async setter({ hash }: TransactionAggregatorOpts): Promise<TransactionAggregatorResult> {
     const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
       getTX(hash),
       // TODO: refactor to use bitcore
