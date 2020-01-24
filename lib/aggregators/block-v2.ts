@@ -54,11 +54,11 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
     if (!block) {
       return null;
     }
+    // TODO: add Stacks transactions
     let transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
     transactions = transactions.map(tx => ({
       ...tx,
     }));
-    // const nameOperations = await fetchNameOperations(block.height);
     let nameOperations = await getNameOperationsForBlock(block.height);
     nameOperations = await BluebirdPromise.map(
       nameOperations,

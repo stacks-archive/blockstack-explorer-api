@@ -109,16 +109,6 @@ export type StacksTransaction = {
   historyData: HistoryDataTokenTransfer;
 };
 
-/**
- * Returns the Blockstack names (and/or subdomains) owned by a given address
- */
-export const getAddressCoreNames = async(): Promise<{names: string[]; expiredNames: []}> => {
-  const sql = ``;
-  const db = await getDB();
-  // const result = await db.query<{ count: string }>(sql);
-  return null;
-};
-
 export const getTotalSubdomainCount = async(): Promise<number> => {
   // Note: this query is very slow given ~2 million rows
   // `SELECT COUNT(DISTINCT fully_qualified_subdomain) FROM subdomain_records`
@@ -133,44 +123,6 @@ export const getTotalSubdomainCount = async(): Promise<number> => {
   const nonAcceptedCount = parseInt(result[1].count, 10);
   const totalCountValid = allRecordsCount - nonAcceptedCount;
   return totalCountValid;
-};
-
-export const getTotalNameCount = async(): Promise<number> => {
-  // TODO: Needs to filter expired names, replicate logic from
-  // https://github.com/blockstack/blockstack-core/blob/9a9f65f5fe8e4435b3388e0b781982a85adffba3/blockstack/lib/nameset/db.py#L2678
-  const sql = `SELECT COUNT(DISTINCT name) FROM name_records`
-  const db = await getDB();
-  const result = await db.querySingle<{ count: string }>(sql);
-  return parseInt(result.count);
-};
-
-// TODO: Use this instead of the core node API query or manual raw btc tx parsing
-export const getStacksTransaction = async (txid: string): Promise<StacksTransaction | null> => {
-  const sql = `SELECT * FROM history WHERE opcode = 'TOKEN_TRANSFER' AND txid = $1 LIMIT 10`;
-  const params = [txid];
-  const db = await getDB();
-  const results = await db.query<HistoryRecordQueryRow>(sql, params);
-  if (results.length === 0) {
-    return null;
-  }
-  if (results.length > 1) {
-    const error = `Multiple TOKEN_TRANSFER rows matching txid ${txid}`;
-    console.error(error);
-    throw new Error(error);
-  }
-  const row = results[0];
-  let historyData: HistoryDataTokenTransfer;
-  try {
-    historyData = JSON.parse(row.history_data);
-  } catch (error) {
-    console.error('Error parsing tx history data');
-    console.error(error);
-  }
-  return {
-    ...row,
-    blockHeight: row.block_id,
-    historyData
-  };
 };
 
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {

@@ -1,8 +1,8 @@
 import * as accounting from 'accounting';
 import { Aggregator } from './aggregator';
 
-import { fetchTotalNames, fetchTotalSubdomains } from '../client/core-api';
-import { getTotalSubdomainCount, getTotalNameCount } from '../core-db-pg/queries';
+import { fetchTotalNames } from '../client/core-api';
+import { getTotalSubdomainCount } from '../core-db-pg/queries';
 
 export type TotalNamesResult = {
   namesFormatted: string;
