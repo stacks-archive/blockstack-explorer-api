@@ -1,15 +1,9 @@
 import * as moment from 'moment';
-import * as accounting from 'accounting';
-import BigNumber from 'bignumber.js';
 import { sortBy } from 'lodash';
+
 import NameOperations, { NameOp } from './name-ops-v2';
-
 import { Aggregator } from './aggregator';
-
 import NameCounts, { TotalNamesResult } from './total-names';
-
-import { getUnlockedSupply } from '../core-db-pg/queries';
-import { microStacksToStacks, TOTAL_STACKS } from '../utils';
 import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
 export type HomeInfoResult = {

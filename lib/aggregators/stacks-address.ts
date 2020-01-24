@@ -6,9 +6,7 @@ import { compact } from 'lodash';
 import { AggregatorWithArgs } from './aggregator';
 import {
   network,
-  fetchRawTxInfo
 } from '../client/core-api';
-import { decode, StacksDecodeResult } from '../stacks-decoder';
 import { stacksValue, blockToTime } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
