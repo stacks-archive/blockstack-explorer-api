@@ -11,7 +11,7 @@ import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
 import { btcValueUnsafe } from './utils';
 
-const getAddr = (txOutScript: Buffer) => {
+export const getAddr = (txOutScript: Buffer) => {
   let addr: string | null = null;
   try {
     addr = address.fromOutputScript(txOutScript, networks.bitcoin);

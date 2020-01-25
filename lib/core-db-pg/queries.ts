@@ -4,8 +4,7 @@ import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 import { 
-  HistoryDataEntry, HistoryDataNameUpdate, 
-  HistoryDataNameRegistration, HistoryDataNamePreorder, HistoryDataTokenTransfer, HistoryDataNameOp 
+  HistoryDataEntry, HistoryDataTokenTransfer, HistoryDataNameOp 
 } from './history-data-types';
 
 export type Subdomain = SubdomainRecordQueryResult & {
@@ -157,7 +156,7 @@ export type HistoryRecordQueryRow = {
   creator_address: string | null;
   history_data: string;
   vtxindex: number;
-  value_hash: string | null;
+  value_hash?: string | null;
 }
 
 export const getNameOperationCountsForBlocks = async (
@@ -195,20 +194,37 @@ export type NameOperationsForBlockResult = HistoryRecordQueryRow & HistoryDataNa
 
 export const getNameOperationsForBlock = async (
   blockHeight: number
-): Promise<NameOperationsForBlockResult[]> => {
-  const sql =
-    `SELECT * FROM history WHERE opcode in (
-      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-    ) AND block_id = $1`;
+) => {
+  const sql = `
+    SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.opcode,
+      s.owner, s.fully_qualified_subdomain
+    FROM history h
+    LEFT JOIN (SELECT * FROM subdomain_records WHERE block_height = $1) s
+    ON h.txid = s.txid
+    WHERE (h.block_id = $1) AND (
+      s.owner IS NOT NULL
+      OR h.opcode in (
+        'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+      )
+    )
+    ORDER BY h.block_id DESC`;
   const params = [blockHeight];
   const db = await getDB();
-  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
+  const historyRows = await db.query<HistoryRecordQueryRow & NameRegistrationQueryRow>(sql, params);
   const results = historyRows.map(row => {
     const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
-    return {
+    const isSubdomain = !!row.fully_qualified_subdomain
+    const address = isSubdomain ? row.owner : (row.creator_address || historyData.address);
+    const name = isSubdomain ? row.fully_qualified_subdomain : row.history_id;
+    const result = {
       ...row,
-      ...historyData
+      ...historyData,
+      address: address,
+      owner: address,
+      name: name
     };
+    return result;
   });
   return results;
 };
@@ -332,11 +348,12 @@ export const getNameHistory = async (name: string, page = 0, limit = 20) => {
     const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
     const isSubdomain = !!row.fully_qualified_subdomain
     const address = isSubdomain ? row.owner : (row.creator_address || historyData.address);
+    const name = isSubdomain ? row.fully_qualified_subdomain : row.history_id;
     const result = {
       opcode: isSubdomain ? '' : historyData.opcode,
       block_id: row.block_id,
       txid: row.txid,
-      name: isSubdomain ? row.fully_qualified_subdomain : row.history_id,
+      name: name,
       owner: address,
       address: address,
       sender: historyData.sender,

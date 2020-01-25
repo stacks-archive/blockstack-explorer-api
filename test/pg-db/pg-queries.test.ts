@@ -1,7 +1,7 @@
 import '../setup';
-import { getNameOperationCountsForBlocks } from '../../lib/core-db-pg/queries';
+import { getNameOperationCountsForBlocks, getNameOperationsForBlock } from '../../lib/core-db-pg/queries';
 
-test('query name ops for blocks testonly', async () => {
+test('query name ops for blocks', async () => {
   const blocks: number[] = [];
   for (let i = 0; i < 10; i++) {
     blocks.push(608684 - i);

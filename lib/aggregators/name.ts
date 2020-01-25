@@ -5,6 +5,7 @@ import { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
 import { getNameHistory } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
+import { getAddr as getBtcAddr } from '../btc-tx-decoder';
 
 type UserApps = {
   [appUrl: string]: string;
@@ -72,6 +73,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
       const time = blockTimes[record.block_id];
       const result = {
         ...record,
+        sender: getBtcAddr(Buffer.from(record.sender, 'hex')),
         time
       };
       return result

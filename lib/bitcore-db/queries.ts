@@ -534,3 +534,19 @@ export const getTimesForBlockHeights = async (
   });
   return timesByHeight;
 };
+
+export const getTimeForBlockHeight = async (
+  height: number
+): Promise<number> => {
+  const db = await getDB();
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
+  const block = await collection
+    .findOne({
+      height: height
+    }, { projection: { _id: 0, height: 1, time: 1 }});
+  
+  if (!block) {
+    return null;
+  }
+  return Math.round(block.time.getTime() / 1000)
+};
