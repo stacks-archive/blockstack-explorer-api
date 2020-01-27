@@ -1,6 +1,6 @@
 import * as BluebirdPromise from 'bluebird';
 
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import {
   getAllNameOperations,
   getSubdomainRegistrationsForTxid,
@@ -29,7 +29,7 @@ class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, Name
     return `NameOpsAggregator:${page || 0}`;
   }
 
-  async setter({page = 0}: NameOpsAggregatorArgs): Promise<NameOpsAggregatorResult> {
+  async setter({page = 0}: NameOpsAggregatorArgs): Promise<AggregatorSetterResult<NameOpsAggregatorResult>> {
     const history = await getAllNameOperations(page);
     const blockHeights = history.map(record => record.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
@@ -43,9 +43,12 @@ class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, Name
         name: isSubdomain ? record.fully_qualified_subdomain : record.history_id,
         owner: isSubdomain ? record.owner : record.creator_address
       }
-      return op
+      return op;
     })
-    return nameOps
+    return {
+      shouldCacheValue: true,
+      value: nameOps,
+    };
   }
 }
 

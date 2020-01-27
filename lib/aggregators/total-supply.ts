@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { Aggregator } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { getUnlockedSupply } from '../core-db-pg/queries';
 import { microStacksToStacks, TOTAL_STACKS, MICROSTACKS_IN_STACKS } from '../utils';
 
@@ -18,7 +18,7 @@ class TotalSupplyAggregator extends Aggregator<TotalSupplyResult> {
     return 10 * 60; // 10 minutes
   }
 
-  async setter() {
+  async setter(): Promise<AggregatorSetterResult<TotalSupplyResult>> {
     const { unlockedSupply, blockHeight } = await getUnlockedSupply();
     const totalStacks = new BigNumber(TOTAL_STACKS).times(MICROSTACKS_IN_STACKS);
     const unlockedPercent = unlockedSupply.div(totalStacks).times(100);
@@ -30,7 +30,10 @@ class TotalSupplyAggregator extends Aggregator<TotalSupplyResult> {
       unlockedSupplyFormatted: microStacksToStacks(unlockedSupply, 'thousands'),
       blockHeight,
     };
-    return result;
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 }
 

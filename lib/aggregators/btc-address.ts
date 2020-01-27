@@ -1,4 +1,4 @@
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import { fetchAddress } from '../client/core-api';
 
 type BTCAddressAggregatorOpts = {
@@ -27,7 +27,7 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
     return `BTCAddress:${address}?txPage=${txPage}`;
   }
 
-  async setter({address, txPage = 0}: BTCAddressAggregatorOpts) {
+  async setter({address, txPage = 0}: BTCAddressAggregatorOpts): Promise<AggregatorSetterResult<BTCAddressAggregatorResult>> {
     const perPage = 10;
     const fetchedAddress = await fetchAddress(address, txPage, perPage);
 
@@ -50,7 +50,10 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
       totalTransactionsCount: fetchedAddress.btcBalanceInfo.totalTransactions,
       names: fetchedAddress.blockstackCoreData?.names || [],
     };
-    return result;
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 
   expiry() {

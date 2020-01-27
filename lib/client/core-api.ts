@@ -1,4 +1,4 @@
-import * as request from 'request-promise';
+import * as request from 'request-promise-native';
 import * as moment from 'moment';
 import { network as BlockstackNetwork } from 'blockstack';
 import * as RPCClient from 'bitcoin-core';

@@ -1,5 +1,5 @@
 import * as c32check from 'c32check';
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import { getUnlockedSupply, getTopBalances } from '../core-db-pg/queries';
 import { microStacksToStacks } from '../utils';
 
@@ -23,15 +23,19 @@ class TopBalancesAggregator extends AggregatorWithArgs<TopBalanceAccount[], TopB
     return 10 * 60; // 10 minutes
   }
 
-  async setter({count}: TopBalancesAggregatorOpts): Promise<TopBalanceAccount[]> {
+  async setter({count}: TopBalancesAggregatorOpts): Promise<AggregatorSetterResult<TopBalanceAccount[]>> {
     const { unlockedSupply } = await getUnlockedSupply();
     const topBalances = await getTopBalances(count);
-    return topBalances.map(account => ({
+    const result = topBalances.map(account => ({
       stxAddress: c32check.b58ToC32(account.address),
       btcAddress: account.address,
       balance: microStacksToStacks(account.balance),
       distribution: parseFloat(account.balance.div(unlockedSupply).multipliedBy(100).toFixed(6)),
     }));
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 }
 

@@ -1,6 +1,6 @@
 import redis from '../redis';
 import * as ChildProcess from 'child_process';
-import * as multi from 'multi-progress';
+import * as Sentry from '@sentry/node';
 
 export type Json =
     | string
@@ -10,17 +10,20 @@ export type Json =
     | { [property: string]: Json }
     | Json[];
 
-const pendingAggregations: Map<string, Promise<any>> = new Map();
+export type PossibleJson = Json | void;
 
-export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Json> {
+export type AggregatorSetterResult<TResult extends Json> = {
+  value: TResult;
+  shouldCacheValue: boolean;
+};
+
+export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends PossibleJson = void> {
+
+  readonly pendingAggregations: Map<string, Promise<TResult>> = new Map();
+
   key(args: TArgs): string {
-    if (args) {
-      let argStr: string;
-      if (typeof args === 'object') {
-        argStr = JSON.stringify(args);
-      } else {
-        argStr = args.toString();
-      }
+    if (args !== undefined) {
+      const argStr = JSON.stringify(args);
       return `${this.constructor.name}:${argStr}`
     }
     return this.constructor.name;
@@ -35,20 +38,20 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
     return key;
   }
 
-  async set(args: TArgs, multi?: multi): Promise<TResult> {
+  async set(args: TArgs): Promise<TResult> {
     // const verbose = this.verbose(...args);
     const key = await this.keyWithTag(args);
-    const value = await this.setter(args, multi);
+    const { value, shouldCacheValue} = await this.setter(args);
 
-    const valArg = JSON.stringify(value);
-    const expiry = this.expiry(args);
-    if (expiry) {
-      // if (verbose) console.log('Expiry:', expiry);
-      await redis.setAsync(key, valArg, 'EX', expiry);
-    } else {
-      await redis.setAsync(key, valArg);
+    if (shouldCacheValue) {
+      const valArg = JSON.stringify(value);
+      const expiry = this.expiry(args);
+      if (expiry) {
+        await redis.setAsync(key, valArg, 'EX', expiry);
+      } else {
+        await redis.setAsync(key, valArg);
+      }
     }
-    // console.log(setArguments);
     return value;
   }
 
@@ -63,11 +66,11 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
     return null;
   }
 
-  abstract setter(args: TArgs, multi?: multi): Promise<TResult>;
+  abstract setter(args: TArgs): Promise<AggregatorSetterResult<TResult>>;
 
-  async fetch(args: TArgs, multi?: multi): Promise<TResult> {
+  async fetch(args: TArgs): Promise<TResult> {
     const isDevEnv = process.env.NODE_ENV === 'development';
-    const verbose = isDevEnv || this.verbose(args, multi);
+    const verbose = isDevEnv || this.verbose(args);
     const key = await this.keyWithTag(args);
     if (verbose) { 
       console.log(`Running aggregator: "${key}"`); 
@@ -83,7 +86,7 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
       }
     }
 
-    const pendingAggregation: Promise<TResult> = pendingAggregations.get(key);
+    const pendingAggregation: Promise<TResult> = this.pendingAggregations.get(key);
     if (pendingAggregation !== undefined) {
       if (verbose) {
         console.log(`Found pending aggregation promise for "${key}". Re-using.`);
@@ -98,7 +101,7 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
     const hrstart = process.hrtime();
     try {
       const aggregationPromise = this.set(args);
-      pendingAggregations.set(key, aggregationPromise);
+      this.pendingAggregations.set(key, aggregationPromise);
       const result = await aggregationPromise;
       return result;
     } catch (error) {
@@ -106,11 +109,13 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
       console.error(error);
       throw error;
     } finally {
-      pendingAggregations.delete(key);
+      this.pendingAggregations.delete(key);
       const hrend = process.hrtime(hrstart);
       const elapsedSeconds = (hrend[0] + (hrend[1] / 1e9));
       if (elapsedSeconds > 10) {
-        console.error(`Warning: aggregation for "${key}" took ${elapsedSeconds} seconds`);
+        const warning = `Warning: aggregation for "${key}" took ${elapsedSeconds} seconds`;
+        Sentry.captureMessage(warning);
+        console.error(warning);
       }
       if (verbose) {
         console.log(`Fetching data for "${key}" took ${elapsedSeconds.toFixed(4)} seconds`);
@@ -122,12 +127,8 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Jso
     return null;
   }
 
-  verbose(args: TArgs, multi?: multi): boolean {
-    if (multi) {
-      return false;
-    } else {
-      return true
-    }
+  verbose(args: TArgs): boolean {
+    return true;
   }
 
   getCurrentGitTag(): Promise<string> {
@@ -155,18 +156,18 @@ export abstract class Aggregator<TResult extends Json> extends AggregatorWithArg
   get(): Promise<TResult | null> {
     return super.get(undefined);
   }
-  abstract setter(): Promise<TResult>;
-  set(multi?: multi): Promise<TResult> {
-    return super.set(undefined, multi);
+  abstract setter(): Promise<AggregatorSetterResult<TResult>>;
+  set(): Promise<TResult> {
+    return super.set(undefined);
   }
-  fetch(multi?: multi): Promise<TResult> {
-    return super.fetch(undefined, multi);
+  fetch(): Promise<TResult> {
+    return super.fetch(undefined);
   }
   expiry(): number | null {
     return super.expiry(undefined);
   }
-  verbose(multi?: multi): boolean {
-    return super.verbose(undefined, multi);
+  verbose(): boolean {
+    return super.verbose(undefined);
   }
 }
 

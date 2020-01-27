@@ -3,7 +3,7 @@ import TransactionAggregator from '../../lib/aggregators/transaction';
 
 test('fetches a TX with stx transfers', async () => {
   const txid = '8eac5df3fdf739f62a105a2dbdbe20ffcde19a2cd0551c9770c8017a448da1b0';
-  const tx = await TransactionAggregator.setter({hash: txid});
+  const { value: tx } = await TransactionAggregator.setter({hash: txid});
   expect(tx.memo).toBe('Hi there!');
   expect(tx.blockHeight).toBe(552436);
   expect(tx.blockTime).toBe(1543883300);
@@ -14,7 +14,7 @@ test('fetches a TX with stx transfers', async () => {
 });
 
 test('fetches a TX', async () => {
-  const tx = await TransactionAggregator.setter({hash:
+  const { value: tx } = await TransactionAggregator.setter({hash:
     'b5eec33c42920752d60203eae6b1a9bddab18f1f88ba9999352b93589d70e530'
   });
   expect(tx.blockheight).toBe(517739);
@@ -28,7 +28,7 @@ test('fetches a TX', async () => {
 });
 
 test('fetches an older TX', async () => {
-  const tx = await TransactionAggregator.setter({hash:
+  const { value: tx } = await TransactionAggregator.setter({hash:
     '7e08c36aaa53ae3fc87abfda55a6cd92de7dd723da3399ad274b614cb7d37874'
   });
   expect(tx.blockheight).toBe(332624);

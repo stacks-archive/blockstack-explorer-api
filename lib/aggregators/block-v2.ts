@@ -1,17 +1,10 @@
-import * as BluebirdPromise from 'bluebird';
-import * as moment from 'moment';
-import * as Sentry from '@sentry/node';
-import * as multi from 'multi-progress';
-import * as c32check from 'c32check';
-
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import {
   getBlock,
   getBlockTransactions,
   getBlockHash,
   BitcoreTransaction,
   BitcoreBlock,
-  getTimesForBlockHeights,
   getTimeForBlockHeight
 } from '../bitcore-db/queries';
 import {
@@ -54,7 +47,7 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
     return `Block:${hashOrHeight}`;
   }
 
-  async setter(hashOrHeight: BlockAggregatorOpts): Promise<BlockAggregatorResult> {
+  async setter(hashOrHeight: BlockAggregatorOpts): Promise<AggregatorSetterResult<BlockAggregatorResult>> {
     let hash: string;
     if (hashOrHeight.toString().length < 10) {
       hash = await getBlockHash(hashOrHeight);
@@ -97,15 +90,14 @@ class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAgg
       transactions,
       rewardFormatted
     };
-    return result;
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 
   expiry() {
     return 60 * 60 * 24 * 2; // 2 days
-  }
-
-  verbose(hashOrHeight: BlockAggregatorOpts, multi?: multi) {
-    return !multi;
   }
 }
 

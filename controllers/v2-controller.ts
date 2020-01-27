@@ -1,6 +1,6 @@
 import { Request, Response, Router } from 'express';
 import * as moment from 'moment';
-import * as request from 'request-promise';
+import * as request from 'request-promise-native';
 import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
@@ -21,7 +21,7 @@ import { blockToTime, stacksValue } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
 import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
 import { getSTXAddress } from '../lib/stacks-decoder';
-import { StatusCodeError } from 'request-promise/errors';
+import { StatusCodeError } from 'request-promise-native/errors';
 import * as searchUtil from '../lib/search-util';
 
 const baseRouter = Router();

@@ -1,4 +1,4 @@
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import { HistoryRecordData, getHistoryFromTxid } from '../core-db-pg/queries';
 import { btcValue, stacksValue } from '../utils';
 import { DecodeTxResult, decodeTx } from '../btc-tx-decoder';
@@ -36,7 +36,7 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
     return 10 * 60; // 10 minutes
   }
 
-  async setter({ hash }: TransactionAggregatorOpts): Promise<TransactionAggregatorResult> {
+  async setter({ hash }: TransactionAggregatorOpts): Promise<AggregatorSetterResult<TransactionAggregatorResult>> {
     const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
       getTX(hash),
       // TODO: refactor to use bitcore/pg
@@ -51,11 +51,12 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
       feeBTC: btcValue(formattedTX.fee),
       confirmations: latestBlockHeight - tx.blockHeight
     };
+    let result: TransactionAggregatorResult;
     if (history && history.opcode === 'TOKEN_TRANSFER') {
       const historyData = history.historyData as HistoryDataTokenTransfer;
       const stxAddresses = getStxAddresses(history);
       const valueStacks = stacksValue(historyData.token_fee);
-      return {
+      result = {
         ...txData,
         ...stxAddresses,
         ...history,
@@ -66,8 +67,12 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
         valueStacksFormatted: stacksValue(historyData.token_fee, true)
       };
     } else {
-      return txData;
+      result = txData;
     }
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 }
 

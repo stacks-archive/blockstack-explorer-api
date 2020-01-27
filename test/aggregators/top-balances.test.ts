@@ -2,7 +2,7 @@ import '../setup';
 import TopBalancesAggregator, { TopBalanceAccount } from '../../lib/aggregators/top-balances';
 
 test('get top balances', async () => {
-  const balances: TopBalanceAccount[] = await TopBalancesAggregator.setter({count: 500});
+  const { value: balances } = await TopBalancesAggregator.setter({count: 500});
   expect(balances.length).toEqual(500);
   expect(balances[0].stxAddress).toBeTruthy();
   expect(balances[0].btcAddress).toBeTruthy();

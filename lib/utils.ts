@@ -1,5 +1,4 @@
 import * as moment from 'moment';
-import * as accounting from 'accounting';
 import BigNumber from 'bignumber.js';
 
 export const stacksValue = (value: number | string, formatted = false) => {

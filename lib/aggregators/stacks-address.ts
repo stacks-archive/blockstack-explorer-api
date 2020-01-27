@@ -3,7 +3,7 @@ import * as c32check from 'c32check';
 import * as moment from 'moment';
 import { compact } from 'lodash';
 
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import {
   network,
 } from '../client/core-api';
@@ -83,7 +83,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
     return `StacksAddress:${addr}:${page || 0}`;
   }
 
-  async setter({addr, page}: StacksAddressOpts): Promise<StacksAddressResult> {
+  async setter({addr, page}: StacksAddressOpts): Promise<AggregatorSetterResult<StacksAddressResult>> {
     const { accountsByAddress } = await getAccounts();
     let genesisData = {};
     if (accountsByAddress[addr]) {
@@ -147,7 +147,10 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
       ...unlockInfo,
     };
 
-    return account;
+    return {
+      shouldCacheValue: true,
+      value: account,
+    };
   }
 
   async getHistory(address: string, page: number): Promise<GetHistoryResult> {

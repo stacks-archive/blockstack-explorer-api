@@ -1,5 +1,5 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
-import { AggregatorWithArgs } from './aggregator';
+import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
 import { fetchName, FetchNameEntry } from '../client/core-api';
 import { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
@@ -56,7 +56,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
     };
   }
 
-  async setter({ name, historyPage = 0 }: NameAggregatorInput): Promise<NameAggregatorResult> {
+  async setter({ name, historyPage = 0 }: NameAggregatorInput): Promise<AggregatorSetterResult<NameAggregatorResult>> {
     const [person, nameRecord] = await Promise.all([
       fetchName(name),
       getNameHistory(name, historyPage),
@@ -98,11 +98,15 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
       }
       // userApps = this.getAppsArray(appsList, profile.apps);
     }
-    return {
+    const result = {
       nameRecord: nameRecordWithTimes,
       userApps,
       proofs,
       ...person
+    };
+    return {
+      shouldCacheValue: true,
+      value: result,
     };
   }
 

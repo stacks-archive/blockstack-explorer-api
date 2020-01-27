@@ -2,7 +2,7 @@ import '../setup';
 import TotalSupplyAggregator from '../../lib/aggregators/total-supply';
 
 test('get total supply', async () => {
-  const totalSupplyInfo = await TotalSupplyAggregator.setter();
+  const { value: totalSupplyInfo } = await TotalSupplyAggregator.setter();
   expect(parseFloat(totalSupplyInfo.blockHeight)).toBeGreaterThan(1);
   expect(parseFloat(totalSupplyInfo.totalStacks)).toBeGreaterThan(1);
   expect(parseFloat(totalSupplyInfo.unlockedSupply)).toBeGreaterThan(1);

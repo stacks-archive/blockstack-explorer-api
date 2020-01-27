@@ -2,7 +2,7 @@ import * as moment from 'moment';
 import { sortBy } from 'lodash';
 
 import NameOperations, { NameOp } from './name-ops-v2';
-import { Aggregator } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import NameCounts, { TotalNamesResult } from './total-names';
 import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
@@ -26,7 +26,7 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
     return 'HomeInfo:v2';
   }
 
-  async setter() {
+  async setter(): Promise<AggregatorSetterResult<HomeInfoResult>> {
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
       NameOperations.fetch({page: 0}),
@@ -65,13 +65,17 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
     });
 
     const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-    return {
+    const result = {
       totalStacks: totalSupplyInfo.totalStacksFormatted,
       unlockedSupply: totalSupplyInfo.unlockedSupply,
       unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
       nameTotals: counts,
       nameOperationsOverTime,
       nameOperations
+    };
+    return {
+      shouldCacheValue: true,
+      value: result,
     };
   }
 

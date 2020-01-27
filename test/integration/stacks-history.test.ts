@@ -25,7 +25,7 @@ const testAddressHistory = async (addr: string) => {
   const pages2 = [0, 1, 2];
   const history: CoreHistoryItem[] = flatten(historyPages);
   const stacksAddressHistoryPages = await BluebirdPromise.mapSeries(pages2, async (page: number) => {
-    const stacksAddress = await StacksAddress.setter({addr, page});
+    const { value: stacksAddress } = await StacksAddress.setter({addr, page});
     return stacksAddress.history;
   });
   const stacksAddressHistory = flatten(stacksAddressHistoryPages);
