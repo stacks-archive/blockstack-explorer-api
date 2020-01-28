@@ -124,13 +124,12 @@ export type BitcoreTransaction = {
   outputs: {
     address: string | false; 
     value: number;
-    /** base64 string */
-    script: string;
   }[];
 };
 
 export type BitcoreAddressTxInfo = BitcoreTransaction & {
   address: string;
+  mintIndex: number;
   totalTransferred: number;
   action: 'sent' | 'received';
 };
@@ -213,11 +212,11 @@ export const getAddressTransactions = async (
       confirmations: tip - tx.mintTx.blockHeight + 1,
       blockTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
       txid: tx.mintTxid,
+      mintIndex: tx.mintIndex,
       fee: tx.mintTx.fee,
       inputs: [],
       outputs: isSpend ? tx.txOutputs.map(tx => ({
         address: tx.address === 'false' ? false : tx.address,
-        script: tx.script.buffer.toString('base64'),
         value: tx.value
       })) : []
     };
@@ -239,19 +238,22 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
   const db = await getDB();
 
   const collection = db.collection<CoinsQueryResult>(Collections.Coins);
-  const result = await collection.aggregate<{ _id: string; balance: number; count: number }>(
+  const result = await collection.aggregate<{ 
+    balances: { _id: string; balance: number; count: number }[]; 
+    uniqueTx: { count: number };
+  }>(
     [
       {
         $match: {
           address,
           ...chainQuery,
-          // spentHeight: { $lt: BitcoreSpentHeightIndicators.minimum },
           mintHeight: { $gte: BitcoreSpentHeightIndicators.minimum }
         }
       },
       {
         $project: {
           value: 1,
+          mintTxid: 1,
           status: {
             $cond: {
               if: { $gte: ['$spentHeight', 0] },
@@ -263,16 +265,33 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
         }
       },
       {
-        $group: {
-          _id: '$status',
-          balance: { $sum: '$value' },
-          count: { $sum: 1 },
+        $facet: {
+          balances: [
+            {
+              $group: {
+                _id: '$status',
+                balance: { $sum: '$value' },
+                count: { $sum: 1 },
+              }
+            }
+          ],
+          uniqueTx: [
+            { $group: { _id: '$mintTxid' } }, 
+            { $group: { _id: null, count: { $sum: 1 } } }
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: '$uniqueTx', 
+          preserveNullAndEmptyArrays: true 
         }
       }
     ]
   ).toArray();
-
-  const totals = result.reduce<BitcoreAddressBalance>(
+  const row = result[0];
+  const totalTransactions = row.uniqueTx?.count ?? 0;
+  const totals = row.balances.reduce(
     (acc, cur) => {
       if (cur._id === 'unspent') {
         acc.balance += cur.balance;
@@ -280,10 +299,9 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
         acc.totalSent += cur.balance;
       }
       acc.totalReceived += cur.balance;
-      acc.totalTransactions += cur.count;
       return acc;
     },
-    { balance: 0, totalReceived: 0, totalSent: 0, totalTransactions: 0 }
+    { balance: 0, totalReceived: 0, totalSent: 0, totalTransactions }
   );
   return totals;
 };

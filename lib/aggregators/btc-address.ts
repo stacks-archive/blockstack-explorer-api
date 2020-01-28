@@ -8,6 +8,7 @@ type BTCAddressAggregatorOpts = {
 
 type BTCAddressTxInfo = {
   txid: string;
+  index: number;
   value: number;
   action: string;
   time: number;
@@ -35,13 +36,14 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
       const action = tx.action.charAt(0).toUpperCase() + tx.action.slice(1)
       const result : BTCAddressTxInfo = {
         txid: tx.txid,
-        value: tx.totalTransferred,
+        index: tx.mintIndex,
+        value: tx.value,
         action: action,
         time: tx.blockTime,
       };
       return result;
     });
-
+    
     const result: BTCAddressAggregatorResult = {
       totalSent: fetchedAddress.btcBalanceInfo.totalSent,
       totalReceived: fetchedAddress.btcBalanceInfo.totalReceived,
