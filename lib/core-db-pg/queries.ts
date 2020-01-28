@@ -255,14 +255,17 @@ export const getAllNameOperations = async (page = 0, limit = 100): Promise<NameR
     SELECT 
       h.block_id, h.history_id, h.creator_address,
       s.owner, s.fully_qualified_subdomain
-    FROM history h
+    FROM (
+      SELECT * from history
+      WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION')
+      ORDER BY block_id DESC
+        LIMIT $1 OFFSET $2
+      ) as h
     LEFT JOIN subdomain_records s
     ON h.txid = s.txid
     WHERE (
       s.owner IS NOT NULL
-      OR h.opcode in (
-        'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-      )
+      OR h.opcode = 'NAME_REGISTRATION'
     )
     ORDER BY h.block_id DESC
     LIMIT $1 OFFSET $2`;

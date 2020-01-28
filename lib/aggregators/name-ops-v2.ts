@@ -31,7 +31,7 @@ class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, Name
 
   async setter({page = 0}: NameOpsAggregatorArgs): Promise<AggregatorSetterResult<NameOpsAggregatorResult>> {
     const history = await getAllNameOperations(page);
-    const blockHeights = history.map(record => record.block_id);
+    const blockHeights = [...new Set(history.map(record => record.block_id))];
     const blockTimes = await getTimesForBlockHeights(blockHeights);
 
     const nameOps: NameOp[] = history.map(record => {
