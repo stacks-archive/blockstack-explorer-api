@@ -1,4 +1,4 @@
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import { getRecentSubdomains } from '../lib/core-db-pg/queries';
 
 dotenv.config();
@@ -9,9 +9,11 @@ const run = async () => {
   console.log(res[0]);
 };
 
-run().then(() => {
-  process.exit();
-}).catch((e) => {
-  console.error(e);
-  process.exit();
-});
+run()
+  .then(() => {
+    process.exit();
+  })
+  .catch(e => {
+    console.error(e);
+    process.exit();
+  });

@@ -1,8 +1,12 @@
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
+import * as express from 'express';
+import * as cors from 'cors';
+import * as morgan from 'morgan';
 import * as Sentry from '@sentry/node';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
+// eslint-disable-next-line @typescript-eslint/ban-ts-ignore
+// @ts-ignore
 import { createServer } from '@promster/server';
 
 import makeAPIController from './controllers/api-controller';

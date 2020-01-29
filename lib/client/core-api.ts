@@ -1,16 +1,13 @@
-import request from 'request-promise';
-import moment from 'moment';
-import accounting from 'accounting';
+import * as request from 'request-promise';
+import * as moment from 'moment';
 import { network as BlockstackNetwork } from 'blockstack';
-import { Transaction } from 'bitcoinjs-lib';
-import RPCClient from 'bitcoin-core';
-import dotenv from 'dotenv';
-import { getTX, getLatestBlock } from '../bitcore-db/queries';
-import { decodeTx } from '../btc-tx-decoder';
-import { decode as decodeStx } from '../stacks-decoder';
-import { getHistoryFromTxid } from '../core-db-pg/queries';
-import { getStxAddresses } from '../../controllers/v2-controller';
-import { stacksValue, formatNumber, btcValue } from '../utils';
+import * as RPCClient from 'bitcoin-core';
+import * as dotenv from 'dotenv';
+import { 
+  getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
+  BitcoreAddressBalance,
+} from '../bitcore-db/queries';
+
 
 dotenv.config();
 
@@ -29,14 +26,11 @@ moment.updateLocale('en', {
     M: '1m',
     MM: '%dM',
     y: '1Y',
-    yy: '%dY',
-  },
+    yy: '%dY'
+  }
 });
 
 const coreApi = process.env.CORE_API_URL || 'https://core.blockstack.org';
-// const explorerApi = 'https://insight.blockstack.systems/insight-api';
-const explorerApi = 'https://insight.bitpay.com/api';
-const blockchainInfoApi = 'https://blockchain.info';
 const bitcoreApi = process.env.BITCORE_URL;
 
 const PUBLIC_TESTNET_HOST = 'testnet.blockstack.org';
@@ -46,7 +40,7 @@ const rpcClient = new RPCClient({
   username: process.env.BITCOIND_USERNAME,
   password: process.env.BITCOIND_PASSWORD,
   port: process.env.BITCOIND_PORT,
-  ssl: false,
+  ssl: false
 });
 
 let configData = {
@@ -56,7 +50,7 @@ let configData = {
   utxoServiceUrl: 'https://bitcoin.blockstack.com',
   rpc: {
     username: 'blockstack',
-    password: 'blockstacksystem',
+    password: 'blockstacksystem'
   },
   logConfig: {
     level: 'debug',
@@ -64,8 +58,8 @@ let configData = {
     timestamp: true,
     stringify: true,
     colorize: true,
-    json: true,
-  },
+    json: true
+  }
 };
 
 if (process.env.USE_TESTNET) {
@@ -76,7 +70,7 @@ if (process.env.USE_TESTNET) {
     utxoServiceUrl: `http://${PUBLIC_TESTNET_HOST}:18332`,
     rpc: {
       username: 'blockstack',
-      password: 'blockstacksystem',
+      password: 'blockstacksystem'
     },
     logConfig: {
       level: 'debug',
@@ -84,23 +78,26 @@ if (process.env.USE_TESTNET) {
       timestamp: true,
       stringify: true,
       colorize: true,
-      json: true,
-    },
+      json: true
+    }
   };
 }
 
 export const network = new BlockstackNetwork.LocalRegtest(
-  configData.blockstackAPIUrl, configData.broadcastServiceUrl,
-  new BlockstackNetwork.BitcoindAPI(configData.utxoServiceUrl,
-                                    { username: 'blockstack', password: 'blockstacksystem' }),
+  configData.blockstackAPIUrl,
+  configData.broadcastServiceUrl,
+  new BlockstackNetwork.BitcoindAPI(configData.utxoServiceUrl, {
+    username: 'blockstack',
+    password: 'blockstacksystem'
+  })
 );
 
-const fetchJSON = async (uri: string) => {
+const fetchJSON = async (uri: string): Promise<any> => {
   try {
     const response = await request({
       uri,
       resolveWithFullResponse: true,
-      time: true,
+      time: true
     });
     if (response.statusCode !== 200) {
       console.log(`${response.statusCode} when fetching ${uri}`);
@@ -116,42 +113,174 @@ const fetchJSON = async (uri: string) => {
   }
 };
 
+export type FetchAddressCoreResult = { 
+  names: string[];
+};
+
 /**
  * Addresses
  */
-export const fetchAddressCore = (address: string) => {
+export const fetchAddressCore = async (address: string): Promise<FetchAddressCoreResult> => {
   const url = `${coreApi}/v1/addresses/bitcoin/${address}`;
-  return fetchJSON(url);
+  const data = await fetchJSON(url);
+  return data as FetchAddressCoreResult;
 };
 
-export const fetchAddressInfo = (address: string, limit = 10, offset = 0) => fetchJSON(`${blockchainInfoApi}/rawaddr/${address}?limit=${limit}&offset=${offset}`);
+export type BlockchainInfoTx = {
+  hash: string;
+  ver: number;
+  vin_sz: number;
+  vout_sz: number;
+  lock_time: string;
+  size: number;
+  relayed_by: string;
+  block_height: number;
+  tx_index: string;
+  inputs: {
+    prev_out: {
+      hash: string;
+      value: string;
+      tx_index: string;
+      n: string;
+      addr?: string;
+    };
+    script: string;
+  }[];
+  out: {
+    value: string;
+    hash: string;
+    script: string;
+    addr?: string;
+  }[];
+};
 
-// const fetchAddressInsight = address => fetchJSON(`${explorerApi}/addr/${address}`);
+export type BlockchainAddressInfo = {
+  hash160: string;
+  address: string;
+  n_tx: number;
+  n_unredeemed: number;
+  total_received: number;
+  total_sent: number;
+  final_balance: number;
+};
 
-export const fetchAddress = async (address: string, limit = 0, offset = 0) => {
-  const [coreData, insightData] = await Promise.all([
+export type FetchAddressInfoResult = BlockchainAddressInfo & {
+  txs: BlockchainInfoTx[];
+};
+
+export type FetchAddressResult = {
+  blockstackCoreData: FetchAddressCoreResult;
+  btcBalanceInfo: BitcoreAddressBalance;
+  btcTransactions: BitcoreAddressTxInfo[];
+};
+
+export const fetchAddress = async (address: string, page = 0, count = 20): Promise<FetchAddressResult | null> => {
+  const [coreData, btcBalanceInfo, bitcoreTxs] = await Promise.all([
+    // TODO: refactor to use pg query rather than core node API
     fetchAddressCore(address),
-    fetchAddressInfo(address, limit, offset),
+    getAddressBtcBalance(address),
+    getAddressTransactions(address, page, count)
   ]);
-  if (!insightData) {
-    return null;
-  }
+
   return {
-    ...coreData,
-    ...insightData,
+    blockstackCoreData: coreData,
+    btcBalanceInfo: btcBalanceInfo,
+    btcTransactions: bitcoreTxs,
+  };
+};
+
+export type FetchNameResult = {
+  [name: string]: FetchNameEntry;
+};
+
+export type FetchNameEntry = {
+  owner_address?: string;
+  ownerAddress?: string;
+  profile: {
+    "@context": string;
+    "@type": string;
+    account: {
+      "@type": string;
+      identifier: string;
+      placeholder: boolean;
+      proofType: string;
+      proofUrl: string;
+      service: string;
+      verified?: boolean;
+    }[];
+    api: {
+      gaiaHubConfig: {
+        url_prefix: string;
+      };
+      gaiaHubUrl: string;
+    };
+    apps: {
+      [appUrl: string]: string;
+    };
+    image: {
+      "@type": string;
+      contentUrl: string;
+      name: string;
+    }[];
+    name: string;
+  };
+  public_key: string;
+  verifications: {
+    identifier: string;
+    proof_url: string;
+    service: string;
+    valid: boolean;
+  }[];
+  zone_file: {
+    $origin: string;
+    $ttl: number;
+    uri: {
+      name: string;
+      priority: number;
+      target: string;
+      weight: number;
+    }[];
   };
 };
 
 /**
  * Names
  */
-export const fetchName = async (name: string) => {
+export const fetchName = async (name: string): Promise<FetchNameEntry | null> => {
   const url = `${coreApi}/v2/users/${name}`;
-  const data = await fetchJSON(url);
-  return data ? data[name] : data;
+  const data: FetchNameResult = await fetchJSON(url);
+  // TODO: What is the actual intended return type?
+  return data ? data[name] : (data as unknown as FetchNameEntry);
 };
 
-export const fetchNameOperations = async (blockHeight: number) => {
+export type BlockstackCoreBitcoinBlockNameOps = {
+  address: string;
+  block_number: number;
+  consensus_hash: string;
+  first_registered: number;
+  importer: string;
+  importer_address: string;
+  last_renewed: number;
+  name: string;
+  name_consensus_hash: string;
+  name_hash128: string;
+  namespace_block_number: number;
+  namespace_id: string;
+  op: string;
+  op_fee: number;
+  opcode: string;
+  preorder_block_number: number;
+  preorder_hash: string;
+  revoked: boolean;
+  sender: string;
+  sender_pubkey: string;
+  token_fee: string;
+  txid: string;
+  value_hash: string;
+  vtxindex: number;
+};
+
+export const fetchNameOperations = async (blockHeight: number): Promise<BlockstackCoreBitcoinBlockNameOps[]> => {
   const url = `${coreApi}/v1/blockchains/bitcoin/operations/${blockHeight}`;
   const result = await fetchJSON(url);
   if (!result) {
@@ -160,29 +289,52 @@ export const fetchNameOperations = async (blockHeight: number) => {
   return result;
 };
 
-export const fetchNameRecord = async (name, page = 0) => {
-  const data = await fetchJSON(`${coreApi}/v1/names/${name}/history?page=${page}`);
-  const nameops = Object.values(data)
-    .map(op => op[0])
-    .reverse();
-  return {
-    history: nameops,
-    ...nameops[0],
-  };
+export type ConvertTxResult = BlockchainInfoBlockTx & {
+  vin: {
+    addr: string;
+    sequence: number;
+    witness: string;
+    script: string;
+    index: number;
+    prev_out?: BlockchainInfoBlockTxOutput;
+  }[];
+  vout: {
+    value: number;
+    scriptPubKey: {
+      hex: string;
+    };
+    type: number;
+    spent: boolean;
+    spending_outpoints: {
+      tx_index: number;
+      n: number;
+    }[];
+    tx_index: number;
+    script: string;
+    n: number;
+    addr?: string;
+  }[];
+  txid: string;
+  value: number;
+  valueOut: number;
+  blockheight: number;
 };
 
-export const convertTx = (tx) => {
-  const value = tx.out.reduce(((accumulator, current) => accumulator + current.value * 10e-9), 0);
-  const vout = tx.out.map(output => ({
+export const convertTx = (tx: BlockchainInfoBlockTx): ConvertTxResult => {
+  const value: number = tx.out.reduce(
+    (accumulator, current) => accumulator + current.value * 10e-9,
+    0
+  );
+  const vout = tx.out.map((output: BlockchainInfoBlockTxOutput) => ({
     ...output,
     value: output.value * 10e-9,
     scriptPubKey: {
-      hex: output.script,
-    },
+      hex: output.script
+    }
   }));
-  const vin = tx.inputs.map(input => ({
+  const vin = tx.inputs.map((input: BlockchainInfoBlockTxInput) => ({
     ...input,
-    addr: input.prev_out && input.prev_out.addr,
+    addr: input.prev_out && input.prev_out.addr
   }));
   return {
     ...tx,
@@ -191,133 +343,167 @@ export const convertTx = (tx) => {
     txid: tx.hash,
     value,
     valueOut: value,
-    blockheight: tx.block_height,
+    blockheight: tx.block_height
   };
 };
 
 /**
  * Transactions
  */
-
-export const fetchRawTxInfo = async (hash: string) => {
+export const fetchRawTxInfo = async (hash: string): Promise<string> => {
   try {
-    const txRaw = await rpcClient.getRawTransaction(hash).catch((err) => {
+    const txRaw = await rpcClient.getRawTransaction(hash).catch((err: any) => {
       throw err;
     });
-    return txRaw;
+    return txRaw as string;
   } catch (error) {
     throw error;
   }
 };
 
+export type BlockchainInfoBlock = {
+  height: number;
+  hash: string;
+  time: number;
+  main_chain: boolean;
+};
 
-export const fetchTX = async (hash: string) => {
-  try {
-    const [tx, rawTx, latestBlock, history] = await Promise.all([
-      getTX(hash),
-      fetchRawTxInfo(hash),
-      getLatestBlock(),
-      getHistoryFromTxid(hash),
-    ]);
-    const decodedTx = Transaction.fromHex(<string>rawTx);
-    const formattedTX = await decodeTx(decodedTx, tx);
-    const txData = {
-      ...formattedTX,
-      feeBTC: btcValue(formattedTX.fee),
-      confirmations: latestBlock.height - tx.blockHeight,
-    };
-    if (history && history.opcode === 'TOKEN_TRANSFER') {
-      const stxAddresses = getStxAddresses(history);
-      const stxDecoded = decodeStx(rawTx);
-      const valueStacks = stacksValue(parseInt(history.historyData.token_fee, 10));
-      return {
-        ...txData,
-        ...stxAddresses,
-        ...history,
-        memo: history.historyData.scratch_area ? Buffer.from(history.historyData.scratch_area, 'hex').toString() : null,
-        stxDecoded,
-        valueStacks,
-        valueStacksFormatted: formatNumber(valueStacks),
-      };
-    }
-    return txData;
-  } catch (error) {
-    throw error;
+export type BlockchainInfoRawBlock = {
+  ver: number;
+  next_block: any[];
+  time: number;
+  bits: number;
+  fee: number;
+  nonce: number;
+  n_tx: number;
+  size: number;
+  block_index: number;
+  main_chain: boolean;
+  height: number;
+  weight: number;
+  tx: BlockchainInfoBlockTx[];
+  hash: string;
+  prev_block: string;
+  mrkl_root: string;
+};
+
+export type BlockchainInfoBlockTx = {
+  hash: string;
+  ver: number;
+  vin_sz: number;
+  vout_sz: number;
+  size: number;
+  weight: number;
+  fee: number;
+  relayed_by: string;
+  lock_time: number;
+  tx_index: number;
+  double_spend: boolean;
+  result: number;
+  balance: number;
+  time: number;
+  block_index: number;
+  block_height: number;
+  inputs: BlockchainInfoBlockTxInput[];
+  out: BlockchainInfoBlockTxOutput[];
+  rbf?: boolean;
+};
+
+export type BlockchainInfoBlockTxInput = {
+  sequence: number;
+  witness: string;
+  script: string;
+  index: number;
+  prev_out?: BlockchainInfoBlockTxOutput;
+};
+
+export type BlockchainInfoBlockTxOutput = {
+  type: number;
+  spent: boolean;
+  value: number;
+  spending_outpoints: {
+    tx_index: number;
+    n: number;
+  }[];
+  tx_index: number;
+  script: string;
+  n: number;
+  addr?: string;
+};
+
+export type BlockchainInfoBlockResult = Omit<BlockchainInfoRawBlock, 'tx'> & {
+  nameOperations: BlockstackCoreBitcoinBlockNameOps[];
+  transactions: ConvertTxResult[];
+  txCount: number;
+};
+
+export type NamespaceNameCountResult = {
+  names_count: number;
+};
+export const fetchNamespaceNameCount = async (namespace: string): Promise<NamespaceNameCountResult> => {
+  const url = `${coreApi}/v1/blockchains/bitcoin/name_count?all=1&id=${namespace}`;
+  const data: NamespaceNameCountResult = await fetchJSON(url);
+  return data;
+};
+
+export const fetchNamespaces = async (): Promise<string[]> => {
+  const data: string[] = await fetchJSON(`${coreApi}/v1/namespaces`);
+  return data;
+};
+
+export const fetchNames = async (page: number): Promise<string[]> => {
+  const data: string[] = await fetchJSON(`${coreApi}/v1/names?page=${page}`);
+  if (!data) {
+    return [];
   }
+  return data;
+};
+
+export const fetchNamespaceNames = async (namespace: string, page: number): Promise<string[]> => {
+  const data: string[] = await fetchJSON(`${coreApi}/v1/namespaces/${namespace}/names?page=${page}`);
+  return data;
+};
+
+export type SubdomainTransactionResult = {
+  accepted: number;
+  block_height: number;
+  domain: string;
+  fully_qualified_subdomain: string;
+  missing: string;
+  owner: string;
+  parent_zonefile_hash: string;
+  parent_zonefile_index: number;
+  resolver: string;
+  sequence: number;
+  signature: string;
+  txid: string;
+  zonefile_hash: string;
+  zonefile_offset: number;
+};
+
+// TODO: unused, remove
+const fetchTransactionSubdomains = async (txid: string): Promise<SubdomainTransactionResult[]> => {
+  const data: SubdomainTransactionResult[] = await fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
+  return data;
+}
+
+export type TotalNamesResult = {
+  names_count: number;
+};
+export const fetchTotalNames = async (): Promise<TotalNamesResult> => {
+  const data: TotalNamesResult = await fetchJSON(`${coreApi}/v1/blockchains/bitcoin/name_count`);
+  return data;
+};
+
+export type TotalSubdomainsResult = {
+  names_count: number;
 };
 
 /**
- * Blocks
+ * @deprecated Use the faster query `getTotalSubdomainCount()` from the pg db queries module.
  */
-
-export const fetchBlocks = async (date: string) => {
-  const mom = date ? moment(date) : moment();
-  const endOfDay = mom.utc().endOf('day').valueOf();
-  const url = `${blockchainInfoApi}/blocks/${endOfDay}?format=json`;
-  const { blocks } = await fetchJSON(url);
-  return blocks;
+export const fetchTotalSubdomains = async (): Promise<TotalSubdomainsResult> => {
+  const data: TotalSubdomainsResult = await fetchJSON(`${coreApi}/v1/blockchains/bitcoin/subdomains_count`);
+  return data;
 };
 
-export const fetchBlockHash = async (height: number) => {
-  const data = await fetchJSON(`${explorerApi}/block-index/${height}`);
-  return data.blockHash;
-};
-
-export const fetchBlockInfo = (hash: string) => fetchJSON(`${blockchainInfoApi}/rawblock/${hash}`);
-
-export const fetchBlock = async (hashOrHeight: string | number) => {
-  let hash = hashOrHeight;
-  if (hashOrHeight.toString().length < 10) {
-    hash = await fetchBlockHash(<number>hashOrHeight);
-  }
-  const block = await fetchBlockInfo(<string>hash);
-  if (!block) {
-    return null;
-  }
-  block.nameOperations = await fetchNameOperations(block.height);
-  block.transactions = block.tx.map(convertTx);
-  const { tx, ...rest } = block;
-  return {
-    ...rest,
-    txCount: block.n_tx,
-  };
-};
-
-export const fetchNamespaceNameCount = (namespace: string) => {
-  const url = `${coreApi}/v1/blockchains/bitcoin/name_count?all=1&id=${namespace}`;
-  return fetchJSON(url);
-};
-
-export const fetchNamespaces = () => fetchJSON(`${coreApi}/v1/namespaces`);
-
-export const fetchNames = (page: number) => fetchJSON(`${coreApi}/v1/names?page=${page}`);
-
-export const fetchNamespaceNames = (namespace: string, page: number) => fetchJSON(`${coreApi}/v1/namespaces/${namespace}/names?page=${page}`);
-
-export const fetchTransactionSubdomains = (txid: string) => fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
-
-export const fetchTotalNames = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/name_count`);
-export const fetchTotalSubdomains = () => fetchJSON(`${coreApi}/v1/blockchains/bitcoin/subdomains_count`);
-
-
-export default {
-  fetchName,
-  fetchAddress,
-  fetchTX,
-  fetchBlocks,
-  fetchNameOperations,
-  fetchNameRecord,
-  fetchBlock,
-  fetchNamespaceNameCount,
-  fetchNamespaces,
-  fetchNames,
-  fetchNamespaceNames,
-  fetchBlockInfo,
-  fetchBlockHash,
-  fetchTransactionSubdomains,
-  fetchTotalNames,
-  fetchTotalSubdomains,
-  network,
-  fetchRawTxInfo,
-  convertTx,
-};

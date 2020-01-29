@@ -1,28 +1,41 @@
-import accounting from 'accounting';
-import Aggregator from './aggregator';
+import * as accounting from 'accounting';
+import { Aggregator } from './aggregator';
 
-import { fetchTotalNames, fetchTotalSubdomains } from '../client/core-api';
+import { fetchTotalNames } from '../client/core-api';
+import { getTotalSubdomainCount } from '../core-db-pg/queries';
 
-class TotalNames extends Aggregator {
-  static async setter() {
-    const [names, subdomains] = await Promise.all([fetchTotalNames(), fetchTotalSubdomains()]);
+export type TotalNamesResult = {
+  namesFormatted: string;
+  totalFormatted: string;
+  subdomainsFormatted: string;
+  names: number;
+  subdomains: number;
+  total: number;
+};
+
+class TotalNames extends Aggregator<TotalNamesResult> {
+  async setter() {
+    const [namesCount, subdomainsCount] = await Promise.all([
+      // TODO: replace with pg-based getTotalNameCount() when ready
+      fetchTotalNames(),
+      getTotalSubdomainCount()
+    ]);
     const totals = {
-      names: names.names_count,
-      subdomains: subdomains.names_count,
-      total: names.names_count + subdomains.names_count,
+      names: namesCount.names_count,
+      subdomains: subdomainsCount,
+      total: namesCount.names_count + subdomainsCount
     };
     return {
       ...totals,
       namesFormatted: accounting.formatNumber(totals.names),
       totalFormatted: accounting.formatNumber(totals.total),
-      subdomainsFormatted: accounting.formatNumber(totals.subdomains),
+      subdomainsFormatted: accounting.formatNumber(totals.subdomains)
     };
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 10; // 10 minutes
   }
 }
 
-module.exports = TotalNames;
-export default TotalNames;
+export default new TotalNames();

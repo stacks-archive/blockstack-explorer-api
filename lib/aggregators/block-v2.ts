@@ -1,74 +1,107 @@
-import BluebirdPromise from 'bluebird';
-import moment from 'moment';
+import * as BluebirdPromise from 'bluebird';
+import * as moment from 'moment';
 import * as Sentry from '@sentry/node';
+import * as multi from 'multi-progress';
 
-import Aggregator from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import {
-  fetchNameOperations, fetchTransactionSubdomains, fetchName,
-} from '../client/core-api';
-import {
-  getBlock, getBlockTransactions, getBlockHash, Transaction,
+  getBlock,
+  getBlockTransactions,
+  getBlockHash,
+  BitcoreTransaction,
+  BitcoreBlock
 } from '../bitcore-db/queries';
 import {
-  getNameOperationsForBlock, getSubdomainRegistrationsForTxid,
+  getNameOperationsForBlock,
+  getSubdomainRegistrationsForTxid,
+  Subdomain,
+  NameOperationsForBlockResult
 } from '../core-db-pg/queries';
-import { btcValue, formatNumber } from '../utils';
+import { btcValue } from '../utils';
 
-class BlockAggregator extends Aggregator {
-  static key(hash: string) {
-    return `Block:${hash}`;
+
+/** hashOrHeight */
+type BlockAggregatorOpts = string;
+
+export type HistoryInfoNameOp = NameOperationsForBlockResult & {
+  timeAgo?: string;
+  time?: number;
+  subdomains?: Subdomain[];
+}
+
+export type BlockAggregatorResult = BitcoreBlock & {
+  transactions: BitcoreTransaction[];
+  nameOperations: NameOperationsForBlockResult[];
+  rewardFormatted: string;
+};
+
+class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAggregatorOpts> {
+  key(hashOrHeight: BlockAggregatorOpts) {
+    return `Block:${hashOrHeight}`;
   }
 
-  static async setter(hashOrHeight: string) {
-    let hash = hashOrHeight;
-    if (hash.toString().length < 10) {
+  async setter(hashOrHeight: BlockAggregatorOpts): Promise<BlockAggregatorResult> {
+    let hash: string;
+    if (hashOrHeight.toString().length < 10) {
       hash = await getBlockHash(hashOrHeight);
+    } else {
+      hash = hashOrHeight;
+    }
+    if (!hash) {
+      return null;
     }
     const block = await getBlock(hash);
     if (!block) {
       return null;
     }
-    const transactions: Transaction[] = await getBlockTransactions(hash);
-    block.transactions = transactions.map(tx => ({
+    // TODO: add Stacks transactions
+    let transactions: BitcoreTransaction[] = await getBlockTransactions(hash);
+    transactions = transactions.map(tx => ({
       ...tx,
-      value: btcValue(tx.value),
     }));
-    // const nameOperations = await fetchNameOperations(block.height);
-    const nameOperations = await getNameOperationsForBlock(block.height);
-    const { time } = block;
-    block.nameOperations = await BluebirdPromise.map(nameOperations, async (_nameOp) => {
-      try {
-        const nameOp: any = { ..._nameOp };
-        nameOp.timeAgo = moment(time * 1000).fromNow(true);
-        nameOp.time = time * 1000;
-        if (nameOp.opcode === 'NAME_UPDATE') {
-          const { txid } = nameOp;
-          // const subdomains = await fetchTransactionSubdomains(txid);
-          const subdomains = await getSubdomainRegistrationsForTxid(txid);
-          nameOp.subdomains = subdomains;
+    let nameOperations = await getNameOperationsForBlock(block.height);
+    nameOperations = await BluebirdPromise.map(
+      nameOperations,
+      async _nameOp => {
+        try {
+          const nameOp: HistoryInfoNameOp = { ..._nameOp };
+          // TODO: this should be removed and formatted for display on the front-end.
+          nameOp.timeAgo = moment(block.time * 1000).fromNow(true);
+          nameOp.time = block.time;
+          if (nameOp.opcode === 'NAME_UPDATE') {
+            const { txid } = nameOp;
+            // const subdomains = await fetchTransactionSubdomains(txid);
+            const subdomains = await getSubdomainRegistrationsForTxid(txid);
+            nameOp.subdomains = subdomains;
+          }
+          return nameOp;
+        } catch (error) {
+          console.error(error);
+          Sentry.captureException(error);
+          return null;
         }
-        return nameOp;
-      } catch (error) {
-        console.error(error);
-        Sentry.captureException(error);
-        return null;
-      }
-    }, { concurrency: 1 });
+      },
+      { concurrency: 1 }
+    );
+    nameOperations = nameOperations.filter(Boolean);
+    const rewardFormatted = btcValue(block.reward, true);
 
-    block.rewardFormatted = formatNumber(btcValue(block.reward));
-
-    block.nameOperations = (<any[]>block.nameOperations).filter(Boolean);
-
-    return block;
+    const result = {
+      ...block,
+      nameOperations,
+      transactions,
+      rewardFormatted
+    };
+    return result;
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 60 * 24 * 2; // 2 days
   }
 
-  static verbose(hash: string, multi: any) {
+  verbose(hashOrHeight: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
 }
 
-export default BlockAggregator;
+export default new BlockAggregator();

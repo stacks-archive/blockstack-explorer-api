@@ -1,9 +1,9 @@
-import dotenv from 'dotenv';
-import BluebirdPromise from 'bluebird';
+import * as dotenv from 'dotenv';
+import * as BluebirdPromise from 'bluebird';
 
 import { getBlockByHeight } from '../lib/bitcore-db/queries';
 
-const run = async () => {
+const run = () => {
   const topHeight = 578300;
   const runs = 100;
   const blocks: number[] = [];
@@ -12,16 +12,23 @@ const run = async () => {
     blocks.push(height);
   }
 
-  const results = BluebirdPromise.map(blocks, async (height: number) => {
-    const block = await getBlockByHeight(height);
-    return block;
-  }, { concurrency: 10 });
+  const results = BluebirdPromise.map(
+    blocks,
+    async (height: number) => {
+      const block = await getBlockByHeight(height);
+      return block;
+    },
+    { concurrency: 10 }
+  );
+  return results;
 };
 
-run().then(() => {
-  console.log('done');
-  process.exit();
-}).then((error) => {
-  console.error(error);
-  process.exit();
-});
+run()
+  .then(() => {
+    console.log('done');
+    process.exit();
+  })
+  .then((error: Error | string) => {
+    console.error(error);
+    process.exit();
+  });

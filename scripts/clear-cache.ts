@@ -1,4 +1,4 @@
-const redis = require('../lib/redis');
+import redis from '../lib/redis';
 
 redis.flushdb((err, success) => {
   if (err) console.error(err);

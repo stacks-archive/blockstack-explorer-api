@@ -1,5 +1,5 @@
 // const getApp = require('./app');
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 import getApp from './app';
 

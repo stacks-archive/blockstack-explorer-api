@@ -1,7 +1,15 @@
 module.exports = {
-  extends: ["airbnb-base", "plugin:@typescript-eslint/recommended"],
+  extends: [
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'prettier/@typescript-eslint',
+  ],
   parser: "@typescript-eslint/parser",
-  plugins: ["jest", "import"],
+  plugins: ["jest", "import", "@typescript-eslint"],
+  parserOptions: {
+    ecmaVersion: 2018,
+    project: './tsconfig.json',
+  },
   rules: {
     "no-console": [0],
     "@typescript-eslint/indent": [2, 2, {
@@ -17,15 +25,29 @@ module.exports = {
     "@typescript-eslint/class-name-casing": "off",
     "@typescript-eslint/camelcase": "off",
     "@typescript-eslint/array-type": "off",
-    "@typescript-eslint/member-delimiter-style": "off",
     "@typescript-eslint/no-angle-bracket-type-assertion": "off",
     "@typescript-eslint/prefer-interface": "off",
     "@typescript-eslint/no-use-before-define": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/prefer-string-starts-ends-with": "off",
     "import/prefer-default-export": "off",
     "max-len": [1, { code: 120 }],
-    "@typescript-eslint/no-var-requires": [1]
+    "@typescript-eslint/no-var-requires": "error",
+    '@typescript-eslint/member-delimiter-style': [
+      'error',
+      {
+        multiline: {
+          delimiter: 'semi',
+          requireLast: true
+        },
+        singleline: {
+          delimiter: 'semi',
+          requireLast: false
+        }
+      }
+    ]
   },
   settings: {
     "import/resolver": {
