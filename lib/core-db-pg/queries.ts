@@ -126,9 +126,12 @@ export const getTotalSubdomainCount = async(): Promise<number> => {
 };
 
 export const getRecentStacksTransfers = async (limit: number, page = 0): Promise<StacksTransaction[]> => {
-  const sql = "select * from history where opcode = 'TOKEN_TRANSFER' ORDER BY block_id DESC LIMIT $1 OFFSET $2;";
+  const sql = `
+    SELECT * FROM history
+    WHERE opcode = 'TOKEN_TRANSFER'
+    ORDER BY block_id DESC, vtxindex DESC 
+    LIMIT $1 OFFSET $2`;
   const params = [limit, page * limit];
-  // const rows = await getAll(DB.Blockstack, sql, params);
   const db = await getDB();
   const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
   const results: StacksTransaction[] = historyRows.map(row => {

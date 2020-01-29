@@ -518,12 +518,13 @@ export const getLatestBlock = async (): Promise<BitcoreBlock> => {
 export const getTimesForBlockHeights = async (
   heights: number[]
 ): Promise<Record<number, number>> => {
+  const distinctHeights = [...new Set(heights)];
   const db = await getDB();
   const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blocks = await collection
     .find({
-      height: {
-        $in: heights
+      height: { 
+        $in: distinctHeights
       }
     })
     .project({ _id: 0, height: 1, time: 1 })
