@@ -1,2 +1,2 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import * as dotenv from 'dotenv';
+const env = dotenv.config();

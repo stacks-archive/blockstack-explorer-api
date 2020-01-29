@@ -1,13 +1,30 @@
-import moment from 'moment';
-import BlueBirdPromise from 'bluebird';
+import * as moment from 'moment';
+import * as multi from 'multi-progress';
 
-import Aggregator from './aggregator';
-import BlockAggregator from './block-v2';
+import { AggregatorWithArgs } from './aggregator';
+import { getBlocks } from '../bitcore-db/queries';
+import { getNameOperationCountsForBlocks } from '../core-db-pg/queries';
 
-import { getBlocks, Block } from '../bitcore-db/queries';
+export type BlockAggregatorOpts = {
+  date: string | undefined;
+  page: number;
+}
 
-class BlocksAggregator extends Aggregator {
-  static key(date: string, page: number) {
+export type BlocksAggregatorResult = {
+  blocks: {
+    totalNameOperations: any;
+    hash: string;
+    height: number;
+    time: number;
+    size: number;
+    txCount: number;
+    reward: number;
+  }[];
+  availableCount: number;
+};
+
+class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockAggregatorOpts> {
+  key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
       return `Blocks:${now}:${page}`;
@@ -15,40 +32,34 @@ class BlocksAggregator extends Aggregator {
     return `Blocks:${date}:${page}`;
   }
 
-  static async setter(date: string, page: number) {
-    const blocks = await getBlocks(date, page);
-    const concurrency = process.env.API_CONCURRENCY
-      ? parseInt(process.env.API_CONCURRENCY, 10)
-      : 1;
-    const getBlock = async (_block: Block) => {
-      try {
-        const blockData = await BlockAggregator.fetch(_block.hash);
-        return {
-          ...blockData,
-          _block
-        };
-      } catch (error) {
-        console.error(error);
-        return _block;
-      }
-    }
-    return BlueBirdPromise.map(blocks, getBlock, { concurrency });
+  async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult> {
+    const blocksResult = await getBlocks(date, page);
+    const blockHeights = blocksResult.blocks.map(block => block.height);
+    const nameOpts = await getNameOperationCountsForBlocks(blockHeights);
+    const blocks = blocksResult.blocks.map(block => {
+      const nameOps = nameOpts[block.height] || 0;
+      return Object.assign(block, { totalNameOperations: nameOps });
+    })
+    return {
+      blocks: blocks,
+      availableCount: blocksResult.totalCount,
+    };
   }
 
-  static expiry(date: string) {
+  expiry({date}: BlockAggregatorOpts) {
     if (!date || date === this.now()) return 10 * 60; // 10 minutes
     return null;
   }
 
-  static verbose(date: string, multi) {
+  verbose(opts: BlockAggregatorOpts, multi?: multi) {
     return !multi;
   }
 
-  static now(): string {
+  now(): string {
     return moment()
       .utc()
       .format('YYYY-MM-DD');
   }
 }
 
-export default BlocksAggregator;
+export default new BlocksAggregator();

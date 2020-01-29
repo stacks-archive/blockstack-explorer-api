@@ -1,58 +1,84 @@
 import {
   Transaction as BTCTransaction,
   TxOutput,
+  TxInput,
   address,
   networks,
   script
 } from 'bitcoinjs-lib';
-import { Transaction } from './bitcore-db/queries';
+import BigNumber from 'bignumber.js';
+import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
+import { btcValueUnsafe } from './utils';
 
-const getAddr = (out: TxOutput) => {
+const getAddr = (txOutScript: Buffer) => {
   let addr: string | null = null;
   try {
-    addr = address.fromOutputScript(out.script, networks.bitcoin);
+    addr = address.fromOutputScript(txOutScript, networks.bitcoin);
+    return addr;
   } catch (error) {
     // nothing
   }
   return addr;
 };
 
-interface Output {
-  addr: string;
-  value: number;
-  [key: string]: any;
-}
-
-interface Input {
-  addr: string;
+export type RawTxInput = {
   txid: string;
-  [key: string]: any;
-}
+  index: number;
+  sequence: number;
+  addr: string;
+  script?: string;
+  inputTx?: BTCTransaction;
+};
+
+export type FormattedTxOutput = {
+  satoshi: number;
+  value: number;
+  n: number;
+  scriptPubKey: {
+    asm: string;
+    hex: string;
+    addresses: string[];
+  };
+  addr: string;
+};
+
+export type DecodeTxResult = BitcoreTransaction & {
+  version: number;
+  locktime: number;
+  ins: TxInput[];
+  outs: Partial<TxOutput>[];
+  
+  vin: RawTxInput[];
+  vout: FormattedTxOutput[];
+
+  blockheight: number;
+  value: number;
+  valueOut: number;
+};
 
 export const decodeTx = async (
   tx: BTCTransaction,
-  networkData: Transaction
-) => {
-  const fetchVins: Promise<Input>[] = tx.ins.map(
+  networkData: BitcoreTransaction
+): Promise<DecodeTxResult> => {
+  const fetchVins: Promise<RawTxInput>[] = tx.ins.map(
     async (input, index) => {
       const txid = input.hash.reverse().toString('hex');
       try {
         const inputTxHash = await fetchRawTxInfo(txid);
-        const inputTx = BTCTransaction.fromHex(inputTxHash as string);
-
+        const inputTx = BTCTransaction.fromHex(inputTxHash);
         return {
           txid,
-          index,
+          index: input.index,
           script: script.toASM(input.script),
           sequence: input.sequence,
-          addr: getAddr(inputTx.outs[0] as TxOutput),
+          addr: getAddr(inputTx.outs[input.index].script),
           inputTx
         };
       } catch (error) {
         return {
           txid,
-          index,
+          index: input.index,
           addr: '',
           // script: input.script ? script.toASM(input.script) : null,
           sequence: input.sequence
@@ -60,33 +86,33 @@ export const decodeTx = async (
       }
     }
   )
-  let vin: Input[] = [];
+  let vin: RawTxInput[] = [];
   try {
     vin = await Promise.all(fetchVins);
   } catch (error) {
     console.error('error fetching vins', error);
   }
 
-  const format = (out: TxOutput, n: number) => {
+  const format = (out: TxOutput, n: number): FormattedTxOutput => {
     const vout = {
       satoshi: out.value,
-      value: parseFloat((1e-8 * out.value).toFixed(8)),
+      value: btcValueUnsafe(out.value),
       n,
       scriptPubKey: {
         asm: script.toASM(out.script),
         hex: out.script.toString('hex'),
-        addresses: []
+        addresses: [] as string[]
       },
-      addr: getAddr(out)
+      addr: getAddr(out.script)
     };
     return vout;
   };
 
-  const vout: Output[] = tx.outs.map((out, n) => format(out as TxOutput, n));
+  const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out as TxOutput, n));
+  
+  const value = btcValueUnsafe(networkData.value);
 
-  const value = parseFloat((1e-8 * networkData.value).toFixed(8));
-
-  const decodedTx = {
+  const decodedTx: DecodeTxResult = {
     ...tx,
     vin,
     vout,

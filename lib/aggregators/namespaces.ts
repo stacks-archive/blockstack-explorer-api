@@ -1,13 +1,23 @@
-import BluebirdPromise from 'bluebird';
+import * as BluebirdPromise from 'bluebird';
 
-import Aggregator from './aggregator';
+import { Aggregator } from './aggregator';
 
 import { fetchNamespaceNameCount, fetchNamespaces } from '../client/core-api';
 
-class NamespaceAggregator extends Aggregator {
-  static async setter() {
+type NamespaceAggregatorResult = {
+  total: number;
+  namespaces: {
+    namespace: string;
+    count: number;
+  }[];
+};
+
+class NamespaceAggregator extends Aggregator<NamespaceAggregatorResult> {
+  async setter() {
+    // TODO: refactor to use pg query rather than core node API
     const namespaces = await fetchNamespaces();
     const counts = await BluebirdPromise.map(namespaces, async (namespace: string) => {
+      // TODO: refactor to use pg query rather than core node API
       const count = await fetchNamespaceNameCount(namespace);
       return {
         namespace,
@@ -25,9 +35,9 @@ class NamespaceAggregator extends Aggregator {
     return data;
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 60; // 1 hour
   }
 }
 
-export default NamespaceAggregator;
+export default new NamespaceAggregator();

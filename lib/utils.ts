@@ -1,27 +1,28 @@
-/* eslint-disable prefer-destructuring */
-import moment from 'moment';
-import accounting from 'accounting';
+import * as moment from 'moment';
+import * as accounting from 'accounting';
 import BigNumber from 'bignumber.js';
 
-export const stacksValue = (value: number) =>
-  +`${Math.round(parseFloat(`${value * 10e-7}e+7`))}e-7`;
-export const btcValue = (value: number) =>
-  +`${Math.round(parseFloat(`${value * 10e-9}e+9`))}e-9`;
+export const stacksValue = (value: number | string, formatted = false) => {
+  const parsed = new BigNumber(value).shiftedBy(-6);
+  if (formatted) {
+    return parsed.toFormat(6);
+  } else {
+    return parsed.toFixed(6);
+  }
+};
 
-export const formatNumber = (value: number) => {
-  const formatted = accounting.formatNumber(value, 8);
-  const decimals = formatted.split('.')[1];
-  let precision = 8;
-  decimals
-    .split('')
-    .reverse()
-    .some(char => {
-      if (char === '0') {
-        precision -= 1;
-      }
-      return char !== '0';
-    });
-  return accounting.formatNumber(value, precision);
+export const btcValue = (value: number | string, formatted = false) => {
+  const parsed = new BigNumber(value).shiftedBy(-8)
+  if (formatted) {
+    return parsed.toFormat(8);
+  } else {
+    return parsed.toFixed(8);
+  }
+};
+
+export const btcValueUnsafe = (value: number | string): number => {
+  const parsed = new BigNumber(value).shiftedBy(-8)
+  return parsed.toNumber();
 };
 
 const startBlock = 538161;
@@ -32,7 +33,7 @@ export const blockToTime = (block: number) => {
   const blocksSinceTimestamp = block - startBlock;
   const minutes = blocksSinceTimestamp * 10;
   const time = moment(start).add(minutes, 'minutes');
-  return time.valueOf();
+  return time.unix();
 };
 
 export const extractHostname = (url: string) => {

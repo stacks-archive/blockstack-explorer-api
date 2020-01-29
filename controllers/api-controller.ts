@@ -1,133 +1,127 @@
-import express from 'express';
-import { decorateApp } from '@awaitjs/express';
-import Sentry from '@sentry/node';
+import { Request, Response, Router, NextFunction, RequestHandler } from 'express';
+import * as Sentry from '@sentry/node';
 
-import { getTotals } from '../lib/addresses';
+import { getTotals, GetGenesisAccountsResult } from '../lib/addresses';
 import {
-  fetchTX,
   fetchAddress,
   fetchNames,
   fetchNamespaceNames,
-  fetchBlockHash
 } from '../lib/client/core-api';
 
-import NameOpsAggregator from '../lib/aggregators/name-ops';
-import BlocksAggregator from '../lib/aggregators/blocks';
 import NamespaceAggregator from '../lib/aggregators/namespaces';
-import BlockAggregator from '../lib/aggregators/block';
+import BlockAggregator from '../lib/aggregators/block-v2';
 import TotalNamesAggregator from '../lib/aggregators/total-names';
 import StacksAddressAggregator from '../lib/aggregators/stacks-address';
 import HomeInfoAggregator from '../lib/aggregators/home-info';
 import NameAggregator from '../lib/aggregators/name';
 import BTCAddressAggregator from '../lib/aggregators/btc-address';
+import TransactionAggregator from '../lib/aggregators/transaction';
+import { Json } from '../lib/aggregators/aggregator';
 
-// const resJSON = (dataFn) => {}
-const respond = dataFn => async (req, res) => {
-  try {
-    const data = await dataFn(req, res);
-    if (!data) {
-      res.status(404);
+const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
+  return async (req: Request, res?: Response) => {
+    try {
+      const data = await dataFn(req, res);
+      if (!data) {
+        res.status(404);
+      }
+      res.json(data);
+    } catch (error) {
+      console.error(error);
+      Sentry.captureException(error);
+      res.status(404).json({ success: false });
     }
-    res.json(data);
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(404).json({ success: false });
   }
 };
 
-const makeAPIController = Genesis => {
-  const APIController = decorateApp(express.Router());
+const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
+  const APIController = Router();
   const totals = getTotals(Genesis);
 
-  APIController.getAsync('/accounts/global', (req, res) => res.json(totals));
+  APIController.get('/accounts/global', respond(() => totals));
 
-  APIController.getAsync(
+  APIController.get(
     '/accounts/:address',
     respond(req => Genesis.accountsByAddress[req.params.address])
   );
 
-  APIController.getAsync(
-    '/name-operations',
-    respond(async () => {
-      const nameOperations = await NameOpsAggregator.get();
-      return {
-        nameOperations
-      };
+  APIController.get(
+    '/names/:name',
+    respond(req => NameAggregator.fetch({name: req.params.name, historyPage: parseInt(req.query.page, 0)}))
+  );
+
+  APIController.get(
+    '/transactions/:tx',
+    respond(req => {
+      const normalized = req.params.tx?.trim().toLowerCase() || '';
+      return TransactionAggregator.fetch({hash: normalized }) 
     })
   );
 
-  APIController.getAsync(
-    '/names/:name',
-    respond(async req => NameAggregator.fetch(req.params.name, req.query.page))
-  );
-
-  APIController.getAsync(
-    '/transactions/:tx',
-    respond(req => fetchTX(req.params.tx))
-  );
-
-  APIController.getAsync(
+  APIController.get(
     '/addresses/:address',
-    respond(async req =>
-      BTCAddressAggregator.fetch(req.params.address, req.query.page)
+    respond(req =>
+      BTCAddressAggregator.fetch({address: req.params.address, txPage: parseInt(req.query.page, 10)})
     )
   );
 
-  APIController.getAsync(
-    '/blocks',
-    respond(async req => BlocksAggregator.fetch(req.query.date))
-  );
-
-  APIController.getAsync(
-    '/blocks/:hashOrHeight',
-    respond(async req => {
-      const { hashOrHeight } = req.params;
-      let hash = hashOrHeight;
-      if (hashOrHeight.toString().length < 10) {
-        hash = await fetchBlockHash(hashOrHeight);
-      }
-      return BlockAggregator.fetch(hash);
-    })
-  );
-
-  APIController.getAsync(
+  APIController.get(
     '/namespaces',
-    respond(async () => NamespaceAggregator.fetch())
+    respond(() => NamespaceAggregator.fetch())
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/names',
-    respond(async req => fetchNames(req.query.page || 0))
+    // TODO: refactor to use pg query rather than core node API
+    respond(req => fetchNames(req.query.page || 0))
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/namespaces/:namespace',
-    respond(async req =>
+    respond(req =>
+      // TODO: refactor to use pg query rather than core node API
       fetchNamespaceNames(req.params.namespace, req.query.page || 0)
     )
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/name-counts',
-    respond(async () => TotalNamesAggregator.fetch())
+    respond(() => TotalNamesAggregator.fetch())
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/stacks/addresses/:address',
-    respond(async req => StacksAddressAggregator.fetch(req.params.address))
+    respond(async (req) => {
+      let page = parseInt(req.query.page, 10);
+      if (!page || !Number.isFinite(page) || page < 0) {
+        page = 0;
+      }
+      const result = await StacksAddressAggregator.fetch({addr: req.params.address, page});
+      return result
+    })
   );
 
-  APIController.getAsync(
+  APIController.get(
     '/home',
-    respond(async () => HomeInfoAggregator.fetch(totals))
+    respond(() => HomeInfoAggregator.fetch())
   );
 
-  APIController.getAsync(
+  type SearchResult = {
+    type: string;
+    id: string;
+  } | {
+    success: false;
+  };
+
+  APIController.get(
     '/search/:query',
-    respond(async req => {
+    respond(async (req) => {
+      
+      // TODO: add stx-address and name IDs to search array
+
       const { query } = req.params;
-      const getOrFail = async promise => {
+
+      const getOrFail = async <T>(promise: Promise<T>) => {
         try {
           const result = await promise;
           return result;
@@ -136,51 +130,58 @@ const makeAPIController = Genesis => {
         }
       };
 
-      const blockSearch = async hashOrHeight => {
-        let hash = hashOrHeight;
-        if (hashOrHeight.toString().length < 10) {
-          hash = await fetchBlockHash(hashOrHeight);
-        }
-        return BlockAggregator.fetch(hash);
+      const blockSearch = async (hashOrHeight: string) => {
+        return BlockAggregator.fetch(hashOrHeight);
       };
 
-      const fetches = [
-        getOrFail(fetchTX(query)),
-        getOrFail(fetchAddress(query)),
-        getOrFail(blockSearch(query))
-      ];
+      const searchResult = new Promise<SearchResult>((resolve, reject) => {
+        Promise.all([
+          getOrFail(TransactionAggregator.fetch({hash: query})).then(tx => {
+            if (tx) {
+              resolve({
+                type: 'tx',
+                id: tx.txid
+              });
+              return true;
+            }
+            return null;
+          }),
+          getOrFail(fetchAddress(query)).then(btcAddress => {
+            if (btcAddress) {
+              resolve({
+                type: 'btc-address',
+                id: query
+              });
+              return true;
+            }
+            return null;
+          }),
+          getOrFail(blockSearch(query)).then(block => {
+            if (block) {
+              resolve({
+                type: 'block',
+                id: block.hash
+              });
+              return true;
+            }
+            return null;
+          }),
+        ]).then(results => {
+          if (results.every(r => !r)) {
+            reject(new Error('Failed to find match'));
+          }
+        })
+      });
 
-      const [tx, btcAddress, block] = await Promise.all(fetches);
-
-      if (tx) {
+      try {
+        const result = await searchResult;
+        return result;
+      } catch (error) {
         return {
-          pathname: '/transaction/single',
-          as: `/tx/${query}`,
-          id: query,
-          data: JSON.stringify(tx)
+          success: false
         };
       }
-      if (btcAddress) {
-        return {
-          pathname: '/address/single',
-          as: `/address/${query}`,
-          id: query,
-          address: query,
-          data: btcAddress
-        };
-      }
-      if (block) {
-        return {
-          pathname: '/blocks/single',
-          as: `/block/${block.hash}`,
-          data: block,
-          hash: query
-        };
-      }
 
-      return {
-        success: false
-      };
     })
   );
 

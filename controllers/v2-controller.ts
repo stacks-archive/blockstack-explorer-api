@@ -1,261 +1,320 @@
-import express, { Request, Response } from 'express';
-import * as c32check from 'c32check';
-import { address, networks } from 'bitcoinjs-lib';
-import moment from 'moment';
-import request from 'request-promise';
-import accounting from 'accounting';
-import BluebirdPromise from 'bluebird';
-import BigNumber from 'bignumber.js';
+import { Request, Response, Router } from 'express';
+import * as moment from 'moment';
+import * as request from 'request-promise';
 import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
 import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
 import FeeEstimator from '../lib/aggregators/fee-estimate';
-import { getTimesForBlockHeights } from '../lib/bitcore-db/queries';
+import { getTimesForBlockHeights, lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
 import {
   getRecentStacksTransfers,
   getRecentNames,
   getRecentSubdomains,
   StacksTransaction,
   getAllHistoryRecords,
-  HistoryRecordWithSubdomains
+  HistoryRecordResult
 } from '../lib/core-db-pg/queries';
 
-import { blockToTime, stacksValue, formatNumber } from '../lib/utils';
+import { blockToTime, stacksValue } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
+import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
+import { getSTXAddress } from '../lib/stacks-decoder';
+import { StatusCodeError } from 'request-promise/errors';
+import * as searchUtil from '../lib/search-util';
 
-const Controller = express.Router();
+const baseRouter = Router();
 
-Controller.get('/blocks/:hash', async (req: Request, res: Response) => {
-  try {
-    const { hash } = req.params;
-    const block = await BlockAggregator.setter(hash);
-    res.json({ block });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
-  }
-});
-
-Controller.get('/blocks', async (req: Request, res: Response) => {
-  try {
-    let { date } = req.query;
-    if (!date) {
-      date = moment()
-        .utc()
-        .format('YYYY-MM-DD');
-    }
-    console.log(date);
-    const { page } = req.query;
-    const blocks = await BlocksAggregator.setter(
-      date,
-      page ? parseInt(page, 10) : 0
-    );
-    res.json({ blocks });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
-  }
-});
-
-const getSTXAddress = (addr: string) =>
-  c32check.b58ToC32(
-    address.fromOutputScript(Buffer.from(addr, 'hex'), networks.bitcoin)
-  );
-
-export const getStxAddresses = (
-  tx: StacksTransaction | HistoryRecordWithSubdomains
+const getAsync = (
+  path: string | RegExp, 
+  handler: (req: Request, res?: Response) => Promise<void> | void
 ) => {
-  if (!tx.historyData) {
-    return {};
-  }
-  if (tx.opcode === 'TOKEN_TRANSFER') {
-    return {
-      senderSTX: getSTXAddress(tx.historyData.sender),
-      recipientSTX: getSTXAddress(tx.historyData.recipient)
-    };
-  }
-  return {};
-};
-
-Controller.get('/transactions/stx', async (req: Request, res: Response) => {
-  try {
-    const page = req.query.page || '0';
-    const transactions = await getRecentStacksTransfers(
-      100,
-      parseInt(page, 10)
-    );
-    const blockTimes = await getTimesForBlockHeights(
-      transactions.map(tx => tx.blockHeight)
-    );
-    const transfers = transactions.map(tx => ({
-      ...tx,
-      timestamp: blockTimes[tx.blockHeight],
-      ...getStxAddresses(tx)
-    }));
-    res.json({ transfers });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
-  }
-});
-
-Controller.get('/transactions/names', async (req: Request, res: Response) => {
-  try {
-    const limit = 100;
-    const page = req.query.page || '0';
-    const namesResult = await getRecentNames(limit, parseInt(page, 10));
-    const blockTimes = await getTimesForBlockHeights(
-      namesResult.map(name => name.block_number)
-    );
-    const names = namesResult.map(name => ({
-      ...name,
-      timestamp: blockTimes[name.block_number]
-    }));
-    res.json({ names });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
-  }
-});
-
-Controller.get(
-  '/transactions/subdomains',
-  async (req: Request, res: Response) => {
+  baseRouter.get(path, async (req, res) => {
     try {
-      const limit = 100;
-      const page = req.query.page || '0';
-      const subdomainsResult = await getRecentSubdomains(
-        limit,
-        parseInt(page, 10)
-      );
-      const blockTimes = await getTimesForBlockHeights(
-        subdomainsResult.map(sub => parseInt(sub.blockHeight as string, 10))
-      );
-      const subdomains = subdomainsResult.map(name => ({
-        ...name,
-        timestamp: blockTimes[parseInt(name.blockHeight as string, 10)]
-      }));
-      res.json({ subdomains });
+      await handler(req, res);
     } catch (error) {
       console.error(error);
       Sentry.captureException(error);
       res.status(500).json({ success: false });
     }
-  }
-);
+  })
+};
 
-Controller.get('/transactions/all', async (req: Request, res: Response) => {
-  try {
+const Controller = Object.assign(baseRouter, { getAsync });
+
+Controller.getAsync('/blocks/:hash', async (req, res) => {
+  const { hash } = req.params;
+  const block = await BlockAggregator.fetch(hash);
+  res.json({ block });
+});
+
+Controller.getAsync('/blocks', async (req, res) => {
+  let { date } = req.query;
+  if (!date) {
+    date = moment()
+      .utc()
+      .format('YYYY-MM-DD');
+  }
+  // console.log(date);
+  const { page } = req.query;
+  const blocks = await BlocksAggregator.fetch({
+    date,
+    page: page ? parseInt(page, 10) : 0
+  });
+  res.json(blocks);
+});
+
+export type GetStxAddressResult = {
+  senderSTX?: string;
+  recipientSTX?: string;
+}
+
+export const getStxAddresses = (
+  tx: StacksTransaction | HistoryRecordResult
+): GetStxAddressResult => {
+  if (!tx.historyData) {
+    return {};
+  }
+  if (tx.opcode === 'TOKEN_TRANSFER') {
+    const historyData = tx.historyData as HistoryDataTokenTransfer;
+    return {
+      senderSTX: getSTXAddress(historyData.sender),
+      recipientSTX: getSTXAddress(historyData.recipient)
+    };
+  }
+  return {};
+};
+
+Controller.getAsync('/transactions/stx', async (req, res) => {
+  const page = req.query.page || '0';
+  const transactions = await getRecentStacksTransfers(
+    100,
+    parseInt(page, 10)
+  );
+  const blockTimes = await getTimesForBlockHeights(
+    transactions.map(tx => tx.blockHeight)
+  );
+  const transfers = transactions.map(tx => ({
+    ...tx,
+    timestamp: blockTimes[tx.blockHeight],
+    ...getStxAddresses(tx)
+  }));
+  res.json({ transfers });
+});
+
+Controller.getAsync('/transactions/names', async (req, res) => {
+  const limit = 100;
+  const page = req.query.page || '0';
+  const namesResult = await getRecentNames(limit, parseInt(page, 10));
+  const blockTimes = await getTimesForBlockHeights(
+    namesResult.map(name => name.block_number)
+  );
+  const names = namesResult.map(name => ({
+    ...name,
+    timestamp: blockTimes[name.block_number]
+  }));
+  res.json({ names });
+});
+
+Controller.getAsync(
+  '/transactions/subdomains',
+  async (req, res) => {
     const limit = 100;
     const page = req.query.page || '0';
-    const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
-    const heights = historyResult.map(item => item.block_id);
-    const blockTimes = await getTimesForBlockHeights(heights);
-    const history = historyResult.map(historyRecord => ({
-      ...historyRecord,
-      timestamp: blockTimes[historyRecord.block_id],
-      ...getStxAddresses(historyRecord)
+    const subdomainsResult = await getRecentSubdomains(
+      limit,
+      parseInt(page, 10)
+    );
+    const blockTimes = await getTimesForBlockHeights(
+      subdomainsResult.map(sub => sub.blockHeight)
+    );
+    const subdomains = subdomainsResult.map(name => ({
+      ...name,
+      timestamp: blockTimes[name.blockHeight]
     }));
-    res.json({ history });
-  } catch (error) {
-    console.error(error);
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
+    res.json({ subdomains });
   }
+);
+
+Controller.getAsync('/transactions/all', async (req, res) => {
+  const limit = 100;
+  const page = req.query.page || '0';
+  const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
+  const heights = historyResult.map(item => item.block_id);
+  const blockTimes = await getTimesForBlockHeights(heights);
+  const history = historyResult.map(historyRecord => ({
+    ...historyRecord,
+    timestamp: blockTimes[historyRecord.block_id],
+    ...getStxAddresses(historyRecord)
+  }));
+  res.json({ history });
 });
 
-Controller.get(
+
+export type Genesis2019 = {
+  accounts: Genesis2019Account[];
+  total: number;
+};
+
+export type Genesis2019Account = {
+  address: string;
+  lock_send: number;
+  metadata: string;
+  receive_whitelisted: boolean;
+  type: string;
+  value: number;
+  vesting: { [blockHeight: string]: number };
+  vesting_total: number;
+  unlockUntil?: string;
+  totalFormatted?: string;
+  unlockPerMonthFormatted?: string;
+};
+
+export type Genesis2019AddressInfo = {
+  accounts: Genesis2019Account[];
+  total: number;
+  totalFormatted: string;
+};
+
+export const getGenesis2019AddressInfo = async (stacksAddress: string): Promise<Genesis2019AddressInfo | null> => {
+  const uri = `${process.env.HF_URL}/${stacksAddress}`;
+  let genesis2019: Genesis2019;
+  try {
+    genesis2019 = await request.get({
+      uri,
+      json: true
+    });
+  } catch (error) {
+    if ((error as StatusCodeError).statusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+  const { accounts: _accounts, total } = genesis2019;
+  const accounts = _accounts.map((_account) => {
+    const account = { ..._account };
+    const vestingBlocks = Object.keys(account.vesting);
+    const lastVestingMonth = blockToTime(
+      parseInt(vestingBlocks[(vestingBlocks.length - 1)], 10)
+    );
+    // TODO: this should be an absolute timestamp, and formatted for display on the front-end.
+    account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
+    account.totalFormatted = stacksValue(account.value + account.vesting_total, true);
+    account.unlockPerMonthFormatted = stacksValue(account.vesting[vestingBlocks[0]], true);
+    return account;
+  });
+  const totalFormatted = stacksValue(total, true);
+  return {
+    accounts,
+    total,
+    totalFormatted
+  };
+};
+
+Controller.getAsync(
   '/genesis-2019/:stacksAddress',
-  async (req: Request, res: Response) => {
+  async (req, res) => {
     const { stacksAddress } = req.params;
-    const uri = `${process.env.HF_URL}/${stacksAddress}`;
-    try {
-      const { accounts: _accounts, total } = await request.get({
-        uri,
-        json: true
-      });
-      const accounts = _accounts.map(_account => {
-        const account = { ..._account };
-        const vestingBlocks = Object.keys(account.vesting);
-        const lastVestingMonth = blockToTime(
-          vestingBlocks[String(vestingBlocks.length - 1)]
-        );
-        account.unlockUntil = moment(lastVestingMonth).format('MMMM Do, YYYY');
-        account.totalFormatted = formatNumber(
-          stacksValue(account.value + account.vesting_total)
-        );
-        account.unlockPerMonthFormatted = formatNumber(
-          stacksValue(account.vesting[vestingBlocks[0]])
-        );
-        return account;
-      });
-      const totalFormatted = formatNumber(stacksValue(total));
-      res.json({ accounts, total, totalFormatted });
-    } catch (error) {
-      console.error(error);
-      Sentry.captureException(error);
+    const info = await getGenesis2019AddressInfo(stacksAddress);
+    if (!info) {
       res.status(404).json({ success: false });
+    } else {
+      res.json(info);
     }
   }
 );
 
-Controller.get('/fee-estimate', async (req: Request, res: Response) => {
-  try {
-    const fee = await FeeEstimator.fetch();
-    res.json({ recommended: fee });
-  } catch (error) {
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
+Controller.getAsync('/search/:term', async (req, res) => {
+  const query: string = req.params.term && req.params.term.trim();
+  // Fast test if query can only be a possible user ID.
+  const blockstackID = searchUtil.isValidBlockstackName(query);
+  if (blockstackID) {
+    res.json({ found: true, type: 'name', name: blockstackID });
+    return;
   }
-});
 
-Controller.get('/total-supply', async (req: Request, res: Response) => {
-  try {
-    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-    const formatted = JSON.stringify(totalSupplyInfo, null, 2);
-    res.contentType('application/json').send(formatted);
-  } catch (error) {
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
+  // Fast test if query can only be a STX address.
+  const stxAddress = searchUtil.isValidStxAddress(query);
+  if (stxAddress) {
+    res.json({ found: true, type: 'stacks-address', address: stxAddress });
+    return;
   }
-});
 
-Controller.get('/unlocked-supply', async (req: Request, res: Response) => {
-  try {
-    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-    res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
-  } catch (error) {
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
-  }
-});
-
-Controller.get('/top-balances', async (req: Request, res: Response) => {
-  try {
-    let count = 250;
-    if (req.query.count) {
-      const queryCount = parseInt(req.query.count, 10);
-      if (queryCount > 0) {
-        count = queryCount;
-      }
+  // Fast test if the query can be a value hex hash string.
+  const hash = searchUtil.isValidSha256Hash(query);
+  if (hash) {
+    // Determine what the hash corresponds to -- currently, search allows looking
+    // up a btc block, btc tx, or Stacks tx by hash.
+    const hashLookup = await lookupBlockOrTxHash(hash);
+    if (!hashLookup) {
+      res.status(404).json({ found: false, isHash: true });
+      return
     }
-    const MAX_COUNT = 500;
-    if (count > MAX_COUNT) {
-      throw new Error(`Max count of ${MAX_COUNT} exceeded`);
+    if (hashLookup === 'block') {
+      res.json({ found: true, type: 'btc-block', hash: hash });
+      return;
+    } else if (hashLookup === 'tx') {
+      res.json({ found: true, type: 'btc-tx', hash: hash });
+      return;
+    } else {
+      throw new Error(`Unexpected lookupBlockOrTxHash result: ${JSON.stringify(hashLookup)}`);
     }
-    const topBalances = await TopBalancesAggregator.fetch(count);
-    res.contentType('application/json');
-    res.send(JSON.stringify(topBalances, null, 2));
-  } catch (error) {
-    Sentry.captureException(error);
-    res.status(500).json({ success: false });
   }
+
+  // TODO: [stacks-v2] support for searching Stacks blocks by height
+  const blockHeight = searchUtil.isValidBtcBlockHeight(query);
+  if (blockHeight) {
+    const hashLookup = await getBlockHash(blockHeight);
+    if (!hashLookup) {
+      res.status(404).json({ found: false });
+      return
+    }
+    res.json({ found: true, type: 'btc-block', hash: hashLookup });
+    return
+  }
+
+  // Fast test if query can only be a BTC address.
+  const btcAddress = searchUtil.isValidBtcAddress(query);
+  if (btcAddress) {
+    res.json({ found: true, type: 'btc-address', address: btcAddress });
+    return;
+  }
+
+  res.status(404).json({ found: false });
+});
+
+Controller.getAsync('/fee-estimate', async (req, res) => {
+  const fee = await FeeEstimator.fetch();
+  res.json({ recommended: fee });
+});
+
+Controller.getAsync('/total-supply', async (req, res) => {
+  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  const formatted = JSON.stringify(totalSupplyInfo, null, 2);
+  res.contentType('application/json').send(formatted);
+});
+
+Controller.getAsync('/unlocked-supply', async (req, res) => {
+  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
+});
+
+Controller.getAsync('/top-balances', async (req, res) => {
+  let count = 250;
+  if (req.query.count) {
+    const queryCount = parseInt(req.query.count, 10);
+    if (queryCount > 0) {
+      count = queryCount;
+    }
+  }
+  const MAX_COUNT = 500;
+  if (count > MAX_COUNT) {
+    throw new Error(`Max count of ${MAX_COUNT} exceeded`);
+  }
+  const topBalances = await TopBalancesAggregator.fetch({ count });
+  res.contentType('application/json');
+  res.send(JSON.stringify(topBalances, null, 2));
 });
 
 export default Controller;

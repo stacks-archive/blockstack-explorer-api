@@ -1,57 +1,52 @@
-import BluebirdPromise from 'bluebird';
+import * as BluebirdPromise from 'bluebird';
 
-import Aggregator from './aggregator';
+import { AggregatorWithArgs } from './aggregator';
 import {
   getAllNameOperations,
-  getSubdomainRegistrationsForTxid
+  getSubdomainRegistrationsForTxid,
+  Subdomain
 } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
-export interface NameOp {
+export type NameOp = {
   name: string;
   owner: string;
   time: number;
   block: number;
-}
+};
 
-class NameOpsAggregator extends Aggregator {
-  static expiry() {
+export type NameOpsAggregatorResult = NameOp[];
+export type NameOpsAggregatorArgs = {
+  page: number;
+};
+
+class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
+  expiry() {
     return 10 * 60; // 10 minutes
   }
 
-  static async setter(): Promise<NameOp[]> {
-    const history = await getAllNameOperations();
+  key({page = 0}: NameOpsAggregatorArgs) {
+    return `NameOpsAggregator:${page || 0}`;
+  }
+
+  async setter({page = 0}: NameOpsAggregatorArgs): Promise<NameOpsAggregatorResult> {
+    const history = await getAllNameOperations(page);
     const blockHeights = history.map(record => record.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
-    const nameOps = await BluebirdPromise.map(
-      history,
-      async (historyRecord): Promise<NameOp | NameOp[]> => {
-        const time = blockTimes[historyRecord.block_id];
-        if (historyRecord.opcode === 'NAME_REGISTRATION') {
-          const row: NameOp = {
-            name: historyRecord.history_id,
-            owner: historyRecord.creator_address,
-            time,
-            block: historyRecord.block_id
-          };
-          return row;
-        }
-        const subdomains = await getSubdomainRegistrationsForTxid(
-          historyRecord.txid
-        );
-        const results: NameOp[] = subdomains.map(subdomain => ({
-          name: subdomain.name,
-          owner: subdomain.owner,
-          time,
-          block: parseInt(subdomain.blockHeight as string, 10)
-        }));
-        return results;
-      }
-    );
 
-    const flattened = nameOps.reduce<NameOp[]>((a, b) => a.concat(b), []);
-    return flattened;
+    const nameOps: NameOp[] = history.map(record => {
+      const time = blockTimes[record.block_id]
+      const isSubdomain = !!record.fully_qualified_subdomain
+      const op: NameOp = {
+        time,
+        block: record.block_id,
+        name: isSubdomain ? record.fully_qualified_subdomain : record.history_id,
+        owner: isSubdomain ? record.owner : record.creator_address
+      }
+      return op
+    })
+    return nameOps
   }
 }
 
-export default NameOpsAggregator;
+export default new NameOpsAggregator();

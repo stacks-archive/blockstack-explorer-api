@@ -1,5 +1,5 @@
-import request from 'request-promise';
-import Aggregator from './aggregator';
+import * as request from 'request-promise';
+import { Aggregator } from './aggregator';
 
 interface Slug {
   id: number;
@@ -15,16 +15,16 @@ interface App {
   Slugs: Slug[];
 }
 
-export interface BlockstackApp {
+export type BlockstackApp = {
   id: number;
   website: string;
   imgixImageUrl: string;
   name: string;
   slug: string | null;
-}
+};
 
-export default class AppsAggregator extends Aggregator {
-  static async setter() {
+class AppsAggregator extends Aggregator<BlockstackApp[]>{
+  async setter() {
     const { apps: appsList } = await request({
       uri: 'https://api.app.co/api/apps',
       json: true
@@ -44,7 +44,9 @@ export default class AppsAggregator extends Aggregator {
     return apps as BlockstackApp[];
   }
 
-  static expiry() {
+  expiry() {
     return 60 * 60 * 4; // 4 hours
   }
 }
+
+export default new AppsAggregator();

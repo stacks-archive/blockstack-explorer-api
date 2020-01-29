@@ -1,5 +1,5 @@
 import redis from '../lib/redis';
-import BluebirdPromise from 'bluebird';
+import * as BluebirdPromise from 'bluebird';
 
 const prefix = process.argv[2];
 

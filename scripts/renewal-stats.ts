@@ -1,6 +1,6 @@
-import dotenv from 'dotenv';
-import moment from 'moment';
-import fs from 'fs';
+import * as dotenv from 'dotenv';
+import * as moment from 'moment';
+import * as fs from 'fs';
 import { getDB } from '../lib/core-db-pg';
 import { blockToTime } from '../lib/utils';
 
@@ -13,7 +13,7 @@ interface Months {
 const run = async () => {
   const sql = 'select * from name_records';
   const db = await getDB();
-  const { rows } = await db.query(sql);
+  const { rows } = await db.client.query(sql);
   const months: Months = {};
   rows.forEach(row => {
     const time = blockToTime(row.last_renewed);

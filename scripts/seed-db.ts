@@ -1,5 +1,5 @@
-import ora from 'ora';
-import Bluebird from 'bluebird';
+import * as ora from 'ora';
+import * as Bluebird from 'bluebird';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 

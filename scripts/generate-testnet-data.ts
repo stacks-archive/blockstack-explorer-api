@@ -1,6 +1,6 @@
 import * as util from 'util';
 import * as child_process from 'child_process';
-import request from 'request-promise';
+import * as request from 'request-promise';
 
 const exec = util.promisify(child_process.exec);
 
@@ -8,7 +8,7 @@ const exec = util.promisify(child_process.exec);
 const gaiaRead = 'http://testnet.blockstack.org:4000';
 const subdomainRegistrar = 'http://testnet.blockstack.org:30000';
 
-const execute = async cmd => {
+const execute = async (cmd: string) => {
   const path = 'node /Users/hank/blockstack/cli-blockstack/lib/index.js -t';
   return exec(`${path} ${cmd}`);
 };
@@ -19,7 +19,7 @@ const makeAccount = async () => {
   return account;
 };
 
-const useFaucet = async address => {
+const useFaucet = async (address: string) => {
   const uri = 'https://testnet.blockstack.org/sendStacks';
   const opts = {
     uri,
@@ -29,26 +29,26 @@ const useFaucet = async address => {
       value: 500000000
     },
     followAllRedirects: true,
-    transform: (body, response) => response.req.path.split('=')[1]
+    transform: (body: string, response: any) => response.req.path.split('=')[1]
   };
   const txId = await request(opts);
   // console.log(txId);
   return txId;
 };
 
-const getConfirms = async tx => {
+const getConfirms = async (tx: any) => {
   const { stdout } = await execute(`get_confirmations ${tx}`);
   const { confirmations } = JSON.parse(stdout);
   console.log('Confirmations:', confirmations);
   return confirmations;
 };
 
-const getBalance = async address => {
+const getBalance = async (address: string) => {
   const { stdout } = await execute(`balance ${address}`);
   return JSON.parse(stdout);
 };
 
-const registerName = async (account, name) => {
+const registerName = async (account: any, name: string) => {
   const ownerKey = account.ownerKeyInfo.privateKey;
   const payKey = account.paymentKeyInfo.privateKey;
   const { stdout } = await execute(
@@ -57,7 +57,8 @@ const registerName = async (account, name) => {
   return JSON.parse(stdout);
 };
 
-const registerSubdomain = async (account, name) => {
+// TODO: unused?
+const registerSubdomain = async (account: any, name: string) => {
   const ownerKey = account.ownerKeyInfo.privateKey;
   const { stdout } = await execute(
     `register_subdomain ${name}.personal.id2 ${ownerKey} "${gaiaRead}" "${subdomainRegistrar}"`
@@ -66,7 +67,7 @@ const registerSubdomain = async (account, name) => {
   return JSON.parse(stdout);
 };
 
-const sendTokens = async (from, to, amount, memo) => {
+const sendTokens = async (from: any, to: any, amount: number, memo: string) => {
   const address = to.paymentKeyInfo.address.STACKS;
   const payKey = from.paymentKeyInfo.privateKey;
   const cmd = `send_tokens ${address} STACKS ${amount} ${payKey} "${memo}"`;
