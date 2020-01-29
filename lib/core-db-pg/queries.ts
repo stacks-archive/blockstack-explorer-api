@@ -271,8 +271,9 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
     WHERE opcode in (
       'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
       'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
-    )  
-    ORDER BY block_id DESC LIMIT $1 OFFSET $2`;
+    )
+    ORDER BY block_id DESC, vtxindex DESC
+    LIMIT $1 OFFSET $2`;
   const params = [limit, limit * page];
   const db = await getDB();
   const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
