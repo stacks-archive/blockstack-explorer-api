@@ -15,9 +15,18 @@ This is unlike a typical web server, as you need to have blockchain information 
 1. `blockstack-core`, for Blockstack related data.
 2. `bitcore`, for Bitcoin related data
 
-Running Bitcore is an exercise left to the reader. It's tricky, and you need to have a full Bitcoind node in order to run Bitcore. If you're a Blockstack engineer, we have an internal Bitcore node that you can use. Ask a team member, and add the ENV variables `BITCORE_MONGODB_URI`, `BITCOIND_USERNAME`, `BITCOIND_PASSWORD`, `BITCOIND_HOST`, and `BITCOIND_PASSWORD` to your `.env` file.
+Running Bitcore is an exercise left to the reader. It's tricky, and you need to have a full Bitcoind node in order to run Bitcore. If you're a Blockstack engineer, we have an internal Bitcore node that you can use. Ask a team member, and add the ENV variables `BITCORE_MONGODB_URI`, `BITCOIND_USERNAME`, `BITCOIND_PASSWORD`, `BITCOIND_HOST`, and `BITCOIND_PASSWORD` to a `.env` file in the root project directory.
 
-To fast-sync data from `blockstack-core`, we have a setup script that will get your database seeded with everything you need. It uses Docker, so you'll need that installed and running. Then, run `yarn seed` to run the steps needed to get a PostgresSQL database running. Then, add the following to `.env`:
+A local redis instance must be running. An quick way to set this up is using the Docker command:
+```
+docker run --name redis -p 6379:6379 -d redis:alpine
+```
+And then adding the following to your `.env` file:
+~~~
+REDIS_URL=redis://localhost:6379/1
+~~~
+
+To fast-sync data from `blockstack-core`, we have a setup script that will get your database seeded with everything you need. It uses Docker, so you'll need that installed and running. Then, run `yarn seed` to run the steps needed to get a PostgresSQL database running. Then, add the following to your `.env` file:
 
 ~~~
 PGUSER=admin
