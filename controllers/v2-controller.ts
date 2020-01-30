@@ -57,10 +57,10 @@ Controller.getAsync('/blocks', async (req, res) => {
       .format('YYYY-MM-DD');
   }
   // console.log(date);
-  const { page } = req.query;
+  const page = parseInt(req.query.page, 10) || 0;
   const blocks = await BlocksAggregator.fetch({
     date,
-    page: page ? parseInt(page, 10) : 0
+    page
   });
   res.json(blocks);
 });
@@ -87,10 +87,10 @@ export const getStxAddresses = (
 };
 
 Controller.getAsync('/transactions/stx', async (req, res) => {
-  const page = req.query.page || '0';
+  const page = parseInt(req.query.page, 10) || 0;
   const transactions = await getRecentStacksTransfers(
     100,
-    parseInt(page, 10)
+    page
   );
   const blockTimes = await getTimesForBlockHeights(
     transactions.map(tx => tx.blockHeight)
@@ -105,8 +105,8 @@ Controller.getAsync('/transactions/stx', async (req, res) => {
 
 Controller.getAsync('/transactions/names', async (req, res) => {
   const limit = 100;
-  const page = req.query.page || '0';
-  const namesResult = await getRecentNames(limit, parseInt(page, 10));
+  const page = parseInt(req.query.page, 10) || 0;
+  const namesResult = await getRecentNames(limit, page);
   const blockTimes = await getTimesForBlockHeights(
     namesResult.map(name => name.block_number)
   );
@@ -121,10 +121,10 @@ Controller.getAsync(
   '/transactions/subdomains',
   async (req, res) => {
     const limit = 100;
-    const page = req.query.page || '0';
+    const page = parseInt(req.query.page, 10) || 0;
     const subdomainsResult = await getRecentSubdomains(
       limit,
-      parseInt(page, 10)
+      page
     );
     const blockTimes = await getTimesForBlockHeights(
       subdomainsResult.map(sub => sub.blockHeight)
@@ -139,8 +139,8 @@ Controller.getAsync(
 
 Controller.getAsync('/transactions/all', async (req, res) => {
   const limit = 100;
-  const page = req.query.page || '0';
-  const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
+  const page = parseInt(req.query.page, 10) || 0;
+  const historyResult = await getAllHistoryRecords(limit, page);
   const heights = historyResult.map(item => item.block_id);
   const blockTimes = await getTimesForBlockHeights(heights);
   const history = historyResult.map(historyRecord => ({

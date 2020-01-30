@@ -47,7 +47,10 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/names/:name',
-    respond(req => NameAggregator.fetch({name: req.params.name, historyPage: parseInt(req.query.page, 0)}))
+    respond(req => {
+      const page = parseInt(req.query.page, 0) || 0;
+      return NameAggregator.fetch({name: req.params.name, historyPage: page });
+    })
   );
 
   APIController.get(
@@ -60,9 +63,10 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/addresses/:address',
-    respond(req =>
-      BTCAddressAggregator.fetch({address: req.params.address, txPage: parseInt(req.query.page, 10)})
-    )
+    respond(req => {
+      const page = parseInt(req.query.page, 10) || 0;
+      return BTCAddressAggregator.fetch({address: req.params.address, txPage: page})
+    })
   );
 
   APIController.get(
@@ -73,14 +77,14 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
   APIController.get(
     '/names',
     // TODO: refactor to use pg query rather than core node API
-    respond(req => fetchNames(req.query.page || 0))
+    respond(req => fetchNames(parseInt(req.query.page, 10) || 0))
   );
 
   APIController.get(
     '/namespaces/:namespace',
     respond(req =>
       // TODO: refactor to use pg query rather than core node API
-      fetchNamespaceNames(req.params.namespace, req.query.page || 0)
+      fetchNamespaceNames(req.params.namespace, parseInt(req.query.page, 10) || 0)
     )
   );
 
