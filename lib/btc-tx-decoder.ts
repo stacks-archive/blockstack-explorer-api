@@ -108,7 +108,7 @@ export const decodeTx = async (
     return vout;
   };
 
-  const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out as TxOutput, n));
+  const vout: FormattedTxOutput[] = tx.outs.map((out, n) => format(out, n));
   
   const value = btcValueUnsafe(networkData.value);
 

@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { Aggregator, AggregatorSetterResult } from './aggregator';
+import { AggregatorSetterResult, Aggregator, KeepAliveOptions } from './aggregator';
 import { getUnlockedSupply } from '../core-db-pg/queries';
 import { microStacksToStacks, TOTAL_STACKS, MICROSTACKS_IN_STACKS } from '../utils';
 
@@ -15,7 +15,15 @@ export type TotalSupplyResult = {
 
 class TotalSupplyAggregator extends Aggregator<TotalSupplyResult> {
   expiry() {
-    return 10 * 60; // 10 minutes
+    return 15 * 60; // 15 minutes
+  }
+
+  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+    return {
+      aggregatorKey: await this.keyWithTag(),
+      aggregatorArgs: undefined,
+      interval: 10 * 60 // 10 minutes,
+    };
   }
 
   async setter(): Promise<AggregatorSetterResult<TotalSupplyResult>> {

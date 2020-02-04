@@ -200,7 +200,7 @@ export const getNameOperationsForBlock = async (
 ) => {
   const sql = `
     SELECT 
-      h.block_id, h.history_id, h.creator_address, h.history_data, h.opcode,
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.opcode, h.vtxindex,
       s.owner, s.fully_qualified_subdomain
     FROM history h
     LEFT JOIN (SELECT * FROM subdomain_records WHERE block_height = $1) s
@@ -211,7 +211,7 @@ export const getNameOperationsForBlock = async (
         'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
       )
     )
-    ORDER BY h.block_id DESC`;
+    ORDER BY h.block_id DESC, h.vtxindex DESC`;
   const params = [blockHeight];
   const db = await getDB();
   const historyRows = await db.query<HistoryRecordQueryRow & NameRegistrationQueryRow>(sql, params);
@@ -270,7 +270,7 @@ export const getAllNameOperations = async (page = 0, limit = 100): Promise<NameR
       s.owner IS NOT NULL
       OR h.opcode = 'NAME_REGISTRATION'
     )
-    ORDER BY h.block_id DESC
+    ORDER BY h.block_id DESC, h.vtxindex DESC
     LIMIT $1 OFFSET $2`;
   const offset = page * limit;
   const params = [limit, offset];
@@ -328,8 +328,8 @@ export const getNameHistory = async (name: string, page = 0, limit = 20) => {
   const sql = `
     SELECT * FROM (
       SELECT 
-      h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
-      s.owner, s.fully_qualified_subdomain
+        h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
+        s.owner, s.fully_qualified_subdomain
       FROM history h
       LEFT JOIN subdomain_records s
       ON h.txid = s.txid
@@ -340,7 +340,7 @@ export const getNameHistory = async (name: string, page = 0, limit = 20) => {
           'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
         )
       )
-      ORDER BY h.block_id DESC
+      ORDER BY h.block_id DESC, h.vtxindex DESC
     ) AS record
     WHERE record.history_id = $1 OR record.fully_qualified_subdomain = $1
     LIMIT $2 OFFSET $3`;

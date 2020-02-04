@@ -1,4 +1,4 @@
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { HistoryRecordData, getHistoryFromTxid } from '../core-db-pg/queries';
 import { btcValue, stacksValue } from '../utils';
 import { DecodeTxResult, decodeTx } from '../btc-tx-decoder';
@@ -26,7 +26,7 @@ export type TransactionAggregatorResult = DecodeTxResult & {
 }>;
 
 
-class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResult, TransactionAggregatorOpts> {
+class TransactionAggregator extends Aggregator<TransactionAggregatorResult, TransactionAggregatorOpts> {
 
   key(args: TransactionAggregatorOpts) {
     return `Transaction:${args.hash}`;

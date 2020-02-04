@@ -1,4 +1,4 @@
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import {
   getBlock,
   getBlockTransactions,
@@ -9,12 +9,10 @@ import {
 } from '../bitcore-db/queries';
 import {
   getNameOperationsForBlock,
-  getSubdomainRegistrationsForTxid,
   Subdomain,
   NameOperationsForBlockResult
 } from '../core-db-pg/queries';
 import { btcValue } from '../utils';
-import { getSTXAddress } from '../stacks-decoder';
 import { getAddr } from '../btc-tx-decoder';
 
 
@@ -42,7 +40,7 @@ export type BlockAggregatorResult = BitcoreBlock & {
   rewardFormatted: string;
 };
 
-class BlockAggregator extends AggregatorWithArgs<BlockAggregatorResult, BlockAggregatorOpts> {
+class BlockAggregator extends Aggregator<BlockAggregatorResult, BlockAggregatorOpts> {
   key(hashOrHeight: BlockAggregatorOpts) {
     return `Block:${hashOrHeight}`;
   }

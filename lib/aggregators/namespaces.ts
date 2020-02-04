@@ -1,6 +1,6 @@
 import * as BluebirdPromise from 'bluebird';
 
-import { Aggregator, AggregatorSetterResult } from './aggregator';
+import { AggregatorSetterResult, Aggregator, KeepAliveOptions } from './aggregator';
 
 import { fetchNamespaceNameCount, fetchNamespaces } from '../client/core-api';
 
@@ -35,6 +35,14 @@ class NamespaceAggregator extends Aggregator<NamespaceAggregatorResult> {
     return {
       shouldCacheValue: true,
       value: data,
+    };
+  }
+
+  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+    return {
+      aggregatorKey: await this.keyWithTag(),
+      aggregatorArgs: undefined,
+      interval: 30 * 60 // 30 minutes,
     };
   }
 

@@ -1,5 +1,5 @@
 import * as accounting from 'accounting';
-import { Aggregator, AggregatorSetterResult } from './aggregator';
+import { AggregatorSetterResult, Aggregator } from './aggregator';
 
 import { fetchTotalNames } from '../client/core-api';
 import { getTotalSubdomainCount } from '../core-db-pg/queries';

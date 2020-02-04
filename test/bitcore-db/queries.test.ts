@@ -26,17 +26,14 @@ test('can fetch address txs', async () => {
   expect(bitcoreTX.outputs).toEqual([
     {
       address: false,
-      script: 'aidpZD8HJDHofkh30kk0hAH4ziPFnlUX/wOZsJXEG+PNxFtG5gWmcow=',
       value: 0 
     },
     {
       address: '16iBt6f8ZhbutEE4sb1c2hZ8PHhVnabmv4',
-      script: 'dqkUPqLEL1HAtN/oSUFnCTll8pia+S+IrA==',
       value: 235584
     },
     {
       address: '1111111111111111111114oLvT2',
-      script: 'dqkUAAAAAAAAAAAAAAAAAAAAAAAAAACIrA==',
       value: 160000
     }
   ]);

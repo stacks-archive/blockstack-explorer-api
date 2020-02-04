@@ -3,10 +3,12 @@ import * as moment from 'moment';
 import { network as BlockstackNetwork } from 'blockstack';
 import * as RPCClient from 'bitcoin-core';
 import * as dotenv from 'dotenv';
+import * as Sentry from '@sentry/node';
 import { 
   getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
   BitcoreAddressBalance,
 } from '../bitcore-db/queries';
+import { getStopwatch, isDevEnv, Json, logError } from '../utils';
 
 
 dotenv.config();
@@ -31,7 +33,6 @@ moment.updateLocale('en', {
 });
 
 const coreApi = process.env.CORE_API_URL || 'https://core.blockstack.org';
-const bitcoreApi = process.env.BITCORE_URL;
 
 const PUBLIC_TESTNET_HOST = 'testnet.blockstack.org';
 
@@ -44,10 +45,10 @@ const rpcClient = new RPCClient({
 });
 
 let configData = {
-  blockstackAPIUrl: 'https://core.blockstack.org',
-  blockstackNodeUrl: 'https://node.blockstack.org:6263',
-  broadcastServiceUrl: 'https://broadcast.blockstack.org',
-  utxoServiceUrl: 'https://bitcoin.blockstack.com',
+  blockstackAPIUrl: coreApi,
+  blockstackNodeUrl: 'https://nodex.blockstack.org:6263',
+  broadcastServiceUrl: 'https://broadcastx.blockstack.org',
+  utxoServiceUrl: 'https://bitcoinx.blockstack.com',
   rpc: {
     username: 'blockstack',
     password: 'blockstacksystem'
@@ -92,24 +93,36 @@ export const network = new BlockstackNetwork.LocalRegtest(
   })
 );
 
-const fetchJSON = async (uri: string): Promise<any> => {
+const fetchJSON = async <T extends Json>(uri: string, nullOn404 = false): Promise<T> => {
+  const stopwatch = getStopwatch();
   try {
     const response = await request({
       uri,
       resolveWithFullResponse: true,
-      time: true
+      time: true,
+      simple: false,
     });
-    if (response.statusCode !== 200) {
-      console.log(`${response.statusCode} when fetching ${uri}`);
+    if (response.statusCode === 404 && nullOn404) {
       return null;
     }
-    // console.log(response.elapsedTime / 1000);
+    if (response.statusCode !== 200) {
+      const errMsg = `${response.statusCode} - ${response.body}`
+      throw new Error(errMsg);
+    }
     return JSON.parse(response.body);
   } catch (e) {
-    // if (process.env.NODE_ENV !== 'test') {
-    console.error(`Error fetching ${uri}: ${e}`);
-    // }
-    return null;
+    const errMsg = `Error fetching ${uri}: ${e}`
+    console.error(errMsg);
+    throw new Error(errMsg);
+  } finally {
+    const elapsed = stopwatch.getElapsedSeconds();
+    if (elapsed > 5) {
+      const warning = `Warning: core node API fetch took ${elapsed.toFixed(3)} seconds for ${uri}`;
+      logError(warning);
+    }
+    else if (isDevEnv) {
+      console.log(`Core node API fetch took ${elapsed.toFixed(3)} seconds for ${uri}`);
+    }
   }
 };
 
@@ -248,7 +261,7 @@ export type FetchNameEntry = {
  */
 export const fetchName = async (name: string): Promise<FetchNameEntry | null> => {
   const url = `${coreApi}/v2/users/${name}`;
-  const data: FetchNameResult = await fetchJSON(url);
+  const data = await fetchJSON<FetchNameResult>(url, true);
   // TODO: What is the actual intended return type?
   return data ? data[name] : (data as unknown as FetchNameEntry);
 };
@@ -282,7 +295,7 @@ export type BlockstackCoreBitcoinBlockNameOps = {
 
 export const fetchNameOperations = async (blockHeight: number): Promise<BlockstackCoreBitcoinBlockNameOps[]> => {
   const url = `${coreApi}/v1/blockchains/bitcoin/operations/${blockHeight}`;
-  const result = await fetchJSON(url);
+  const result = await fetchJSON<BlockstackCoreBitcoinBlockNameOps[]>(url);
   if (!result) {
     return [];
   }
@@ -463,29 +476,6 @@ export const fetchNamespaceNames = async (namespace: string, page: number): Prom
   const data: string[] = await fetchJSON(`${coreApi}/v1/namespaces/${namespace}/names?page=${page}`);
   return data;
 };
-
-export type SubdomainTransactionResult = {
-  accepted: number;
-  block_height: number;
-  domain: string;
-  fully_qualified_subdomain: string;
-  missing: string;
-  owner: string;
-  parent_zonefile_hash: string;
-  parent_zonefile_index: number;
-  resolver: string;
-  sequence: number;
-  signature: string;
-  txid: string;
-  zonefile_hash: string;
-  zonefile_offset: number;
-};
-
-// TODO: unused, remove
-const fetchTransactionSubdomains = async (txid: string): Promise<SubdomainTransactionResult[]> => {
-  const data: SubdomainTransactionResult[] = await fetchJSON(`${coreApi}/v1/subdomains/${txid}`);
-  return data;
-}
 
 export type TotalNamesResult = {
   names_count: number;

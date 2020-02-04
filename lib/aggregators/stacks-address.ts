@@ -3,7 +3,7 @@ import * as c32check from 'c32check';
 import * as moment from 'moment';
 import { compact } from 'lodash';
 
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import {
   network,
 } from '../client/core-api';
@@ -78,7 +78,7 @@ export type StackAccountStatusResult = {
   vtxindex: number;
 };
 
-class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddressOpts> {
+class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
   key({addr, page}: StacksAddressOpts) {
     return `StacksAddress:${addr}:${page || 0}`;
   }

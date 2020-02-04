@@ -1,5 +1,5 @@
 import * as c32check from 'c32check';
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { getUnlockedSupply, getTopBalances } from '../core-db-pg/queries';
 import { microStacksToStacks } from '../utils';
 
@@ -12,9 +12,9 @@ export type TopBalanceAccount = {
 
 export type TopBalancesAggregatorOpts = {
   count: number;
-}
+};
 
-class TopBalancesAggregator extends AggregatorWithArgs<TopBalanceAccount[], TopBalancesAggregatorOpts> {
+class TopBalancesAggregator extends Aggregator<TopBalanceAccount[], TopBalancesAggregatorOpts> {
   key({ count }: TopBalancesAggregatorOpts) {
     return `${this.constructor.name}:${count}`;
   }

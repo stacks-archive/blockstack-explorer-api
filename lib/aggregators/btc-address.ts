@@ -1,4 +1,4 @@
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { fetchAddress } from '../client/core-api';
 
 type BTCAddressAggregatorOpts = {
@@ -23,7 +23,7 @@ type BTCAddressAggregatorResult = {
   names: string[];
 };
 
-class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {
+class BTCAddressAggregator extends Aggregator<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {
   key({address, txPage = 0}: BTCAddressAggregatorOpts) {
     return `BTCAddress:${address}?txPage=${txPage}`;
   }

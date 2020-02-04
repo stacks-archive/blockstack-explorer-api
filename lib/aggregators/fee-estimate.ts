@@ -1,5 +1,5 @@
 import * as request from 'request-promise-native';
-import { Aggregator, AggregatorSetterResult } from './aggregator';
+import { AggregatorSetterResult, Aggregator } from './aggregator';
 
 class FeeEstimator extends Aggregator<number> {
   async setter(): Promise<AggregatorSetterResult<number>> {

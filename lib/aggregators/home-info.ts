@@ -2,7 +2,7 @@ import * as moment from 'moment';
 import { sortBy } from 'lodash';
 
 import NameOperations, { NameOp } from './name-ops-v2';
-import { Aggregator, AggregatorSetterResult } from './aggregator';
+import { AggregatorSetterResult, Aggregator, KeepAliveOptions } from './aggregator';
 import NameCounts, { TotalNamesResult } from './total-names';
 import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
 
@@ -26,12 +26,21 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
     return 'HomeInfo:v2';
   }
 
+  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+    return {
+      aggregatorKey: await this.keyWithTag(),
+      aggregatorArgs: undefined,
+      interval: 10 * 60 // 10 minutes,
+    };
+  }
+
   async setter(): Promise<AggregatorSetterResult<HomeInfoResult>> {
+    
     const [counts, nameOperations] = await Promise.all([
       NameCounts.fetch(),
       NameOperations.fetch({page: 0}),
     ]);
-
+    
     const startCount = counts.total - nameOperations.length;
     let currentCount = startCount;
     const ticks: Record<number, { names: number; date: string }> = {};
@@ -80,7 +89,7 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
   }
 
   expiry() {
-    return 10 * 60; // 10 minutes
+    return 15 * 60; // 15 minutes
   }
 }
 

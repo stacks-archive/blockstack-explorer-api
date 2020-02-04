@@ -1,5 +1,5 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { fetchName, FetchNameEntry } from '../client/core-api';
 import { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
@@ -34,7 +34,7 @@ type NameAggregatorInput = {
   historyPage?: number;
 };
 
-class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggregatorInput> {
+class NameAggregator extends Aggregator<NameAggregatorResult, NameAggregatorInput> {
   key({ name, historyPage = 0 }: NameAggregatorInput) {
     return `Name:${name}?historyPage=${historyPage}`;
   }

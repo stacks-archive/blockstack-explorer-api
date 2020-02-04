@@ -1,6 +1,6 @@
 import * as moment from 'moment';
 
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { getBlocks } from '../bitcore-db/queries';
 import { getNameOperationCountsForBlocks } from '../core-db-pg/queries';
 
@@ -22,7 +22,7 @@ export type BlocksAggregatorResult = {
   availableCount: number;
 };
 
-class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockAggregatorOpts> {
+class BlocksAggregator extends Aggregator<BlocksAggregatorResult, BlockAggregatorOpts> {
   key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();

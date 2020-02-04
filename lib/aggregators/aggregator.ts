@@ -1,25 +1,116 @@
 import redis from '../redis';
 import * as ChildProcess from 'child_process';
 import * as Sentry from '@sentry/node';
-
-export type Json =
-    | string
-    | number
-    | boolean
-    | null
-    | { [property: string]: Json }
-    | Json[];
-
-export type PossibleJson = Json | void;
+import BigNumber from 'bignumber.js';
+import { EventEmitter } from 'events';
+import StrictEventEmitter from 'strict-event-emitter-types';
+import { logError, getStopwatch, Json } from '../utils';
 
 export type AggregatorSetterResult<TResult extends Json> = {
   value: TResult;
   shouldCacheValue: boolean;
 };
 
-export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends PossibleJson = void> {
+export type KeepAliveOptions = false | {
+  readonly aggregatorKey: string;
+  readonly aggregatorArgs: Json | void;
+  /** How many seconds to wait between refreshes. */
+  readonly interval: number;
+  /** How many times to refresh before stopping. A falsy value indicates an infinite loop. */
+  readonly count?: number;
+}
+
+interface KeepAliveTimer { 
+  timer: NodeJS.Timeout;
+  opts: KeepAliveOptions;
+  runCount: BigNumber;
+}
+
+class CacheManager {
+
+  static readonly instance = new CacheManager();
+
+  readonly aggregators: Aggregator<Json, Json | void>[] = [];
+
+  readonly keepAliveTimers: Map<string, KeepAliveTimer> = new Map();
+
+  async registerAggregator(aggregator: Aggregator<Json, Json | void>) {
+    try {
+      this.aggregators.push(aggregator);
+      const initialKeepAliveOpts = await aggregator.getInitialKeepAliveOptions();
+      await this.updateKeepAlive(aggregator, initialKeepAliveOpts);
+      aggregator.on('updateKeepAlive', (aggregator, opts) => {
+        this.updateKeepAlive(aggregator, opts);
+      });
+    } catch (error) {
+      const msg = `Error registering aggregator ${aggregator.constructor.name} with cache manager: ${error}`;
+      logError(msg, error);
+      try {
+        await Sentry.close(error);
+      } catch (error) {
+        // ignore
+      }
+      process.exit(1);
+    }
+  }
+
+  async updateKeepAlive(aggregator: Aggregator<Json, Json | void>, opts: KeepAliveOptions) {
+    if (!opts) {
+      return;
+    }
+    if (this.keepAliveTimers.has(opts.aggregatorKey)) {
+      return;
+    }
+    const key = await aggregator.keyWithTag(opts.aggregatorArgs);
+    console.log(`Scheduling auto cache refresh for "${key}", every ${opts.interval} seconds`);
+    const intervalMS = opts.interval * 1000;
+    const keepAliveInstance = {
+      opts,
+      runCount: new BigNumber(0),
+      timer: setInterval(() => {
+        keepAliveInstance.runCount = keepAliveInstance.runCount.plus(1);
+        const timerCompleted = opts.count > 0 && keepAliveInstance.runCount.gt(opts.count);
+        if (timerCompleted) {
+          clearInterval(keepAliveInstance.timer);
+        }
+        aggregator.fetch(opts.aggregatorArgs, true).catch(error => {
+          const msg = `Error running keep-alive refresh for aggregator ${aggregator.constructor.name}: ${error}`;
+          logError(msg, error);
+        }).finally(() => {
+          if (timerCompleted) {
+            this.keepAliveTimers.delete(opts.aggregatorKey);
+          }
+        });
+      }, intervalMS),
+    };
+    this.keepAliveTimers.set(opts.aggregatorKey, keepAliveInstance);
+  }
+}
+
+type KeepAliveEventEmitter = StrictEventEmitter<EventEmitter, {
+  updateKeepAlive: (aggregator: Aggregator<Json, Json | void>, request: KeepAliveOptions) => void;
+}>;
+
+export abstract class Aggregator<TResult extends Json, TArgs extends Json | void = void> 
+  extends (EventEmitter as new () => KeepAliveEventEmitter)
+  implements KeepAliveEventEmitter {
 
   readonly pendingAggregations: Map<string, Promise<TResult>> = new Map();
+
+  constructor() {
+    super();
+    if (process.env.NODE_ENV !== 'test') {
+      CacheManager.instance.registerAggregator(this);
+    }
+  }
+
+  getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+    return Promise.resolve(false);
+  }
+
+  getKeepAliveOptions(key: string, args: TArgs): KeepAliveOptions {
+    return false;
+  }
 
   key(args: TArgs): string {
     if (args !== undefined) {
@@ -41,7 +132,11 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
   async set(args: TArgs): Promise<TResult> {
     // const verbose = this.verbose(...args);
     const key = await this.keyWithTag(args);
-    const { value, shouldCacheValue} = await this.setter(args);
+
+    const keepAliveOpts = this.getKeepAliveOptions(key, args);
+    this.emit('updateKeepAlive', this, keepAliveOpts);
+
+    const { value, shouldCacheValue } = await this.setter(args);
 
     if (shouldCacheValue) {
       const valArg = JSON.stringify(value);
@@ -68,7 +163,7 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
 
   abstract setter(args: TArgs): Promise<AggregatorSetterResult<TResult>>;
 
-  async fetch(args: TArgs): Promise<TResult> {
+  async fetch(args: TArgs, ignoreCache = false): Promise<TResult> {
     const isDevEnv = process.env.NODE_ENV === 'development';
     const verbose = isDevEnv || this.verbose(args);
     const key = await this.keyWithTag(args);
@@ -76,7 +171,7 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
       console.log(`Running aggregator: "${key}"`); 
     }
     
-    if (!isDevEnv) {
+    if (!isDevEnv && !ignoreCache) {
       const value = await this.get(args);
       if (value) {
         if (verbose) {
@@ -94,11 +189,11 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
       return pendingAggregation;
     }
 
-    if (verbose) {
+    if (verbose && !ignoreCache) {
       console.log(`Cached value not found for "${key}". Fetching data.`);
     }
 
-    const hrstart = process.hrtime();
+    const stopwatch = getStopwatch();
     try {
       const aggregationPromise = this.set(args);
       this.pendingAggregations.set(key, aggregationPromise);
@@ -110,15 +205,13 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
       throw error;
     } finally {
       this.pendingAggregations.delete(key);
-      const hrend = process.hrtime(hrstart);
-      const elapsedSeconds = (hrend[0] + (hrend[1] / 1e9));
+      const elapsedSeconds = stopwatch.getElapsedSeconds();
       if (elapsedSeconds > 10) {
         const warning = `Warning: aggregation for "${key}" took ${elapsedSeconds} seconds`;
-        Sentry.captureMessage(warning);
-        console.error(warning);
+        logError(warning);
       }
       if (verbose) {
-        console.log(`Fetching data for "${key}" took ${elapsedSeconds.toFixed(4)} seconds`);
+        console.log(`Fetching data for "${key}" took ${elapsedSeconds.toFixed(3)} seconds`);
       }
     }
   }
@@ -143,31 +236,6 @@ export abstract class AggregatorWithArgs<TResult extends Json, TArgs extends Pos
         resolve((stdout || '').trim());
       });
     });
-  }
-}
-
-export abstract class Aggregator<TResult extends Json> extends AggregatorWithArgs<TResult, undefined> {
-  key(): string {
-    return super.key(undefined);
-  }
-  keyWithTag(): Promise<string> {
-    return super.keyWithTag(undefined);
-  }
-  get(): Promise<TResult | null> {
-    return super.get(undefined);
-  }
-  abstract setter(): Promise<AggregatorSetterResult<TResult>>;
-  set(): Promise<TResult> {
-    return super.set(undefined);
-  }
-  fetch(): Promise<TResult> {
-    return super.fetch(undefined);
-  }
-  expiry(): number | null {
-    return super.expiry(undefined);
-  }
-  verbose(): boolean {
-    return super.verbose(undefined);
   }
 }
 

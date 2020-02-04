@@ -1,5 +1,35 @@
 import * as moment from 'moment';
 import BigNumber from 'bignumber.js';
+import * as Sentry from '@sentry/node';
+
+export type Json =
+    | string
+    | number
+    | boolean
+    | null
+    | { [property: string]: Json }
+    | Json[];
+
+export const logError = (message: string, error?: Error) => {
+  console.error(message);
+  Sentry.captureMessage(message);
+  if (error) {
+    console.error(error);
+    Sentry.captureException(error);
+  }
+}
+
+export const isDevEnv = process.env.NODE_ENV === 'development';
+
+export const getStopwatch = (): { getElapsedSeconds: () => number } => {
+  const hrstart = process.hrtime();
+  return {
+    getElapsedSeconds: () => {
+      const hrend = process.hrtime(hrstart);
+      return hrend[0] + (hrend[1] / 1e9);
+    },
+  }
+};
 
 export const stacksValue = (value: number | string, formatted = false) => {
   const parsed = new BigNumber(value).shiftedBy(-6);

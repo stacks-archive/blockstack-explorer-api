@@ -1,10 +1,6 @@
-import * as BluebirdPromise from 'bluebird';
-
-import { AggregatorWithArgs, AggregatorSetterResult } from './aggregator';
+import { Aggregator, AggregatorSetterResult, KeepAliveOptions } from './aggregator';
 import {
   getAllNameOperations,
-  getSubdomainRegistrationsForTxid,
-  Subdomain
 } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
@@ -20,13 +16,21 @@ export type NameOpsAggregatorArgs = {
   page: number;
 };
 
-class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
+class NameOpsAggregator extends Aggregator<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
   expiry() {
-    return 10 * 60; // 10 minutes
+    return 15 * 60; // 15 minutes
   }
 
   key({page = 0}: NameOpsAggregatorArgs) {
     return `NameOpsAggregator:${page || 0}`;
+  }
+
+  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+    return {
+      aggregatorKey: await this.keyWithTag({page: 0}),
+      aggregatorArgs: {page: 0},
+      interval: 10 * 60 // 10 minutes,
+    };
   }
 
   async setter({page = 0}: NameOpsAggregatorArgs): Promise<AggregatorSetterResult<NameOpsAggregatorResult>> {

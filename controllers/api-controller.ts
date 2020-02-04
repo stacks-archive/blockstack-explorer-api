@@ -16,7 +16,7 @@ import HomeInfoAggregator from '../lib/aggregators/home-info';
 import NameAggregator from '../lib/aggregators/name';
 import BTCAddressAggregator from '../lib/aggregators/btc-address';
 import TransactionAggregator from '../lib/aggregators/transaction';
-import { Json } from '../lib/aggregators/aggregator';
+import { Json } from '../lib/utils';
 
 const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
   return async (req: Request, res?: Response) => {
