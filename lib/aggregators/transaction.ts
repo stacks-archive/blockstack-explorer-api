@@ -2,11 +2,11 @@ import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { HistoryRecordData, getHistoryFromTxid } from '../core-db-pg/queries';
 import { btcValue, stacksValue } from '../utils';
 import { DecodeTxResult, decodeTx } from '../btc-tx-decoder';
-import { getStxAddresses } from '../../controllers/v2-controller';
 import { getTX, getLatestBlockHeight } from '../bitcore-db/queries';
 import { fetchRawTxInfo } from '../client/core-api';
 import { Transaction } from 'bitcoinjs-lib';
 import { HistoryDataTokenTransfer } from '../core-db-pg/history-data-types';
+import { getStxAddresses } from '../addresses';
 
 
 export type TransactionAggregatorOpts = {

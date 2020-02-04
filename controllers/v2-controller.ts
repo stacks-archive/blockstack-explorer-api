@@ -5,22 +5,16 @@ import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
+import TransactionsAggregator from '../lib/aggregators/transactions';
+import SubdomainsAggregator from '../lib/aggregators/subdomains';
+import NamesAggregator from '../lib/aggregators/names';
+import StxTransactionsAggregator from '../lib/aggregators/stx-transactions';
 import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
 import FeeEstimator from '../lib/aggregators/fee-estimate';
-import { getTimesForBlockHeights, lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
-import {
-  getRecentStacksTransfers,
-  getRecentNames,
-  getRecentSubdomains,
-  StacksTransaction,
-  getAllHistoryRecords,
-  HistoryRecordResult
-} from '../lib/core-db-pg/queries';
+import { lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
 
 import { blockToTime, stacksValue } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
-import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
-import { getSTXAddress } from '../lib/stacks-decoder';
 import { StatusCodeError } from 'request-promise-native/errors';
 import * as searchUtil from '../lib/search-util';
 
@@ -65,89 +59,29 @@ Controller.getAsync('/blocks', async (req, res) => {
   res.json(blocks);
 });
 
-export type GetStxAddressResult = {
-  senderSTX?: string;
-  recipientSTX?: string;
-}
 
-export const getStxAddresses = (
-  tx: StacksTransaction | HistoryRecordResult
-): GetStxAddressResult => {
-  if (!tx.historyData) {
-    return {};
-  }
-  if (tx.opcode === 'TOKEN_TRANSFER') {
-    const historyData = tx.historyData as HistoryDataTokenTransfer;
-    return {
-      senderSTX: getSTXAddress(historyData.sender),
-      recipientSTX: getSTXAddress(historyData.recipient)
-    };
-  }
-  return {};
-};
 
 Controller.getAsync('/transactions/stx', async (req, res) => {
   const page = parseInt(req.query.page, 10) || 0;
-  const transactions = await getRecentStacksTransfers(
-    100,
-    page
-  );
-  const blockTimes = await getTimesForBlockHeights(
-    transactions.map(tx => tx.blockHeight)
-  );
-  const transfers = transactions.map(tx => ({
-    ...tx,
-    timestamp: blockTimes[tx.blockHeight],
-    ...getStxAddresses(tx)
-  }));
+  const transfers = await StxTransactionsAggregator.fetch({page});
   res.json({ transfers });
 });
 
 Controller.getAsync('/transactions/names', async (req, res) => {
-  const limit = 100;
   const page = parseInt(req.query.page, 10) || 0;
-  const namesResult = await getRecentNames(limit, page);
-  const blockTimes = await getTimesForBlockHeights(
-    namesResult.map(name => name.block_number)
-  );
-  const names = namesResult.map(name => ({
-    ...name,
-    timestamp: blockTimes[name.block_number]
-  }));
+  const names = await NamesAggregator.fetch({page});
   res.json({ names });
 });
 
-Controller.getAsync(
-  '/transactions/subdomains',
-  async (req, res) => {
-    const limit = 100;
+Controller.getAsync('/transactions/subdomains', async (req, res) => {
     const page = parseInt(req.query.page, 10) || 0;
-    const subdomainsResult = await getRecentSubdomains(
-      limit,
-      page
-    );
-    const blockTimes = await getTimesForBlockHeights(
-      subdomainsResult.map(sub => sub.blockHeight)
-    );
-    const subdomains = subdomainsResult.map(name => ({
-      ...name,
-      timestamp: blockTimes[name.blockHeight]
-    }));
+  const subdomains = await SubdomainsAggregator.fetch({page});
     res.json({ subdomains });
-  }
-);
+});
 
 Controller.getAsync('/transactions/all', async (req, res) => {
-  const limit = 100;
   const page = parseInt(req.query.page, 10) || 0;
-  const historyResult = await getAllHistoryRecords(limit, page);
-  const heights = historyResult.map(item => item.block_id);
-  const blockTimes = await getTimesForBlockHeights(heights);
-  const history = historyResult.map(historyRecord => ({
-    ...historyRecord,
-    timestamp: blockTimes[historyRecord.block_id],
-    ...getStxAddresses(historyRecord)
-  }));
+  const history = await TransactionsAggregator.fetch({page});
   res.json({ history });
 });
 
