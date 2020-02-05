@@ -18,9 +18,9 @@ class TotalSupplyAggregator extends Aggregator<TotalSupplyResult> {
     return 15 * 60; // 15 minutes
   }
 
-  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+  getKeepAliveOptions(key: string): KeepAliveOptions {
     return {
-      aggregatorKey: await this.keyWithTag(),
+      aggregatorKey: key,
       aggregatorArgs: undefined,
       interval: 10 * 60 // 10 minutes,
     };

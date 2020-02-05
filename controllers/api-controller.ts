@@ -1,5 +1,4 @@
-import { Request, Response, Router, NextFunction, RequestHandler } from 'express';
-import * as Sentry from '@sentry/node';
+import { Request, Response, Router } from 'express';
 
 import { getTotals, GetGenesisAccountsResult } from '../lib/addresses';
 import {
@@ -16,7 +15,7 @@ import HomeInfoAggregator from '../lib/aggregators/home-info';
 import NameAggregator from '../lib/aggregators/name';
 import BTCAddressAggregator from '../lib/aggregators/btc-address';
 import TransactionAggregator from '../lib/aggregators/transaction';
-import { Json } from '../lib/utils';
+import { Json, logError } from '../lib/utils';
 
 const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
   return async (req: Request, res?: Response) => {
@@ -27,8 +26,7 @@ const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json)
       }
       res.json(data);
     } catch (error) {
-      console.error(error);
-      Sentry.captureException(error);
+      logError(`Error handling request ${req.originalUrl}`, error);
       res.status(404).json({ success: false });
     }
   }

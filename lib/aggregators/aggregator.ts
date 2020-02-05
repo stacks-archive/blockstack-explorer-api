@@ -1,6 +1,5 @@
 import redis from '../redis';
 import * as ChildProcess from 'child_process';
-import * as Sentry from '@sentry/node';
 import BigNumber from 'bignumber.js';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
@@ -34,22 +33,18 @@ class CacheManager {
 
   readonly keepAliveTimers: Map<string, KeepAliveTimer> = new Map();
 
-  async registerAggregator(aggregator: Aggregator<Json, Json | void>) {
+  registerAggregator(aggregator: Aggregator<Json, Json | void>) {
     try {
       this.aggregators.push(aggregator);
-      const initialKeepAliveOpts = await aggregator.getInitialKeepAliveOptions();
-      await this.updateKeepAlive(aggregator, initialKeepAliveOpts);
       aggregator.on('updateKeepAlive', (aggregator, opts) => {
-        this.updateKeepAlive(aggregator, opts);
+        this.updateKeepAlive(aggregator, opts).catch(error => {
+          const msg = `Error updating keep alive for aggregator key ${opts.aggregatorKey}: ${error}`;
+          logError(msg, error);
+        });
       });
     } catch (error) {
       const msg = `Error registering aggregator ${aggregator.constructor.name} with cache manager: ${error}`;
       logError(msg, error);
-      try {
-        await Sentry.close(error);
-      } catch (error) {
-        // ignore
-      }
       process.exit(1);
     }
   }
@@ -88,7 +83,10 @@ class CacheManager {
 }
 
 type KeepAliveEventEmitter = StrictEventEmitter<EventEmitter, {
-  updateKeepAlive: (aggregator: Aggregator<Json, Json | void>, request: KeepAliveOptions) => void;
+  updateKeepAlive: (
+    aggregator: Aggregator<Json, Json | void>, 
+    request: Exclude<KeepAliveOptions, false>
+  ) => void;
 }>;
 
 export abstract class Aggregator<TResult extends Json, TArgs extends Json | void = void> 
@@ -102,10 +100,6 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
     if (process.env.NODE_ENV !== 'test') {
       CacheManager.instance.registerAggregator(this);
     }
-  }
-
-  getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
-    return Promise.resolve(false);
   }
 
   getKeepAliveOptions(key: string, args: TArgs): KeepAliveOptions {
@@ -134,8 +128,12 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
     const key = await this.keyWithTag(args);
 
     const keepAliveOpts = this.getKeepAliveOptions(key, args);
-    this.emit('updateKeepAlive', this, keepAliveOpts);
-
+    if (keepAliveOpts) {
+      setImmediate(() => {
+        this.emit('updateKeepAlive', this, keepAliveOpts);
+      })
+    }
+    
     const { value, shouldCacheValue } = await this.setter(args);
 
     if (shouldCacheValue) {

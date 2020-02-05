@@ -38,9 +38,9 @@ class NamespaceAggregator extends Aggregator<NamespaceAggregatorResult> {
     };
   }
 
-  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+  getKeepAliveOptions(key: string): KeepAliveOptions {
     return {
-      aggregatorKey: await this.keyWithTag(),
+      aggregatorKey: key,
       aggregatorArgs: undefined,
       interval: 30 * 60 // 30 minutes,
     };

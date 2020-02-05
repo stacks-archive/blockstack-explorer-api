@@ -24,12 +24,16 @@ class TransactionsAggregator extends Aggregator<TransactionsAggregatorResult, Tr
     return 15 * 60; // 15 minutes
   }
 
-  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
-    return {
-      aggregatorKey: await this.keyWithTag({page: 0}),
-      aggregatorArgs: {page: 0},
-      interval: 10 * 60 // 10 minutes,
-    };
+  getKeepAliveOptions(key: string, args: TransactionsAggregatorOpts): KeepAliveOptions {
+    if (args.page === 0) {
+      return {
+        aggregatorKey: key,
+        aggregatorArgs: {page: 0},
+        interval: 10 * 60 // 10 minutes,
+      };
+    } else {
+      return false;
+    }
   }
 
   async setter({ page }: TransactionsAggregatorOpts): Promise<AggregatorSetterResult<TransactionsAggregatorResult>> {

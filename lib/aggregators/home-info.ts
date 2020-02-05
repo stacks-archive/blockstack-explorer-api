@@ -26,9 +26,9 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
     return 'HomeInfo:v2';
   }
 
-  async getInitialKeepAliveOptions(): Promise<KeepAliveOptions> {
+  getKeepAliveOptions(key: string): KeepAliveOptions {
     return {
-      aggregatorKey: await this.keyWithTag(),
+      aggregatorKey: key,
       aggregatorArgs: undefined,
       interval: 10 * 60 // 10 minutes,
     };

@@ -1,7 +1,6 @@
 import { Request, Response, Router } from 'express';
 import * as moment from 'moment';
 import * as request from 'request-promise-native';
-import * as Sentry from '@sentry/node';
 
 import BlockAggregator from '../lib/aggregators/block-v2';
 import BlocksAggregator from '../lib/aggregators/blocks-v2';
@@ -13,7 +12,7 @@ import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/tot
 import FeeEstimator from '../lib/aggregators/fee-estimate';
 import { lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
 
-import { blockToTime, stacksValue } from '../lib/utils';
+import { blockToTime, stacksValue, logError } from '../lib/utils';
 import TopBalancesAggregator from '../lib/aggregators/top-balances';
 import { StatusCodeError } from 'request-promise-native/errors';
 import * as searchUtil from '../lib/search-util';
@@ -28,8 +27,7 @@ const getAsync = (
     try {
       await handler(req, res);
     } catch (error) {
-      console.error(error);
-      Sentry.captureException(error);
+      logError(`Error handling ${path}`, error);
       res.status(500).json({ success: false });
     }
   })
