@@ -288,11 +288,11 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
   const sql = `
     SELECT * FROM (
       SELECT * from history
-    WHERE opcode in (
-      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
-      'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
-    )
-    ORDER BY block_id DESC, vtxindex DESC
+      WHERE opcode in (
+        'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
+        'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
+      )
+      ORDER BY block_id DESC, vtxindex DESC
       LIMIT $1 OFFSET $2
     ) h, 
     LATERAL (
@@ -308,19 +308,19 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
     subdomains?: string[]; 
   }>(sql, params);
   const results = historyRows.map((row) => {
-      const historyData: HistoryDataEntry = JSON.parse(row.history_data);
-      if (row.opcode === 'NAME_UPDATE') {
+    const historyData: HistoryDataEntry = JSON.parse(row.history_data);
+    if (row.opcode === 'NAME_UPDATE') {
       const subdomains = row.subdomains.map(s => s.split(':')[0]);
-        return {
-          ...row,
-          historyData,
-        subdomains: subdomains
-        };
-      }
       return {
         ...row,
-        historyData
+        historyData,
+        subdomains: subdomains
       };
+    }
+    return {
+      ...row,
+      historyData
+    };
   });
   const filtered = results.filter(record => {
     if (record.opcode === 'NAME_UPDATE' && record.subdomains.length === 0) {
@@ -333,24 +333,28 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
 
 export const getNameHistory = async (name: string, page = 0, limit = 20) => {
   const sql = `
-    SELECT * FROM (
-      SELECT 
-        h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
-        s.owner, s.fully_qualified_subdomain
-      FROM history h
-      LEFT JOIN subdomain_records s
-      ON h.txid = s.txid
-      WHERE (
-        (h.opcode = 'NAME_UPDATE' AND s.owner IS NOT NULL)
-        OR h.opcode IN (
-          'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 
-          'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-        )
+    SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
+      s.owner, s.fully_qualified_subdomain 
+    FROM (
+      SELECT * FROM history h
+      WHERE h.history_id = $1 AND h.opcode IN (
+        'NAME_REGISTRATION', 'NAME_PREORDER', 
+        'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
       )
-      ORDER BY h.block_id DESC, h.vtxindex DESC
-    ) AS record
-    WHERE record.history_id = $1 OR record.fully_qualified_subdomain = $1
-    LIMIT $2 OFFSET $3`;
+      ORDER BY block_id DESC, vtxindex DESC
+      LIMIT $2 OFFSET $3
+    ) h
+    LEFT JOIN subdomain_records s ON h.txid = s.txid
+    UNION ALL
+    SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
+      s.owner, s.fully_qualified_subdomain 
+    FROM (
+      SELECT * FROM subdomain_records s
+      WHERE s.fully_qualified_subdomain = $1
+    ) s
+    LEFT JOIN history h ON h.txid = s.txid`;
   const offset = page * limit;
   const params = [name, limit, offset];
   const db = await getDB();
