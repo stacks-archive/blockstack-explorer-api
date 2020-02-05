@@ -285,36 +285,43 @@ export type HistoryRecordResult = (HistoryRecordQueryRow & {
 });
 
 export const getAllHistoryRecords = async (limit: number, page = 0): Promise<HistoryRecordResult[]> => {
-  const sql = 
-    `select * from history 
+  const sql = `
+    SELECT * FROM (
+      SELECT * from history
     WHERE opcode in (
       'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
       'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
     )
     ORDER BY block_id DESC, vtxindex DESC
-    LIMIT $1 OFFSET $2`;
+      LIMIT $1 OFFSET $2
+    ) h, 
+    LATERAL (
+      SELECT ARRAY (
+        SELECT s.fully_qualified_subdomain || ':' || s.owner
+        FROM subdomain_records s
+        WHERE h.txid = s.txid
+      ) AS subdomains
+    ) s`;
   const params = [limit, limit * page];
   const db = await getDB();
-  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
-  const results: HistoryRecordResult[] = await BluebirdPromise.map(
-    historyRows,
-    async (row: HistoryRecordQueryRow) => {
+  const historyRows = await db.query<HistoryRecordQueryRow & {
+    subdomains?: string[]; 
+  }>(sql, params);
+  const results = historyRows.map((row) => {
       const historyData: HistoryDataEntry = JSON.parse(row.history_data);
       if (row.opcode === 'NAME_UPDATE') {
-        // TODO: use join query to avoid this
-        const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
+      const subdomains = row.subdomains.map(s => s.split(':')[0]);
         return {
           ...row,
           historyData,
-          subdomains: subdomains.map(sub => sub.name)
+        subdomains: subdomains
         };
       }
       return {
         ...row,
         historyData
       };
-    }
-  );
+  });
   const filtered = results.filter(record => {
     if (record.opcode === 'NAME_UPDATE' && record.subdomains.length === 0) {
       return false;
