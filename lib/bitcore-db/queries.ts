@@ -533,23 +533,40 @@ export const getLatestBlock = async (): Promise<BitcoreBlock> => {
   return block;
 };
 
+const cachedBlockHeightTimes = new Map<number, number>();
+
 export const getTimesForBlockHeights = async (
   heights: number[]
 ): Promise<Record<number, number>> => {
-  const distinctHeights = [...new Set(heights)];
+  const distinctHeights = new Set(heights)
+  const timesByHeight: Record<number, number> = {};
+  for (const height of distinctHeights) {
+    const cachedHeight = cachedBlockHeightTimes.get(height);
+    if (cachedHeight !== undefined) {
+      timesByHeight[height] = cachedHeight;
+      distinctHeights.delete(height);
+    }
+  }
+
+  if (distinctHeights.size === 0) {
+    return timesByHeight;
+  }
+
+  const heightsArray = [...distinctHeights];
   const db = await getDB();
   const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blocks = await collection
     .find({
       height: { 
-        $in: distinctHeights
+        $in: heightsArray
       }
     })
     .project({ _id: 0, height: 1, time: 1 })
     .toArray();
-  const timesByHeight: Record<number, number> = {};
   blocks.forEach(block => {
-    timesByHeight[block.height] = Math.round(block.time.getTime() / 1000);
+    const time = Math.round(block.time.getTime() / 1000);
+    timesByHeight[block.height] = time;
+    cachedBlockHeightTimes.set(block.height, time);
   });
   return timesByHeight;
 };
