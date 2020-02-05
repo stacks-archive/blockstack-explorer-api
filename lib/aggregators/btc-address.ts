@@ -63,4 +63,5 @@ class BTCAddressAggregator extends Aggregator<BTCAddressAggregatorResult, BTCAdd
   }
 }
 
-export default new BTCAddressAggregator();
+const btcAddressAggregator = new BTCAddressAggregator();
+export { btcAddressAggregator };

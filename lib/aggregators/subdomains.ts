@@ -54,5 +54,4 @@ class SubdomainsAggregator extends Aggregator<SubdomainsAggregatorResult, Subdom
 }
 
 const subdomainsAggregator = new SubdomainsAggregator();
-
-export default subdomainsAggregator;
+export { subdomainsAggregator };

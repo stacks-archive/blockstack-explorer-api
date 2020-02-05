@@ -46,5 +46,4 @@ class TotalSupplyAggregator extends Aggregator<TotalSupplyResult> {
 }
 
 const totalSupplyAggregator = new TotalSupplyAggregator();
-
-export default totalSupplyAggregator;
+export { totalSupplyAggregator };

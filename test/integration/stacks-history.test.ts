@@ -1,7 +1,7 @@
 import '../setup';
 import * as BluebirdPromise from 'bluebird';
 import { flatten } from 'lodash';
-import StacksAddress from '../../lib/aggregators/stacks-address';
+import { stacksAddressAggregator } from '../../lib/aggregators/stacks-address';
 import { network } from '../../lib/client/core-api';
 import BN = require('bn.js');
 
@@ -25,7 +25,7 @@ const testAddressHistory = async (addr: string) => {
   const pages2 = [0, 1, 2];
   const history: CoreHistoryItem[] = flatten(historyPages);
   const stacksAddressHistoryPages = await BluebirdPromise.mapSeries(pages2, async (page: number) => {
-    const { value: stacksAddress } = await StacksAddress.setter({addr, page});
+    const { value: stacksAddress } = await stacksAddressAggregator.setter({addr, page});
     return stacksAddress.history;
   });
   const stacksAddressHistory = flatten(stacksAddressHistoryPages);

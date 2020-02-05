@@ -51,4 +51,5 @@ class NamespaceAggregator extends Aggregator<NamespaceAggregatorResult> {
   }
 }
 
-export default new NamespaceAggregator();
+const namespaceAggregator = new NamespaceAggregator();
+export { namespaceAggregator };

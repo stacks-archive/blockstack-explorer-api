@@ -99,4 +99,5 @@ class BlockAggregator extends Aggregator<BlockAggregatorResult, BlockAggregatorO
   }
 }
 
-export default new BlockAggregator();
+const blockAggregator = new BlockAggregator();
+export { blockAggregator };

@@ -1,20 +1,20 @@
 import { Request, Response, Router } from 'express';
 import * as moment from 'moment';
 import * as request from 'request-promise-native';
-
-import BlockAggregator from '../lib/aggregators/block-v2';
-import BlocksAggregator from '../lib/aggregators/blocks-v2';
-import TransactionsAggregator from '../lib/aggregators/transactions';
-import SubdomainsAggregator from '../lib/aggregators/subdomains';
-import NamesAggregator from '../lib/aggregators/names';
-import StxTransactionsAggregator from '../lib/aggregators/stx-transactions';
-import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
-import FeeEstimator from '../lib/aggregators/fee-estimate';
-import { lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
-
-import { blockToTime, stacksValue, logError } from '../lib/utils';
-import TopBalancesAggregator from '../lib/aggregators/top-balances';
 import { StatusCodeError } from 'request-promise-native/errors';
+
+import { blockAggregator } from '../lib/aggregators/block-v2';
+import { blocksAggregator } from '../lib/aggregators/blocks-v2';
+import { transactionsAggregator } from '../lib/aggregators/transactions';
+import { subdomainsAggregator } from '../lib/aggregators/subdomains';
+import { namesAggregator } from '../lib/aggregators/names';
+import { stxTransactionsAggregator } from '../lib/aggregators/stx-transactions';
+import { TotalSupplyResult, totalSupplyAggregator } from '../lib/aggregators/total-supply';
+import { topBalancesAggregator } from '../lib/aggregators/top-balances';
+import { feeEstimatorAggregator } from '../lib/aggregators/fee-estimate';
+
+import { lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
+import { blockToTime, stacksValue, logError } from '../lib/utils';
 import * as searchUtil from '../lib/search-util';
 
 const baseRouter = Router();
@@ -37,7 +37,7 @@ const Controller = Object.assign(baseRouter, { getAsync });
 
 Controller.getAsync('/blocks/:hash', async (req, res) => {
   const { hash } = req.params;
-  const block = await BlockAggregator.fetch(hash);
+  const block = await blockAggregator.fetch(hash);
   res.json({ block });
 });
 
@@ -50,7 +50,7 @@ Controller.getAsync('/blocks', async (req, res) => {
   }
   // console.log(date);
   const page = parseInt(req.query.page, 10) || 0;
-  const blocks = await BlocksAggregator.fetch({
+  const blocks = await blocksAggregator.fetch({
     date,
     page
   });
@@ -61,25 +61,25 @@ Controller.getAsync('/blocks', async (req, res) => {
 
 Controller.getAsync('/transactions/stx', async (req, res) => {
   const page = parseInt(req.query.page, 10) || 0;
-  const transfers = await StxTransactionsAggregator.fetch({page});
+  const transfers = await stxTransactionsAggregator.fetch({page});
   res.json({ transfers });
 });
 
 Controller.getAsync('/transactions/names', async (req, res) => {
   const page = parseInt(req.query.page, 10) || 0;
-  const names = await NamesAggregator.fetch({page});
+  const names = await namesAggregator.fetch({page});
   res.json({ names });
 });
 
 Controller.getAsync('/transactions/subdomains', async (req, res) => {
-    const page = parseInt(req.query.page, 10) || 0;
-  const subdomains = await SubdomainsAggregator.fetch({page});
-    res.json({ subdomains });
+  const page = parseInt(req.query.page, 10) || 0;
+  const subdomains = await subdomainsAggregator.fetch({page});
+  res.json({ subdomains });
 });
 
 Controller.getAsync('/transactions/all', async (req, res) => {
   const page = parseInt(req.query.page, 10) || 0;
-  const history = await TransactionsAggregator.fetch({page});
+  const history = await transactionsAggregator.fetch({page});
   res.json({ history });
 });
 
@@ -217,18 +217,18 @@ Controller.getAsync('/search/:term', async (req, res) => {
 });
 
 Controller.getAsync('/fee-estimate', async (req, res) => {
-  const fee = await FeeEstimator.fetch();
+  const fee = await feeEstimatorAggregator.fetch();
   res.json({ recommended: fee });
 });
 
 Controller.getAsync('/total-supply', async (req, res) => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
   const formatted = JSON.stringify(totalSupplyInfo, null, 2);
   res.contentType('application/json').send(formatted);
 });
 
 Controller.getAsync('/unlocked-supply', async (req, res) => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
   res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
 });
 
@@ -244,7 +244,7 @@ Controller.getAsync('/top-balances', async (req, res) => {
   if (count > MAX_COUNT) {
     throw new Error(`Max count of ${MAX_COUNT} exceeded`);
   }
-  const topBalances = await TopBalancesAggregator.fetch({ count });
+  const topBalances = await topBalancesAggregator.fetch({ count });
   res.contentType('application/json');
   res.send(JSON.stringify(topBalances, null, 2));
 });

@@ -55,5 +55,4 @@ class StxTransactionsAggregator extends Aggregator<StxTransactionsAggregatorResu
 }
 
 const stxTransactionsAggregator = new StxTransactionsAggregator();
-
-export default stxTransactionsAggregator;
+export { stxTransactionsAggregator };

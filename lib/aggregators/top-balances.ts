@@ -39,4 +39,5 @@ class TopBalancesAggregator extends Aggregator<TopBalanceAccount[], TopBalancesA
   }
 }
 
-export default new TopBalancesAggregator();
+const topBalancesAggregator = new TopBalancesAggregator();
+export { topBalancesAggregator };

@@ -42,4 +42,5 @@ class TotalNames extends Aggregator<TotalNamesResult> {
   }
 }
 
-export default new TotalNames();
+const totalNamesAggregator = new TotalNames();
+export { totalNamesAggregator };

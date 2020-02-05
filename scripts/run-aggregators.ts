@@ -1,14 +1,14 @@
 import * as Sentry from '@sentry/node';
-import HomePageAggregator from '../lib/aggregators/home-info';
-import NamespaceAggregator from '../lib/aggregators/namespaces';
+import { homeInfoAggregator } from '../lib/aggregators/home-info';
+import { namespaceAggregator } from '../lib/aggregators/namespaces';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN });
 }
 
 const run = async () => {
-  await NamespaceAggregator.set();
-  await HomePageAggregator.set();
+  await namespaceAggregator.set();
+  await homeInfoAggregator.set();
 };
 
 run()

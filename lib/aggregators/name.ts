@@ -115,4 +115,5 @@ class NameAggregator extends Aggregator<NameAggregatorResult, NameAggregatorInpu
   }
 }
 
-export default new NameAggregator();
+const nameAggregator = new NameAggregator();
+export { nameAggregator };

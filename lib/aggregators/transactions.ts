@@ -54,5 +54,4 @@ class TransactionsAggregator extends Aggregator<TransactionsAggregatorResult, Tr
 }
 
 const transactionsAggregator = new TransactionsAggregator();
-
-export default transactionsAggregator;
+export { transactionsAggregator };

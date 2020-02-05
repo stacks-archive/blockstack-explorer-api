@@ -51,5 +51,4 @@ class NamesAggregator extends Aggregator<NamesAggregatorResult, NamesAggregatorO
 }
 
 const namesAggregator = new NamesAggregator();
-
-export default namesAggregator;
+export { namesAggregator };

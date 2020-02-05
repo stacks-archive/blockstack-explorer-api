@@ -237,4 +237,5 @@ class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
   }
 }
 
-export default new StacksAddress();
+const stacksAddressAggregator = new StacksAddress();
+export { stacksAddressAggregator };

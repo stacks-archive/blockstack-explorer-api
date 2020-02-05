@@ -1,10 +1,10 @@
 import * as moment from 'moment';
 import { sortBy } from 'lodash';
 
-import NameOperations, { NameOp } from './name-ops-v2';
+import { NameOp, nameOpsAggregator } from './name-ops-v2';
 import { AggregatorSetterResult, Aggregator, KeepAliveOptions } from './aggregator';
-import NameCounts, { TotalNamesResult } from './total-names';
-import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
+import { TotalNamesResult, totalNamesAggregator } from './total-names';
+import { TotalSupplyResult, totalSupplyAggregator } from './total-supply';
 
 export type HomeInfoResult = {
   totalStacks: string;
@@ -37,8 +37,8 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
   async setter(): Promise<AggregatorSetterResult<HomeInfoResult>> {
     
     const [counts, nameOperations] = await Promise.all([
-      NameCounts.fetch(),
-      NameOperations.fetch({page: 0}),
+      totalNamesAggregator.fetch(),
+      nameOpsAggregator.fetch({page: 0}),
     ]);
     
     const startCount = counts.total - nameOperations.length;
@@ -73,7 +73,7 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
       };
     });
 
-    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+    const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
     const result = {
       totalStacks: totalSupplyInfo.totalStacksFormatted,
       unlockedSupply: totalSupplyInfo.unlockedSupply,
@@ -93,4 +93,5 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
   }
 }
 
-export default new HomeInfo();
+const homeInfoAggregator = new HomeInfo();
+export { homeInfoAggregator };

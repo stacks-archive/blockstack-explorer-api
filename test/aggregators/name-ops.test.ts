@@ -1,8 +1,8 @@
 import '../setup';
-import NameOpsAggregator from '../../lib/aggregators/name-ops-v2';
+import { nameOpsAggregator } from '../../lib/aggregators/name-ops-v2';
 
 test('sorts name ops by time', async () => {
-  const { value: names } = await NameOpsAggregator.setter({ page: 0 });
+  const { value: names } = await nameOpsAggregator.setter({ page: 0 });
   expect(names.length).toEqual(100);
   const firstName = names[0];
   expect(firstName.name).not.toBeFalsy();

@@ -1,8 +1,8 @@
 import '../setup';
-import StacksAddress from '../../lib/aggregators/stacks-address';
+import { stacksAddressAggregator } from '../../lib/aggregators/stacks-address';
 
 test('can get basic STX address info', async () => {
-  const { value: account } = await StacksAddress.setter({
+  const { value: account } = await stacksAddressAggregator.setter({
     addr: 'SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93',
     page: 0
   });
@@ -40,19 +40,19 @@ test('can get basic STX address info', async () => {
 
 test('only fetches 50 most recent transactions', async () => {
   const address = 'SP1P72Z3704VMT3DMHPP2CB8TGQWGDBHD3RPR9GZS';
-  const { value: account } = await StacksAddress.setter({addr: address, page: 0});
+  const { value: account } = await stacksAddressAggregator.setter({addr: address, page: 0});
   expect(account.history.length).toEqual(50);
 });
 
 test('calculates token grants', async () => {
   const address = 'SP1ERE1Z1MDVM100NWYR16GZZJJTZQYHG4F6GWBDM';
-  const { value: account } = await StacksAddress.setter({addr: address, page: 0});
+  const { value: account } = await stacksAddressAggregator.setter({addr: address, page: 0});
   expect(account.tokensGranted).toEqual(5245000000);
 });
 
 test('should include token vesting schedule for 2019 accounts', async () => {
   const address = 'SPCFS0TX3MS91928283R36V2G14BGKSMVE3FMN93';
-  const { value: account } = await StacksAddress.setter({addr: address, page: 0});
+  const { value: account } = await stacksAddressAggregator.setter({addr: address, page: 0});
   const vesting = {
     1572082015: 2131041668,
     1574674015: 4262083336,

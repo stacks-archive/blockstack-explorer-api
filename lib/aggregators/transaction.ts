@@ -77,5 +77,4 @@ class TransactionAggregator extends Aggregator<TransactionAggregatorResult, Tran
 }
 
 const transactionAggregator = new TransactionAggregator();
-
-export default transactionAggregator;
+export { transactionAggregator };

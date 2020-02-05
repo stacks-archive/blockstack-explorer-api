@@ -60,4 +60,5 @@ class BlocksAggregator extends Aggregator<BlocksAggregatorResult, BlockAggregato
   }
 }
 
-export default new BlocksAggregator();
+const blocksAggregator = new BlocksAggregator();
+export { blocksAggregator };

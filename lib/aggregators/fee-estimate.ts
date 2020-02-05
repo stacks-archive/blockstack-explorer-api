@@ -19,4 +19,5 @@ class FeeEstimator extends Aggregator<number> {
   }
 }
 
-export default new FeeEstimator();
+const feeEstimatorAggregator = new FeeEstimator();
+export { feeEstimatorAggregator };

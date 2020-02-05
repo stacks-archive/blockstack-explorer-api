@@ -7,14 +7,14 @@ import {
   fetchNamespaceNames,
 } from '../lib/client/core-api';
 
-import NamespaceAggregator from '../lib/aggregators/namespaces';
-import BlockAggregator from '../lib/aggregators/block-v2';
-import TotalNamesAggregator from '../lib/aggregators/total-names';
-import StacksAddressAggregator from '../lib/aggregators/stacks-address';
-import HomeInfoAggregator from '../lib/aggregators/home-info';
-import NameAggregator from '../lib/aggregators/name';
-import BTCAddressAggregator from '../lib/aggregators/btc-address';
-import TransactionAggregator from '../lib/aggregators/transaction';
+import { namespaceAggregator } from '../lib/aggregators/namespaces';
+import { blockAggregator } from '../lib/aggregators/block-v2';
+import { totalNamesAggregator } from '../lib/aggregators/total-names';
+import { stacksAddressAggregator } from '../lib/aggregators/stacks-address';
+import { homeInfoAggregator } from '../lib/aggregators/home-info';
+import { nameAggregator } from '../lib/aggregators/name';
+import { btcAddressAggregator } from '../lib/aggregators/btc-address';
+import { transactionAggregator } from '../lib/aggregators/transaction';
 import { Json, logError } from '../lib/utils';
 
 const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
@@ -47,7 +47,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     '/names/:name',
     respond(req => {
       const page = parseInt(req.query.page, 0) || 0;
-      return NameAggregator.fetch({name: req.params.name, historyPage: page });
+      return nameAggregator.fetch({name: req.params.name, historyPage: page });
     })
   );
 
@@ -55,7 +55,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     '/transactions/:tx',
     respond(req => {
       const normalized = req.params.tx?.trim().toLowerCase() || '';
-      return TransactionAggregator.fetch({hash: normalized }) 
+      return transactionAggregator.fetch({hash: normalized }) 
     })
   );
 
@@ -63,13 +63,13 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
     '/addresses/:address',
     respond(req => {
       const page = parseInt(req.query.page, 10) || 0;
-      return BTCAddressAggregator.fetch({address: req.params.address, txPage: page})
+      return btcAddressAggregator.fetch({address: req.params.address, txPage: page})
     })
   );
 
   APIController.get(
     '/namespaces',
-    respond(() => NamespaceAggregator.fetch())
+    respond(() => namespaceAggregator.fetch())
   );
 
   APIController.get(
@@ -88,7 +88,7 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
 
   APIController.get(
     '/name-counts',
-    respond(() => TotalNamesAggregator.fetch())
+    respond(() => totalNamesAggregator.fetch())
   );
 
   APIController.get(
@@ -98,14 +98,14 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
       if (!page || !Number.isFinite(page) || page < 0) {
         page = 0;
       }
-      const result = await StacksAddressAggregator.fetch({addr: req.params.address, page});
+      const result = await stacksAddressAggregator.fetch({addr: req.params.address, page});
       return result
     })
   );
 
   APIController.get(
     '/home',
-    respond(() => HomeInfoAggregator.fetch())
+    respond(() => homeInfoAggregator.fetch())
   );
 
   type SearchResult = {
@@ -133,12 +133,12 @@ const makeAPIController = (Genesis: GetGenesisAccountsResult) => {
       };
 
       const blockSearch = async (hashOrHeight: string) => {
-        return BlockAggregator.fetch(hashOrHeight);
+        return blockAggregator.fetch(hashOrHeight);
       };
 
       const searchResult = new Promise<SearchResult>((resolve, reject) => {
         Promise.all([
-          getOrFail(TransactionAggregator.fetch({hash: query})).then(tx => {
+          getOrFail(transactionAggregator.fetch({hash: query})).then(tx => {
             if (tx) {
               resolve({
                 type: 'tx',

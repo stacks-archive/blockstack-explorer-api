@@ -60,4 +60,5 @@ class NameOpsAggregator extends Aggregator<NameOpsAggregatorResult, NameOpsAggre
   }
 }
 
-export default new NameOpsAggregator();
+const nameOpsAggregator = new NameOpsAggregator();
+export { nameOpsAggregator };

@@ -31,6 +31,17 @@ export const getStopwatch = (): { getElapsedSeconds: () => number } => {
   }
 };
 
+export const logTime = async <T>(msg: string, action: () => Promise<T>): Promise<T> => {
+  const stopwatch = getStopwatch();
+  try {
+    return await action();
+  }
+  finally {
+    const elapsed = stopwatch.getElapsedSeconds();
+    console.log(`[${elapsed.toFixed(3)} seconds] ${msg}`);
+  }
+};
+
 export const stacksValue = (value: number | string, formatted = false) => {
   const parsed = new BigNumber(value).shiftedBy(-6);
   if (formatted) {

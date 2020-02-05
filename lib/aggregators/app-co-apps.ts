@@ -53,4 +53,5 @@ class AppsAggregator extends Aggregator<BlockstackApp[]>{
   }
 }
 
-export default new AppsAggregator();
+const appsAggregator = new AppsAggregator();
+export { appsAggregator };
