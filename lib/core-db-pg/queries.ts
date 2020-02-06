@@ -1,4 +1,3 @@
-import * as BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import BigNumber from 'bignumber.js';
 import { getDB } from './index';
@@ -575,3 +574,32 @@ export const getTokensGrantedInHardFork = async (
   });
   return total;
 };
+
+type NameCountRanges = {
+  from: number;
+  to: number;
+  count: number;
+}[];
+
+export const getNameCountRanges = async (
+  blockHeightStart: number, 
+  blockHeightEnd: number, 
+  blockInterval: number
+): Promise<NameCountRanges> => {
+  const sql = `
+    WITH series AS (
+      SELECT generate_series($1::int, $2::int, $3::int) AS r_from
+    ), range AS (
+      SELECT r_from, (r_from + $3::int - 1) AS r_to FROM series
+    )
+    SELECT r_from as from, r_to as to, (
+      SELECT count(*) FROM subdomain_records 
+      WHERE block_height BETWEEN r_from AND r_to AND accepted = 1
+    )::int as count
+    FROM range
+  `;
+  const params = [blockHeightStart + 1, blockHeightEnd - blockInterval + 1, blockInterval];
+  const db = await getDB();
+  const rows = await db.query<{from: number; to: number; count: number}>(sql, params);
+  return rows;
+}
