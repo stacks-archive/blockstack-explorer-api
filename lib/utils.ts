@@ -134,7 +134,7 @@ function microStacksToStacks(microStx: BigNumber | string, format?: 'thousands' 
 function microStacksToStacks(microStx: BigNumber | string, format: 'bigint'): BigNumber;
 function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat | undefined): string | BigNumber {
   const input = typeof microStx === 'string' ? new BigNumber(microStx) : microStx;
-  const stxValue = input.dividedBy(MICROSTACKS_IN_STACKS);
+  const stxValue = input.shiftedBy(-STACKS_DECIMAL_PLACES);
   let result: string | BigNumber;
   if (format === undefined || format === 'string') {
     result = stxValue.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
