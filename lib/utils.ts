@@ -120,7 +120,10 @@ export const extractRootDomain = (url: string) => {
   return domain;
 };
 
-export const TOTAL_STACKS = '1320000000';
+export const TOTAL_STACKS = new BigNumber(1320000000)
+  .plus((322146 * 100) + (5 * 50000)) // air drop
+  .toString();
+
 export const MICROSTACKS_IN_STACKS = 1000000;
 export const STACKS_DECIMAL_PLACES = 6;
 
