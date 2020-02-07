@@ -1,10 +1,11 @@
 FROM node:12.14.1-alpine as base
 WORKDIR /usr/src
 COPY package.json yarn.lock /usr/src/
-RUN apk add python make g++ && \
+RUN apk add python make g++ git && \
     yarn install
 COPY . .
-RUN yarn
+RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env && \
+    yarn
 
 FROM node:12.14.1-alpine
 WORKDIR /usr/src

@@ -1,6 +1,7 @@
 import * as moment from 'moment';
 import BigNumber from 'bignumber.js';
 import * as Sentry from '@sentry/node';
+import * as child_process from 'child_process';
 
 export type Json =
     | string
@@ -149,3 +150,20 @@ function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat 
 }
 
 export { microStacksToStacks };
+
+export function getCurrentGitTag(): string {
+  const tagEnvVar = (process.env.GIT_TAG || '').trim();
+  if (tagEnvVar) {
+    return tagEnvVar;
+  }
+
+  if (isDevEnv) {
+    try {
+      const command = 'git tag --points-at HEAD';
+      const stdout = child_process.execSync(command, { encoding: 'utf8' });
+      return (stdout || '').trim();
+    } catch {
+      return '';
+    }
+  }
+}

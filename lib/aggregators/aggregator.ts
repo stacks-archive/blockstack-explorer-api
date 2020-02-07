@@ -1,9 +1,8 @@
 import redis from '../redis';
-import * as ChildProcess from 'child_process';
 import BigNumber from 'bignumber.js';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
-import { logError, getStopwatch, Json } from '../utils';
+import { logError, getStopwatch, Json, getCurrentGitTag } from '../utils';
 
 export type AggregatorSetterResult<TResult extends Json> = {
   value: TResult;
@@ -37,10 +36,12 @@ class CacheManager {
     try {
       this.aggregators.push(aggregator);
       aggregator.on('updateKeepAlive', (aggregator, opts) => {
-        this.updateKeepAlive(aggregator, opts).catch(error => {
+        try {
+          this.updateKeepAlive(aggregator, opts);
+        } catch (error) {
           const msg = `Error updating keep alive for aggregator key ${opts.aggregatorKey}: ${error}`;
           logError(msg, error);
-        });
+        }
       });
     } catch (error) {
       const msg = `Error registering aggregator ${aggregator.constructor.name} with cache manager: ${error}`;
@@ -49,14 +50,14 @@ class CacheManager {
     }
   }
 
-  async updateKeepAlive(aggregator: Aggregator<Json, Json | void>, opts: KeepAliveOptions) {
+  updateKeepAlive(aggregator: Aggregator<Json, Json | void>, opts: KeepAliveOptions) {
     if (!opts) {
       return;
     }
     if (this.keepAliveTimers.has(opts.aggregatorKey)) {
       return;
     }
-    const key = await aggregator.keyWithTag(opts.aggregatorArgs);
+    const key = aggregator.keyWithTag(opts.aggregatorArgs);
     console.log(`Scheduling auto cache refresh for "${key}", every ${opts.interval} seconds`);
     const intervalMS = opts.interval * 1000;
     const keepAliveInstance = {
@@ -114,8 +115,8 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
     return this.constructor.name;
   }
 
-  async keyWithTag(args: TArgs): Promise<string> {
-    const tag = await this.getCurrentGitTag();
+  keyWithTag(args: TArgs): string {
+    const tag = getCurrentGitTag();
     const key = this.key(args);
     if (tag) {
       return `${key}-${tag}`
@@ -125,7 +126,7 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
 
   async set(args: TArgs): Promise<TResult> {
     // const verbose = this.verbose(...args);
-    const key = await this.keyWithTag(args);
+    const key = this.keyWithTag(args);
 
     const keepAliveOpts = this.getKeepAliveOptions(key, args);
     if (keepAliveOpts) {
@@ -152,7 +153,7 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
     if (process.env.NODE_ENV === 'development') {
       return null;
     }
-    const value = await redis.getAsync(await this.keyWithTag(args));
+    const value = await redis.getAsync(this.keyWithTag(args));
     if (value) {
       return JSON.parse(value);
     }
@@ -164,7 +165,7 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
   async fetch(args: TArgs, ignoreCache = false): Promise<TResult> {
     const isDevEnv = process.env.NODE_ENV === 'development';
     const verbose = isDevEnv || this.verbose(args);
-    const key = await this.keyWithTag(args);
+    const key = this.keyWithTag(args);
     if (verbose) { 
       console.log(`Running aggregator: "${key}"`); 
     }
@@ -220,20 +221,6 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
 
   verbose(args: TArgs): boolean {
     return true;
-  }
-
-  getCurrentGitTag(): Promise<string> {
-    return new Promise(resolve => {
-      const command =
-        "git describe --exact-match --tags $(git log -n1 --pretty='%h')";
-      // eslint-disable-next-line global-require
-      ChildProcess.exec(command, (err, stdout) => {
-        if (err) {
-          resolve('');
-        }
-        resolve((stdout || '').trim());
-      });
-    });
   }
 }
 
