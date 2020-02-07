@@ -35,7 +35,8 @@ test('can get basic STX address info', async () => {
   expect(historyItem.operation).toEqual('RECEIVED');
   expect(historyItem.value).toEqual(8649000000);
   expect(historyItem.valueStacks).toEqual('8649.000000');
-  expect(historyItem.blockTime).toEqual(1571710607);
+  expect(historyItem.blockTime).toEqual('2019-10-22T02:16:47.000Z');
+  expect(historyItem.blockUnixTime).toEqual(1571710607);
 }, 15000);
 
 test('only fetches 50 most recent transactions', async () => {

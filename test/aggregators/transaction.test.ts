@@ -6,7 +6,8 @@ test('fetches a TX with stx transfers', async () => {
   const { value: tx } = await transactionAggregator.setter({hash: txid});
   expect(tx.memo).toBe('Hi there!');
   expect(tx.blockHeight).toBe(552436);
-  expect(tx.blockTime).toBe(1543883300);
+  expect(tx.blockTime).toBe('2018-12-04T00:28:20.000Z');
+  expect(tx.blockUnixTime).toBe(1543883300);
   expect(tx.senderSTX).toBe('SP2JR6E1WK19CN3X0PWWTZA4XZD9SX1A8ESCDX5RT');
   expect(tx.recipientSTX).toBe('SP349TBCFCGAT1FHA2JY3H1Q7Y1CGYPYT55XDBR6D');
   expect(tx.feeBTC).toBe('0.00011096');

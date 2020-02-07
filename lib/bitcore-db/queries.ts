@@ -75,7 +75,8 @@ function parseTransactionQueryResult(
     txid: result.txid,
     blockHeight: result.blockHeight,
     blockHash: result.blockHash,
-    blockTime: Math.round(result.blockTime.getTime() / 1000),
+    blockUnixTime: Math.round(result.blockTime.getTime() / 1000),
+    blockTime: result.blockTime.toISOString(),
     confirmations: tipHeight - result.blockHeight + 1,
     value: result.value,
     fee: result.fee,
@@ -111,7 +112,8 @@ type CoinsQueryResult = {
 export type BitcoreTransaction = {
   blockHeight: number;
   blockHash: string;
-  blockTime: number;
+  blockUnixTime: number;
+  blockTime: string;
   confirmations: number;
   txid: string;
   value: number;
@@ -210,7 +212,8 @@ export const getAddressTransactions = async (
       blockHeight: tx.mintHeight,
       blockHash: tx.mintTx.blockHash,
       confirmations: tip - tx.mintTx.blockHeight + 1,
-      blockTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
+      blockTime: tx.mintTx.blockTime.toISOString(),
+      blockUnixTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
       txid: tx.mintTxid,
       mintIndex: tx.mintIndex,
       fee: tx.mintTx.fee,
@@ -453,22 +456,6 @@ export const getTX = async (txid: string): Promise<BitcoreTransaction | null> =>
   const tx = parseTransactionQueryResult(result, tip);
   return tx;
 };
-
-/*
-export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
-  const db = await getDB();
-  const collection = db.collection<BitcoreTransactionQueryResult>(Collections.Transactions);
-  const tx = await collection.findOne({
-    txid,
-    ...chainQuery
-  });
-  const result: BitcoreTransaction = {
-    ...tx,
-    blockTime: tx.blockTime.toISOString()
-  } 
-  return result;
-};
-*/
 
 export const lookupBlockOrTxHash = async (hash: string): Promise<('tx' | 'block') | null> => {
   const db = await getDB();

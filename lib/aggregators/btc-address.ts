@@ -39,7 +39,7 @@ class BTCAddressAggregator extends Aggregator<BTCAddressAggregatorResult, BTCAdd
         index: tx.mintIndex,
         value: tx.value,
         action: action,
-        time: tx.blockTime,
+        time: tx.blockUnixTime,
       };
       return result;
     });

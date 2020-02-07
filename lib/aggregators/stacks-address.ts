@@ -23,7 +23,8 @@ import BN = require('bn.js');
 
 export type HistoryRecordWithData = StacksHistoryRecordData & {
   operation?: string;
-  blockTime?: number;
+  blockUnixTime?: number;
+  blockTime?: string;
   valueStacks: string;
   value: number;
   sender?: string;
@@ -160,7 +161,8 @@ class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
     const historyWithData = history.map((h) => {
-      const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
+      const blockUnixTime = blockTimes[h.block_id];
+      const blockTime = new Date(blockUnixTime * 1000).toISOString();
       try {
         let operation: string;
         if (h.historyData.address === address) {
@@ -177,6 +179,7 @@ class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
           recipient: c32check.b58ToC32(h.historyData.recipient_address),
           valueStacks: stacksValue(h.historyData.token_fee),
           value: parseInt(h.historyData.token_fee, 10),
+          blockUnixTime: blockUnixTime,
           blockTime,
           operation
         };
