@@ -1,6 +1,47 @@
 import * as moment from 'moment';
-import * as accounting from 'accounting';
 import BigNumber from 'bignumber.js';
+import * as Sentry from '@sentry/node';
+import * as child_process from 'child_process';
+
+export type Json =
+    | string
+    | number
+    | boolean
+    | null
+    | { [property: string]: Json }
+    | Json[];
+
+export const logError = (message: string, error?: Error) => {
+  console.error(message);
+  Sentry.captureMessage(message);
+  if (error) {
+    console.error(error);
+    Sentry.captureException(error);
+  }
+}
+
+export const isDevEnv = process.env.NODE_ENV === 'development';
+
+export const getStopwatch = (): { getElapsedSeconds: () => number } => {
+  const hrstart = process.hrtime();
+  return {
+    getElapsedSeconds: () => {
+      const hrend = process.hrtime(hrstart);
+      return hrend[0] + (hrend[1] / 1e9);
+    },
+  }
+};
+
+export const logTime = async <T>(msg: string, action: () => Promise<T>): Promise<T> => {
+  const stopwatch = getStopwatch();
+  try {
+    return await action();
+  }
+  finally {
+    const elapsed = stopwatch.getElapsedSeconds();
+    console.log(`[${elapsed.toFixed(3)} seconds] ${msg}`);
+  }
+};
 
 export const stacksValue = (value: number | string, formatted = false) => {
   const parsed = new BigNumber(value).shiftedBy(-6);
@@ -79,7 +120,10 @@ export const extractRootDomain = (url: string) => {
   return domain;
 };
 
-export const TOTAL_STACKS = '1320000000';
+export const TOTAL_STACKS = new BigNumber(1320000000)
+  .plus((322146 * 100) + (5 * 50000)) // air drop
+  .toString();
+
 export const MICROSTACKS_IN_STACKS = 1000000;
 export const STACKS_DECIMAL_PLACES = 6;
 
@@ -94,7 +138,7 @@ function microStacksToStacks(microStx: BigNumber | string, format?: 'thousands' 
 function microStacksToStacks(microStx: BigNumber | string, format: 'bigint'): BigNumber;
 function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat | undefined): string | BigNumber {
   const input = typeof microStx === 'string' ? new BigNumber(microStx) : microStx;
-  const stxValue = input.dividedBy(MICROSTACKS_IN_STACKS);
+  const stxValue = input.shiftedBy(-STACKS_DECIMAL_PLACES);
   let result: string | BigNumber;
   if (format === undefined || format === 'string') {
     result = stxValue.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
@@ -109,3 +153,20 @@ function microStacksToStacks(microStx: BigNumber | string, format: StacksFormat 
 }
 
 export { microStacksToStacks };
+
+export function getCurrentGitTag(): string {
+  const tagEnvVar = (process.env.GIT_TAG || '').trim();
+  if (tagEnvVar) {
+    return tagEnvVar;
+  }
+
+  if (isDevEnv) {
+    try {
+      const command = 'git tag --points-at HEAD';
+      const stdout = child_process.execSync(command, { encoding: 'utf8' });
+      return (stdout || '').trim();
+    } catch {
+      return '';
+    }
+  }
+}

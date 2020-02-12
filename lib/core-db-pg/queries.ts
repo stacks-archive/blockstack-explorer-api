@@ -1,11 +1,9 @@
-import * as BluebirdPromise from 'bluebird';
 import * as c32check from 'c32check';
 import BigNumber from 'bignumber.js';
 import { getDB } from './index';
 import { getLatestBlock } from '../bitcore-db/queries';
 import { 
-  HistoryDataEntry, HistoryDataNameUpdate, 
-  HistoryDataNameRegistration, HistoryDataNamePreorder, HistoryDataTokenTransfer, HistoryDataNameOp 
+  HistoryDataEntry, HistoryDataTokenTransfer, HistoryDataNameOp 
 } from './history-data-types';
 
 export type Subdomain = SubdomainRecordQueryResult & {
@@ -160,7 +158,7 @@ export type HistoryRecordQueryRow = {
   creator_address: string | null;
   history_data: string;
   vtxindex: number;
-  value_hash: string | null;
+  value_hash?: string | null;
 }
 
 export const getNameOperationCountsForBlocks = async (
@@ -198,20 +196,37 @@ export type NameOperationsForBlockResult = HistoryRecordQueryRow & HistoryDataNa
 
 export const getNameOperationsForBlock = async (
   blockHeight: number
-): Promise<NameOperationsForBlockResult[]> => {
-  const sql =
-    `SELECT * FROM history WHERE opcode in (
-      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-    ) AND block_id = $1`;
+) => {
+  const sql = `
+    SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.opcode, h.vtxindex,
+      s.owner, s.fully_qualified_subdomain
+    FROM history h
+    LEFT JOIN (SELECT * FROM subdomain_records WHERE block_height = $1) s
+    ON h.txid = s.txid
+    WHERE (h.block_id = $1) AND (
+      s.owner IS NOT NULL
+      OR h.opcode in (
+        'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
+      )
+    )
+    ORDER BY h.block_id DESC, h.vtxindex DESC`;
   const params = [blockHeight];
   const db = await getDB();
-  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
+  const historyRows = await db.query<HistoryRecordQueryRow & NameRegistrationQueryRow>(sql, params);
   const results = historyRows.map(row => {
     const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
-    return {
+    const isSubdomain = !!row.fully_qualified_subdomain
+    const address = isSubdomain ? row.owner : (row.creator_address || historyData.address);
+    const name = isSubdomain ? row.fully_qualified_subdomain : row.history_id;
+    const result = {
       ...row,
-      ...historyData
+      ...historyData,
+      address: address,
+      owner: address,
+      name: name
     };
+    return result;
   });
   return results;
 };
@@ -242,16 +257,19 @@ export const getAllNameOperations = async (page = 0, limit = 100): Promise<NameR
     SELECT 
       h.block_id, h.history_id, h.creator_address,
       s.owner, s.fully_qualified_subdomain
-    FROM history h
+    FROM (
+      SELECT * from history
+      WHERE opcode in ('NAME_UPDATE', 'NAME_REGISTRATION')
+      ORDER BY block_id DESC
+        LIMIT $1 OFFSET $2
+      ) as h
     LEFT JOIN subdomain_records s
     ON h.txid = s.txid
     WHERE (
       s.owner IS NOT NULL
-      OR h.opcode in (
-        'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-      )
+      OR h.opcode = 'NAME_REGISTRATION'
     )
-    ORDER BY h.block_id DESC
+    ORDER BY h.block_id DESC, h.vtxindex DESC
     LIMIT $1 OFFSET $2`;
   const offset = page * limit;
   const params = [limit, offset];
@@ -266,36 +284,43 @@ export type HistoryRecordResult = (HistoryRecordQueryRow & {
 });
 
 export const getAllHistoryRecords = async (limit: number, page = 0): Promise<HistoryRecordResult[]> => {
-  const sql = 
-    `select * from history 
-    WHERE opcode in (
-      'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
-      'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
-    )
-    ORDER BY block_id DESC, vtxindex DESC
-    LIMIT $1 OFFSET $2`;
+  const sql = `
+    SELECT * FROM (
+      SELECT * from history
+      WHERE opcode in (
+        'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 'NAME_RENEWAL', 
+        'NAME_IMPORT', 'NAME_TRANSFER', 'TOKEN_TRANSFER'
+      )
+      ORDER BY block_id DESC, vtxindex DESC
+      LIMIT $1 OFFSET $2
+    ) h, 
+    LATERAL (
+      SELECT ARRAY (
+        SELECT s.fully_qualified_subdomain || ':' || s.owner
+        FROM subdomain_records s
+        WHERE h.txid = s.txid
+      ) AS subdomains
+    ) s`;
   const params = [limit, limit * page];
   const db = await getDB();
-  const historyRows = await db.query<HistoryRecordQueryRow>(sql, params);
-  const results: HistoryRecordResult[] = await BluebirdPromise.map(
-    historyRows,
-    async (row: HistoryRecordQueryRow) => {
-      const historyData: HistoryDataEntry = JSON.parse(row.history_data);
-      if (row.opcode === 'NAME_UPDATE') {
-        // TODO: use join query to avoid this
-        const subdomains = await getSubdomainRegistrationsForTxid(row.txid);
-        return {
-          ...row,
-          historyData,
-          subdomains: subdomains.map(sub => sub.name)
-        };
-      }
+  const historyRows = await db.query<HistoryRecordQueryRow & {
+    subdomains?: string[]; 
+  }>(sql, params);
+  const results = historyRows.map((row) => {
+    const historyData: HistoryDataEntry = JSON.parse(row.history_data);
+    if (row.opcode === 'NAME_UPDATE') {
+      const subdomains = row.subdomains.map(s => s.split(':')[0]);
       return {
         ...row,
-        historyData
+        historyData,
+        subdomains: subdomains
       };
     }
-  );
+    return {
+      ...row,
+      historyData
+    };
+  });
   const filtered = results.filter(record => {
     if (record.opcode === 'NAME_UPDATE' && record.subdomains.length === 0) {
       return false;
@@ -307,24 +332,28 @@ export const getAllHistoryRecords = async (limit: number, page = 0): Promise<His
 
 export const getNameHistory = async (name: string, page = 0, limit = 20) => {
   const sql = `
-    SELECT * FROM (
-      SELECT 
+    SELECT 
       h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
-      s.owner, s.fully_qualified_subdomain
-      FROM history h
-      LEFT JOIN subdomain_records s
-      ON h.txid = s.txid
-      WHERE (
-        (h.opcode = 'NAME_UPDATE' AND s.owner IS NOT NULL)
-        OR h.opcode IN (
-          'NAME_UPDATE', 'NAME_REGISTRATION', 'NAME_PREORDER', 
-          'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
-        )
+      s.owner, s.fully_qualified_subdomain 
+    FROM (
+      SELECT * FROM history h
+      WHERE h.history_id = $1 AND h.opcode IN (
+        'NAME_REGISTRATION', 'NAME_PREORDER', 
+        'NAME_RENEWAL', 'NAME_IMPORT', 'NAME_TRANSFER'
       )
-      ORDER BY h.block_id DESC
-    ) AS record
-    WHERE record.history_id = $1 OR record.fully_qualified_subdomain = $1
-    LIMIT $2 OFFSET $3`;
+      ORDER BY block_id DESC, vtxindex DESC
+      LIMIT $2 OFFSET $3
+    ) h
+    LEFT JOIN subdomain_records s ON h.txid = s.txid
+    UNION ALL
+    SELECT 
+      h.block_id, h.history_id, h.creator_address, h.history_data, h.txid, h.opcode,
+      s.owner, s.fully_qualified_subdomain 
+    FROM (
+      SELECT * FROM subdomain_records s
+      WHERE s.fully_qualified_subdomain = $1
+    ) s
+    LEFT JOIN history h ON h.txid = s.txid`;
   const offset = page * limit;
   const params = [name, limit, offset];
   const db = await getDB();
@@ -336,11 +365,12 @@ export const getNameHistory = async (name: string, page = 0, limit = 20) => {
     const historyData: HistoryDataNameOp = JSON.parse(row.history_data);
     const isSubdomain = !!row.fully_qualified_subdomain
     const address = isSubdomain ? row.owner : (row.creator_address || historyData.address);
+    const name = isSubdomain ? row.fully_qualified_subdomain : row.history_id;
     const result = {
       opcode: isSubdomain ? '' : historyData.opcode,
       block_id: row.block_id,
       txid: row.txid,
-      name: isSubdomain ? row.fully_qualified_subdomain : row.history_id,
+      name: name,
       owner: address,
       address: address,
       sender: historyData.sender,
@@ -544,3 +574,32 @@ export const getTokensGrantedInHardFork = async (
   });
   return total;
 };
+
+type NameCountRanges = {
+  from: number;
+  to: number;
+  count: number;
+}[];
+
+export const getNameCountRanges = async (
+  blockHeightStart: number, 
+  blockHeightEnd: number, 
+  blockInterval: number
+): Promise<NameCountRanges> => {
+  const sql = `
+    WITH series AS (
+      SELECT generate_series($1::int, $2::int, $3::int) AS r_from
+    ), range AS (
+      SELECT r_from, (r_from + $3::int - 1) AS r_to FROM series
+    )
+    SELECT r_from as from, r_to as to, (
+      SELECT count(*) FROM subdomain_records 
+      WHERE block_height BETWEEN r_from AND r_to AND accepted = 1
+    )::int as count
+    FROM range
+  `;
+  const params = [blockHeightStart + 1, blockHeightEnd - blockInterval + 1, blockInterval];
+  const db = await getDB();
+  const rows = await db.query<{from: number; to: number; count: number}>(sql, params);
+  return rows;
+}

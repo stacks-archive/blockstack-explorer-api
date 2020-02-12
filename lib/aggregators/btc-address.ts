@@ -1,4 +1,4 @@
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { fetchAddress } from '../client/core-api';
 
 type BTCAddressAggregatorOpts = {
@@ -8,6 +8,7 @@ type BTCAddressAggregatorOpts = {
 
 type BTCAddressTxInfo = {
   txid: string;
+  index: number;
   value: number;
   action: string;
   time: number;
@@ -22,12 +23,12 @@ type BTCAddressAggregatorResult = {
   names: string[];
 };
 
-class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {
+class BTCAddressAggregator extends Aggregator<BTCAddressAggregatorResult, BTCAddressAggregatorOpts> {
   key({address, txPage = 0}: BTCAddressAggregatorOpts) {
     return `BTCAddress:${address}?txPage=${txPage}`;
   }
 
-  async setter({address, txPage = 0}: BTCAddressAggregatorOpts) {
+  async setter({address, txPage = 0}: BTCAddressAggregatorOpts): Promise<AggregatorSetterResult<BTCAddressAggregatorResult>> {
     const perPage = 10;
     const fetchedAddress = await fetchAddress(address, txPage, perPage);
 
@@ -35,13 +36,14 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
       const action = tx.action.charAt(0).toUpperCase() + tx.action.slice(1)
       const result : BTCAddressTxInfo = {
         txid: tx.txid,
-        value: tx.totalTransferred,
+        index: tx.mintIndex,
+        value: tx.value,
         action: action,
-        time: tx.blockTime,
+        time: tx.blockUnixTime,
       };
       return result;
     });
-
+    
     const result: BTCAddressAggregatorResult = {
       totalSent: fetchedAddress.btcBalanceInfo.totalSent,
       totalReceived: fetchedAddress.btcBalanceInfo.totalReceived,
@@ -50,7 +52,10 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
       totalTransactionsCount: fetchedAddress.btcBalanceInfo.totalTransactions,
       names: fetchedAddress.blockstackCoreData?.names || [],
     };
-    return result;
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 
   expiry() {
@@ -58,4 +63,5 @@ class BTCAddressAggregator extends AggregatorWithArgs<BTCAddressAggregatorResult
   }
 }
 
-export default new BTCAddressAggregator();
+const btcAddressAggregator = new BTCAddressAggregator();
+export { btcAddressAggregator };

@@ -1,5 +1,5 @@
 import * as accounting from 'accounting';
-import { Aggregator } from './aggregator';
+import { AggregatorSetterResult, Aggregator } from './aggregator';
 
 import { fetchTotalNames } from '../client/core-api';
 import { getTotalSubdomainCount } from '../core-db-pg/queries';
@@ -14,7 +14,7 @@ export type TotalNamesResult = {
 };
 
 class TotalNames extends Aggregator<TotalNamesResult> {
-  async setter() {
+  async setter(): Promise<AggregatorSetterResult<TotalNamesResult>> {
     const [namesCount, subdomainsCount] = await Promise.all([
       // TODO: replace with pg-based getTotalNameCount() when ready
       fetchTotalNames(),
@@ -25,11 +25,15 @@ class TotalNames extends Aggregator<TotalNamesResult> {
       subdomains: subdomainsCount,
       total: namesCount.names_count + subdomainsCount
     };
-    return {
+    const result = {
       ...totals,
       namesFormatted: accounting.formatNumber(totals.names),
       totalFormatted: accounting.formatNumber(totals.total),
       subdomainsFormatted: accounting.formatNumber(totals.subdomains)
+    };
+    return {
+      shouldCacheValue: true,
+      value: result,
     };
   }
 
@@ -38,4 +42,5 @@ class TotalNames extends Aggregator<TotalNamesResult> {
   }
 }
 
-export default new TotalNames();
+const totalNamesAggregator = new TotalNames();
+export { totalNamesAggregator };

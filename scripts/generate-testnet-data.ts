@@ -1,6 +1,6 @@
 import * as util from 'util';
 import * as child_process from 'child_process';
-import * as request from 'request-promise';
+import * as request from 'request-promise-native';
 
 const exec = util.promisify(child_process.exec);
 

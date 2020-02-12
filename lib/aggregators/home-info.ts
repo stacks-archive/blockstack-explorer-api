@@ -1,10 +1,9 @@
-import * as moment from 'moment';
-import { sortBy } from 'lodash';
-
-import NameOperations, { NameOp } from './name-ops-v2';
-import { Aggregator } from './aggregator';
-import NameCounts, { TotalNamesResult } from './total-names';
-import TotalSupplyAggregator, { TotalSupplyResult } from './total-supply';
+import { NameOp, nameOpsAggregator } from './name-ops-v2';
+import { AggregatorSetterResult, Aggregator, KeepAliveOptions } from './aggregator';
+import { TotalNamesResult, totalNamesAggregator } from './total-names';
+import { TotalSupplyResult, totalSupplyAggregator } from './total-supply';
+import { getLatestBlockHeight } from '../bitcore-db/queries';
+import { getRecentNameGrowth } from '../name-growth';
 
 export type HomeInfoResult = {
   totalStacks: string;
@@ -14,9 +13,6 @@ export type HomeInfoResult = {
   nameOperationsOverTime: {
     x: number;
     y: number;
-    time: number;
-    names: number;
-    date: string;
   }[];
   nameOperations: NameOp[];
 };
@@ -26,46 +22,26 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
     return 'HomeInfo:v2';
   }
 
-  async setter() {
+  getKeepAliveOptions(key: string): KeepAliveOptions {
+    return {
+      aggregatorKey: key,
+      aggregatorArgs: undefined,
+      interval: 10 * 60 // 10 minutes,
+    };
+  }
+
+  async setter(): Promise<AggregatorSetterResult<HomeInfoResult>> {
+    
     const [counts, nameOperations] = await Promise.all([
-      NameCounts.fetch(),
-      NameOperations.fetch({page: 0}),
+      totalNamesAggregator.fetch(),
+      nameOpsAggregator.fetch({page: 0}),
     ]);
 
-    const startCount = counts.total - nameOperations.length;
-    let currentCount = startCount;
-    const ticks: Record<number, { names: number; date: string }> = {};
-    const sortedNames = sortBy(nameOperations.slice(), nameOp => nameOp.time);
+    const blockHeight = await getLatestBlockHeight();
+    const nameOperationsOverTime = await getRecentNameGrowth(blockHeight, counts.subdomains);
 
-    sortedNames.forEach(nameOp => {
-      const { time } = nameOp;
-      currentCount += 1;
-      ticks[time] = {
-        names: currentCount,
-        date: moment.unix(time)
-          .utc()
-          .format('MM/DD/YYYY h:mm UTC')
-      };
-    });
-
-    const keys = Object.keys(ticks)
-      .map(date => parseInt(date, 10))
-      .sort();
-
-    // TODO: this needs to use a pg query using a set period of time
-    // in order to construct a useful graph
-    const nameOperationsOverTime = keys.map(time => {
-      const tick = ticks[time];
-      return {
-        ...tick,
-        x: time,
-        y: tick.names,
-        time
-      };
-    });
-
-    const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
-    return {
+    const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
+    const result = {
       totalStacks: totalSupplyInfo.totalStacksFormatted,
       unlockedSupply: totalSupplyInfo.unlockedSupply,
       unlockedSupplyFormatted: totalSupplyInfo.unlockedSupplyFormatted,
@@ -73,11 +49,16 @@ class HomeInfo extends Aggregator<HomeInfoResult> {
       nameOperationsOverTime,
       nameOperations
     };
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 
   expiry() {
-    return 10 * 60; // 10 minutes
+    return 15 * 60; // 15 minutes
   }
 }
 
-export default new HomeInfo();
+const homeInfoAggregator = new HomeInfo();
+export { homeInfoAggregator };

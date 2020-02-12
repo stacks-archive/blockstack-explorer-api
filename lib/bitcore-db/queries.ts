@@ -75,7 +75,8 @@ function parseTransactionQueryResult(
     txid: result.txid,
     blockHeight: result.blockHeight,
     blockHash: result.blockHash,
-    blockTime: Math.round(result.blockTime.getTime() / 1000),
+    blockUnixTime: Math.round(result.blockTime.getTime() / 1000),
+    blockTime: result.blockTime.toISOString(),
     confirmations: tipHeight - result.blockHeight + 1,
     value: result.value,
     fee: result.fee,
@@ -111,7 +112,8 @@ type CoinsQueryResult = {
 export type BitcoreTransaction = {
   blockHeight: number;
   blockHash: string;
-  blockTime: number;
+  blockUnixTime: number;
+  blockTime: string;
   confirmations: number;
   txid: string;
   value: number;
@@ -124,13 +126,12 @@ export type BitcoreTransaction = {
   outputs: {
     address: string | false; 
     value: number;
-    /** base64 string */
-    script: string;
   }[];
 };
 
 export type BitcoreAddressTxInfo = BitcoreTransaction & {
   address: string;
+  mintIndex: number;
   totalTransferred: number;
   action: 'sent' | 'received';
 };
@@ -211,13 +212,14 @@ export const getAddressTransactions = async (
       blockHeight: tx.mintHeight,
       blockHash: tx.mintTx.blockHash,
       confirmations: tip - tx.mintTx.blockHeight + 1,
-      blockTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
+      blockTime: tx.mintTx.blockTime.toISOString(),
+      blockUnixTime: Math.round(tx.mintTx.blockTime.getTime() / 1000),
       txid: tx.mintTxid,
+      mintIndex: tx.mintIndex,
       fee: tx.mintTx.fee,
       inputs: [],
       outputs: isSpend ? tx.txOutputs.map(tx => ({
         address: tx.address === 'false' ? false : tx.address,
-        script: tx.script.buffer.toString('base64'),
         value: tx.value
       })) : []
     };
@@ -239,19 +241,22 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
   const db = await getDB();
 
   const collection = db.collection<CoinsQueryResult>(Collections.Coins);
-  const result = await collection.aggregate<{ _id: string; balance: number; count: number }>(
+  const result = await collection.aggregate<{ 
+    balances: { _id: string; balance: number; count: number }[]; 
+    uniqueTx: { count: number };
+  }>(
     [
       {
         $match: {
           address,
           ...chainQuery,
-          // spentHeight: { $lt: BitcoreSpentHeightIndicators.minimum },
           mintHeight: { $gte: BitcoreSpentHeightIndicators.minimum }
         }
       },
       {
         $project: {
           value: 1,
+          mintTxid: 1,
           status: {
             $cond: {
               if: { $gte: ['$spentHeight', 0] },
@@ -263,16 +268,33 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
         }
       },
       {
-        $group: {
-          _id: '$status',
-          balance: { $sum: '$value' },
-          count: { $sum: 1 },
+        $facet: {
+          balances: [
+            {
+              $group: {
+                _id: '$status',
+                balance: { $sum: '$value' },
+                count: { $sum: 1 },
+              }
+            }
+          ],
+          uniqueTx: [
+            { $group: { _id: '$mintTxid' } }, 
+            { $group: { _id: null, count: { $sum: 1 } } }
+          ],
+        },
+      },
+      {
+        $unwind: {
+          path: '$uniqueTx', 
+          preserveNullAndEmptyArrays: true 
         }
       }
     ]
   ).toArray();
-
-  const totals = result.reduce<BitcoreAddressBalance>(
+  const row = result[0];
+  const totalTransactions = row.uniqueTx?.count ?? 0;
+  const totals = row.balances.reduce(
     (acc, cur) => {
       if (cur._id === 'unspent') {
         acc.balance += cur.balance;
@@ -280,10 +302,9 @@ export const getAddressBtcBalance = async (address: string): Promise<BitcoreAddr
         acc.totalSent += cur.balance;
       }
       acc.totalReceived += cur.balance;
-      acc.totalTransactions += cur.count;
       return acc;
     },
-    { balance: 0, totalReceived: 0, totalSent: 0, totalTransactions: 0 }
+    { balance: 0, totalReceived: 0, totalSent: 0, totalTransactions }
   );
   return totals;
 };
@@ -436,22 +457,6 @@ export const getTX = async (txid: string): Promise<BitcoreTransaction | null> =>
   return tx;
 };
 
-/*
-export const getTX = async (txid: string): Promise<BitcoreTransaction> => {
-  const db = await getDB();
-  const collection = db.collection<BitcoreTransactionQueryResult>(Collections.Transactions);
-  const tx = await collection.findOne({
-    txid,
-    ...chainQuery
-  });
-  const result: BitcoreTransaction = {
-    ...tx,
-    blockTime: tx.blockTime.toISOString()
-  } 
-  return result;
-};
-*/
-
 export const lookupBlockOrTxHash = async (hash: string): Promise<('tx' | 'block') | null> => {
   const db = await getDB();
   const collection = db.collection<TransactionQueryResult>(Collections.Transactions);
@@ -515,23 +520,56 @@ export const getLatestBlock = async (): Promise<BitcoreBlock> => {
   return block;
 };
 
+const cachedBlockHeightTimes = new Map<number, number>();
+
 export const getTimesForBlockHeights = async (
   heights: number[]
 ): Promise<Record<number, number>> => {
-  const distinctHeights = [...new Set(heights)];
+  const distinctHeights = new Set(heights)
+  const timesByHeight: Record<number, number> = {};
+  for (const height of distinctHeights) {
+    const cachedHeight = cachedBlockHeightTimes.get(height);
+    if (cachedHeight !== undefined) {
+      timesByHeight[height] = cachedHeight;
+      distinctHeights.delete(height);
+    }
+  }
+
+  if (distinctHeights.size === 0) {
+    return timesByHeight;
+  }
+
+  const heightsArray = [...distinctHeights];
   const db = await getDB();
   const collection = db.collection<BlockQueryResult>(Collections.Blocks);
   const blocks = await collection
     .find({
       height: { 
-        $in: distinctHeights
+        $in: heightsArray
       }
     })
     .project({ _id: 0, height: 1, time: 1 })
     .toArray();
-  const timesByHeight: Record<number, number> = {};
   blocks.forEach(block => {
-    timesByHeight[block.height] = Math.round(block.time.getTime() / 1000);
+    const time = Math.round(block.time.getTime() / 1000);
+    timesByHeight[block.height] = time;
+    cachedBlockHeightTimes.set(block.height, time);
   });
   return timesByHeight;
+};
+
+export const getTimeForBlockHeight = async (
+  height: number
+): Promise<number> => {
+  const db = await getDB();
+  const collection = db.collection<BlockQueryResult>(Collections.Blocks);
+  const block = await collection
+    .findOne({
+      height: height
+    }, { projection: { _id: 0, height: 1, time: 1 }});
+  
+  if (!block) {
+    return null;
+  }
+  return Math.round(block.time.getTime() / 1000)
 };

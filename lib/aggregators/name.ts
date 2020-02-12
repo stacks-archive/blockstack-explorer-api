@@ -1,10 +1,11 @@
 import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { fetchName, FetchNameEntry } from '../client/core-api';
 import { BlockstackApp } from './app-co-apps';
 import { extractRootDomain } from '../utils';
 import { getNameHistory } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
+import { getAddr as getBtcAddr } from '../btc-tx-decoder';
 
 type UserApps = {
   [appUrl: string]: string;
@@ -33,7 +34,7 @@ type NameAggregatorInput = {
   historyPage?: number;
 };
 
-class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggregatorInput> {
+class NameAggregator extends Aggregator<NameAggregatorResult, NameAggregatorInput> {
   key({ name, historyPage = 0 }: NameAggregatorInput) {
     return `Name:${name}?historyPage=${historyPage}`;
   }
@@ -55,7 +56,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
     };
   }
 
-  async setter({ name, historyPage = 0 }: NameAggregatorInput): Promise<NameAggregatorResult> {
+  async setter({ name, historyPage = 0 }: NameAggregatorInput): Promise<AggregatorSetterResult<NameAggregatorResult>> {
     const [person, nameRecord] = await Promise.all([
       fetchName(name),
       getNameHistory(name, historyPage),
@@ -72,6 +73,7 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
       const time = blockTimes[record.block_id];
       const result = {
         ...record,
+        sender: getBtcAddr(Buffer.from(record.sender, 'hex')),
         time
       };
       return result
@@ -96,11 +98,15 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
       }
       // userApps = this.getAppsArray(appsList, profile.apps);
     }
-    return {
+    const result = {
       nameRecord: nameRecordWithTimes,
       userApps,
       proofs,
       ...person
+    };
+    return {
+      shouldCacheValue: true,
+      value: result,
     };
   }
 
@@ -109,4 +115,5 @@ class NameAggregator extends AggregatorWithArgs<NameAggregatorResult, NameAggreg
   }
 }
 
-export default new NameAggregator();
+const nameAggregator = new NameAggregator();
+export { nameAggregator };

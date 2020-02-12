@@ -3,7 +3,7 @@ import * as c32check from 'c32check';
 import * as moment from 'moment';
 import { compact } from 'lodash';
 
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import {
   network,
 } from '../client/core-api';
@@ -23,7 +23,8 @@ import BN = require('bn.js');
 
 export type HistoryRecordWithData = StacksHistoryRecordData & {
   operation?: string;
-  blockTime?: number;
+  blockUnixTime?: number;
+  blockTime?: string;
   valueStacks: string;
   value: number;
   sender?: string;
@@ -78,12 +79,12 @@ export type StackAccountStatusResult = {
   vtxindex: number;
 };
 
-class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddressOpts> {
+class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
   key({addr, page}: StacksAddressOpts) {
     return `StacksAddress:${addr}:${page || 0}`;
   }
 
-  async setter({addr, page}: StacksAddressOpts): Promise<StacksAddressResult> {
+  async setter({addr, page}: StacksAddressOpts): Promise<AggregatorSetterResult<StacksAddressResult>> {
     const { accountsByAddress } = await getAccounts();
     let genesisData = {};
     if (accountsByAddress[addr]) {
@@ -147,7 +148,10 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
       ...unlockInfo,
     };
 
-    return account;
+    return {
+      shouldCacheValue: true,
+      value: account,
+    };
   }
 
   async getHistory(address: string, page: number): Promise<GetHistoryResult> {
@@ -157,7 +161,8 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
     const blockHeights = history.map(h => h.block_id);
     const blockTimes = await getTimesForBlockHeights(blockHeights);
     const historyWithData = history.map((h) => {
-      const blockTime = blockTimes[h.block_id] || blockToTime(h.block_id);
+      const blockUnixTime = blockTimes[h.block_id];
+      const blockTime = new Date(blockUnixTime * 1000).toISOString();
       try {
         let operation: string;
         if (h.historyData.address === address) {
@@ -174,6 +179,7 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
           recipient: c32check.b58ToC32(h.historyData.recipient_address),
           valueStacks: stacksValue(h.historyData.token_fee),
           value: parseInt(h.historyData.token_fee, 10),
+          blockUnixTime: blockUnixTime,
           blockTime,
           operation
         };
@@ -234,4 +240,5 @@ class StacksAddress extends AggregatorWithArgs<StacksAddressResult, StacksAddres
   }
 }
 
-export default new StacksAddress();
+const stacksAddressAggregator = new StacksAddress();
+export { stacksAddressAggregator };

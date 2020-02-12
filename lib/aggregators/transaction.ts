@@ -1,12 +1,12 @@
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { HistoryRecordData, getHistoryFromTxid } from '../core-db-pg/queries';
 import { btcValue, stacksValue } from '../utils';
 import { DecodeTxResult, decodeTx } from '../btc-tx-decoder';
-import { getStxAddresses } from '../../controllers/v2-controller';
 import { getTX, getLatestBlockHeight } from '../bitcore-db/queries';
 import { fetchRawTxInfo } from '../client/core-api';
 import { Transaction } from 'bitcoinjs-lib';
 import { HistoryDataTokenTransfer } from '../core-db-pg/history-data-types';
+import { getStxAddresses } from '../addresses';
 
 
 export type TransactionAggregatorOpts = {
@@ -26,7 +26,7 @@ export type TransactionAggregatorResult = DecodeTxResult & {
 }>;
 
 
-class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResult, TransactionAggregatorOpts> {
+class TransactionAggregator extends Aggregator<TransactionAggregatorResult, TransactionAggregatorOpts> {
 
   key(args: TransactionAggregatorOpts) {
     return `Transaction:${args.hash}`;
@@ -36,7 +36,7 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
     return 10 * 60; // 10 minutes
   }
 
-  async setter({ hash }: TransactionAggregatorOpts): Promise<TransactionAggregatorResult> {
+  async setter({ hash }: TransactionAggregatorOpts): Promise<AggregatorSetterResult<TransactionAggregatorResult>> {
     const [tx, rawTx, latestBlockHeight, history] = await Promise.all([
       getTX(hash),
       // TODO: refactor to use bitcore/pg
@@ -51,11 +51,12 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
       feeBTC: btcValue(formattedTX.fee),
       confirmations: latestBlockHeight - tx.blockHeight
     };
+    let result: TransactionAggregatorResult;
     if (history && history.opcode === 'TOKEN_TRANSFER') {
       const historyData = history.historyData as HistoryDataTokenTransfer;
       const stxAddresses = getStxAddresses(history);
       const valueStacks = stacksValue(historyData.token_fee);
-      return {
+      result = {
         ...txData,
         ...stxAddresses,
         ...history,
@@ -66,11 +67,14 @@ class TransactionAggregator extends AggregatorWithArgs<TransactionAggregatorResu
         valueStacksFormatted: stacksValue(historyData.token_fee, true)
       };
     } else {
-      return txData;
+      result = txData;
     }
+    return {
+      shouldCacheValue: true,
+      value: result,
+    };
   }
 }
 
 const transactionAggregator = new TransactionAggregator();
-
-export default transactionAggregator;
+export { transactionAggregator };

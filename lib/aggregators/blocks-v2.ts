@@ -1,7 +1,6 @@
 import * as moment from 'moment';
-import * as multi from 'multi-progress';
 
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { getBlocks } from '../bitcore-db/queries';
 import { getNameOperationCountsForBlocks } from '../core-db-pg/queries';
 
@@ -23,7 +22,7 @@ export type BlocksAggregatorResult = {
   availableCount: number;
 };
 
-class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockAggregatorOpts> {
+class BlocksAggregator extends Aggregator<BlocksAggregatorResult, BlockAggregatorOpts> {
   key({date, page}: BlockAggregatorOpts) {
     if (!date) {
       const now = this.now();
@@ -32,7 +31,7 @@ class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockA
     return `Blocks:${date}:${page}`;
   }
 
-  async setter({date, page}: BlockAggregatorOpts): Promise<BlocksAggregatorResult> {
+  async setter({date, page}: BlockAggregatorOpts): Promise<AggregatorSetterResult<BlocksAggregatorResult>> {
     const blocksResult = await getBlocks(date, page);
     const blockHeights = blocksResult.blocks.map(block => block.height);
     const nameOpts = await getNameOperationCountsForBlocks(blockHeights);
@@ -41,18 +40,17 @@ class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockA
       return Object.assign(block, { totalNameOperations: nameOps });
     })
     return {
-      blocks: blocks,
-      availableCount: blocksResult.totalCount,
+      shouldCacheValue: true, 
+      value: {
+        blocks: blocks,
+        availableCount: blocksResult.totalCount,
+      }
     };
   }
 
   expiry({date}: BlockAggregatorOpts) {
     if (!date || date === this.now()) return 10 * 60; // 10 minutes
     return null;
-  }
-
-  verbose(opts: BlockAggregatorOpts, multi?: multi) {
-    return !multi;
   }
 
   now(): string {
@@ -62,4 +60,5 @@ class BlocksAggregator extends AggregatorWithArgs<BlocksAggregatorResult, BlockA
   }
 }
 
-export default new BlocksAggregator();
+const blocksAggregator = new BlocksAggregator();
+export { blocksAggregator };

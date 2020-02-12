@@ -1,27 +1,20 @@
 import { Request, Response, Router } from 'express';
 import * as moment from 'moment';
-import * as request from 'request-promise';
-import * as Sentry from '@sentry/node';
+import * as request from 'request-promise-native';
+import { StatusCodeError } from 'request-promise-native/errors';
 
-import BlockAggregator from '../lib/aggregators/block-v2';
-import BlocksAggregator from '../lib/aggregators/blocks-v2';
-import TotalSupplyAggregator, { TotalSupplyResult } from '../lib/aggregators/total-supply';
-import FeeEstimator from '../lib/aggregators/fee-estimate';
-import { getTimesForBlockHeights, lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
-import {
-  getRecentStacksTransfers,
-  getRecentNames,
-  getRecentSubdomains,
-  StacksTransaction,
-  getAllHistoryRecords,
-  HistoryRecordResult
-} from '../lib/core-db-pg/queries';
+import { blockAggregator } from '../lib/aggregators/block-v2';
+import { blocksAggregator } from '../lib/aggregators/blocks-v2';
+import { transactionsAggregator } from '../lib/aggregators/transactions';
+import { subdomainsAggregator } from '../lib/aggregators/subdomains';
+import { namesAggregator } from '../lib/aggregators/names';
+import { stxTransactionsAggregator } from '../lib/aggregators/stx-transactions';
+import { TotalSupplyResult, totalSupplyAggregator } from '../lib/aggregators/total-supply';
+import { topBalancesAggregator } from '../lib/aggregators/top-balances';
+import { feeEstimatorAggregator } from '../lib/aggregators/fee-estimate';
 
-import { blockToTime, stacksValue } from '../lib/utils';
-import TopBalancesAggregator from '../lib/aggregators/top-balances';
-import { HistoryDataTokenTransfer } from '../lib/core-db-pg/history-data-types';
-import { getSTXAddress } from '../lib/stacks-decoder';
-import { StatusCodeError } from 'request-promise/errors';
+import { lookupBlockOrTxHash, getBlockHash } from '../lib/bitcore-db/queries';
+import { blockToTime, stacksValue, logError } from '../lib/utils';
 import * as searchUtil from '../lib/search-util';
 
 const baseRouter = Router();
@@ -34,8 +27,7 @@ const getAsync = (
     try {
       await handler(req, res);
     } catch (error) {
-      console.error(error);
-      Sentry.captureException(error);
+      logError(`Error handling ${path}`, error);
       res.status(500).json({ success: false });
     }
   })
@@ -45,7 +37,7 @@ const Controller = Object.assign(baseRouter, { getAsync });
 
 Controller.getAsync('/blocks/:hash', async (req, res) => {
   const { hash } = req.params;
-  const block = await BlockAggregator.fetch(hash);
+  const block = await blockAggregator.fetch(hash);
   res.json({ block });
 });
 
@@ -57,97 +49,37 @@ Controller.getAsync('/blocks', async (req, res) => {
       .format('YYYY-MM-DD');
   }
   // console.log(date);
-  const { page } = req.query;
-  const blocks = await BlocksAggregator.fetch({
+  const page = parseInt(req.query.page, 10) || 0;
+  const blocks = await blocksAggregator.fetch({
     date,
-    page: page ? parseInt(page, 10) : 0
+    page
   });
   res.json(blocks);
 });
 
-export type GetStxAddressResult = {
-  senderSTX?: string;
-  recipientSTX?: string;
-}
 
-export const getStxAddresses = (
-  tx: StacksTransaction | HistoryRecordResult
-): GetStxAddressResult => {
-  if (!tx.historyData) {
-    return {};
-  }
-  if (tx.opcode === 'TOKEN_TRANSFER') {
-    const historyData = tx.historyData as HistoryDataTokenTransfer;
-    return {
-      senderSTX: getSTXAddress(historyData.sender),
-      recipientSTX: getSTXAddress(historyData.recipient)
-    };
-  }
-  return {};
-};
 
 Controller.getAsync('/transactions/stx', async (req, res) => {
-  const page = req.query.page || '0';
-  const transactions = await getRecentStacksTransfers(
-    100,
-    parseInt(page, 10)
-  );
-  const blockTimes = await getTimesForBlockHeights(
-    transactions.map(tx => tx.blockHeight)
-  );
-  const transfers = transactions.map(tx => ({
-    ...tx,
-    timestamp: blockTimes[tx.blockHeight],
-    ...getStxAddresses(tx)
-  }));
+  const page = parseInt(req.query.page, 10) || 0;
+  const transfers = await stxTransactionsAggregator.fetch({page});
   res.json({ transfers });
 });
 
 Controller.getAsync('/transactions/names', async (req, res) => {
-  const limit = 100;
-  const page = req.query.page || '0';
-  const namesResult = await getRecentNames(limit, parseInt(page, 10));
-  const blockTimes = await getTimesForBlockHeights(
-    namesResult.map(name => name.block_number)
-  );
-  const names = namesResult.map(name => ({
-    ...name,
-    timestamp: blockTimes[name.block_number]
-  }));
+  const page = parseInt(req.query.page, 10) || 0;
+  const names = await namesAggregator.fetch({page});
   res.json({ names });
 });
 
-Controller.getAsync(
-  '/transactions/subdomains',
-  async (req, res) => {
-    const limit = 100;
-    const page = req.query.page || '0';
-    const subdomainsResult = await getRecentSubdomains(
-      limit,
-      parseInt(page, 10)
-    );
-    const blockTimes = await getTimesForBlockHeights(
-      subdomainsResult.map(sub => sub.blockHeight)
-    );
-    const subdomains = subdomainsResult.map(name => ({
-      ...name,
-      timestamp: blockTimes[name.blockHeight]
-    }));
-    res.json({ subdomains });
-  }
-);
+Controller.getAsync('/transactions/subdomains', async (req, res) => {
+  const page = parseInt(req.query.page, 10) || 0;
+  const subdomains = await subdomainsAggregator.fetch({page});
+  res.json({ subdomains });
+});
 
 Controller.getAsync('/transactions/all', async (req, res) => {
-  const limit = 100;
-  const page = req.query.page || '0';
-  const historyResult = await getAllHistoryRecords(limit, parseInt(page, 10));
-  const heights = historyResult.map(item => item.block_id);
-  const blockTimes = await getTimesForBlockHeights(heights);
-  const history = historyResult.map(historyRecord => ({
-    ...historyRecord,
-    timestamp: blockTimes[historyRecord.block_id],
-    ...getStxAddresses(historyRecord)
-  }));
+  const page = parseInt(req.query.page, 10) || 0;
+  const history = await transactionsAggregator.fetch({page});
   res.json({ history });
 });
 
@@ -285,18 +217,18 @@ Controller.getAsync('/search/:term', async (req, res) => {
 });
 
 Controller.getAsync('/fee-estimate', async (req, res) => {
-  const fee = await FeeEstimator.fetch();
+  const fee = await feeEstimatorAggregator.fetch();
   res.json({ recommended: fee });
 });
 
 Controller.getAsync('/total-supply', async (req, res) => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
   const formatted = JSON.stringify(totalSupplyInfo, null, 2);
   res.contentType('application/json').send(formatted);
 });
 
 Controller.getAsync('/unlocked-supply', async (req, res) => {
-  const totalSupplyInfo: TotalSupplyResult = await TotalSupplyAggregator.fetch();
+  const totalSupplyInfo: TotalSupplyResult = await totalSupplyAggregator.fetch();
   res.contentType('text/plain; charset=UTF-8').send(totalSupplyInfo.unlockedSupply);
 });
 
@@ -312,7 +244,7 @@ Controller.getAsync('/top-balances', async (req, res) => {
   if (count > MAX_COUNT) {
     throw new Error(`Max count of ${MAX_COUNT} exceeded`);
   }
-  const topBalances = await TopBalancesAggregator.fetch({ count });
+  const topBalances = await topBalancesAggregator.fetch({ count });
   res.contentType('application/json');
   res.send(JSON.stringify(topBalances, null, 2));
 });

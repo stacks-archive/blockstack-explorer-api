@@ -1,6 +1,9 @@
 import * as fs from 'fs-extra';
 import * as _ from 'lodash';
 import { blockToTime } from './utils';
+import { StacksTransaction, HistoryRecordResult } from './core-db-pg/queries';
+import { HistoryDataTokenTransfer } from './core-db-pg/history-data-types';
+import { getSTXAddress } from './stacks-decoder';
 
 
 export type GenesisAccountInfo = {
@@ -115,4 +118,26 @@ export const getTotals = ({ accounts }: { accounts: GenesisAccountInfo[] }) => {
   });
 
   return totals;
+};
+
+
+export type GetStxAddressResult = {
+  senderSTX?: string;
+  recipientSTX?: string;
+}
+
+export const getStxAddresses = (
+  tx: StacksTransaction | HistoryRecordResult
+): GetStxAddressResult => {
+  if (!tx.historyData) {
+    return {};
+  }
+  if (tx.opcode === 'TOKEN_TRANSFER') {
+    const historyData = tx.historyData as HistoryDataTokenTransfer;
+    return {
+      senderSTX: getSTXAddress(historyData.sender),
+      recipientSTX: getSTXAddress(historyData.recipient)
+    };
+  }
+  return {};
 };

@@ -1,14 +1,17 @@
-import * as request from 'request-promise';
-import { Aggregator } from './aggregator';
+import * as request from 'request-promise-native';
+import { AggregatorSetterResult, Aggregator } from './aggregator';
 
 class FeeEstimator extends Aggregator<number> {
-  async setter() {
+  async setter(): Promise<AggregatorSetterResult<number>> {
     const uri = 'https://bitcoinfees.earn.com/api/v1/fees/recommended';
     const { fastestFee } = await request({
       uri,
       json: true
     });
-    return Math.ceil(fastestFee * 1.25);
+    return {
+      shouldCacheValue: true,
+      value: Math.ceil(fastestFee * 1.25),
+    };
   }
 
   expiry() {
@@ -16,4 +19,5 @@ class FeeEstimator extends Aggregator<number> {
   }
 }
 
-export default new FeeEstimator();
+const feeEstimatorAggregator = new FeeEstimator();
+export { feeEstimatorAggregator };

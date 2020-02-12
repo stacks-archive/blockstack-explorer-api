@@ -1,10 +1,6 @@
-import * as BluebirdPromise from 'bluebird';
-
-import { AggregatorWithArgs } from './aggregator';
+import { Aggregator, AggregatorSetterResult, KeepAliveOptions } from './aggregator';
 import {
   getAllNameOperations,
-  getSubdomainRegistrationsForTxid,
-  Subdomain
 } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 
@@ -20,18 +16,30 @@ export type NameOpsAggregatorArgs = {
   page: number;
 };
 
-class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
+class NameOpsAggregator extends Aggregator<NameOpsAggregatorResult, NameOpsAggregatorArgs> {
   expiry() {
-    return 10 * 60; // 10 minutes
+    return 15 * 60; // 15 minutes
   }
 
   key({page = 0}: NameOpsAggregatorArgs) {
     return `NameOpsAggregator:${page || 0}`;
   }
 
-  async setter({page = 0}: NameOpsAggregatorArgs): Promise<NameOpsAggregatorResult> {
+  getKeepAliveOptions(key: string, args: NameOpsAggregatorArgs): KeepAliveOptions {
+    if (args.page === 0) {
+      return {
+        aggregatorKey: key,
+        aggregatorArgs: {page: 0},
+        interval: 10 * 60 // 10 minutes,
+      };
+    } else {
+      return false;
+    }
+  }
+
+  async setter({page = 0}: NameOpsAggregatorArgs): Promise<AggregatorSetterResult<NameOpsAggregatorResult>> {
     const history = await getAllNameOperations(page);
-    const blockHeights = history.map(record => record.block_id);
+    const blockHeights = [...new Set(history.map(record => record.block_id))];
     const blockTimes = await getTimesForBlockHeights(blockHeights);
 
     const nameOps: NameOp[] = history.map(record => {
@@ -43,10 +51,14 @@ class NameOpsAggregator extends AggregatorWithArgs<NameOpsAggregatorResult, Name
         name: isSubdomain ? record.fully_qualified_subdomain : record.history_id,
         owner: isSubdomain ? record.owner : record.creator_address
       }
-      return op
+      return op;
     })
-    return nameOps
+    return {
+      shouldCacheValue: true,
+      value: nameOps,
+    };
   }
 }
 
-export default new NameOpsAggregator();
+const nameOpsAggregator = new NameOpsAggregator();
+export { nameOpsAggregator };
