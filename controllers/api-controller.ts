@@ -27,7 +27,7 @@ const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json)
       res.json(data);
     } catch (error) {
       logError(`Error handling request ${req.originalUrl}`, error);
-      res.status(404).json({ success: false });
+      res.status(500).json({ success: false });
     }
   }
 };
