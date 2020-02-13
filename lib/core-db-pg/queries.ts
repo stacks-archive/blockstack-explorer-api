@@ -5,6 +5,7 @@ import { getLatestBlock } from '../bitcore-db/queries';
 import { 
   HistoryDataEntry, HistoryDataTokenTransfer, HistoryDataNameOp 
 } from './history-data-types';
+import { logError } from '../utils';
 
 export type Subdomain = SubdomainRecordQueryResult & {
   name: string;
@@ -137,8 +138,7 @@ export const getRecentStacksTransfers = async (limit: number, page = 0): Promise
     try {
       historyData = JSON.parse(row.history_data);
     } catch (error) {
-      console.error('Error parsing tx history data');
-      console.error(error);
+      logError('Error parsing tx history data', error);
     }
     return {
       ...row,
@@ -393,7 +393,7 @@ export const getVestingTotalForAddress = async (_address: string): Promise<numbe
     }, 0);
     return vestingTotal;
   } catch (error) {
-    console.log('vesting total query error', error);
+    logError(`vesting total query error for address ${_address}`, error);
     return 0;
   }
 };

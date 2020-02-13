@@ -23,12 +23,12 @@ const getAsync = (
   path: string | RegExp, 
   handler: (req: Request, res?: Response) => Promise<void> | void
 ) => {
-  baseRouter.get(path, async (req, res) => {
+  baseRouter.get(path, async (req, res, next) => {
     try {
       await handler(req, res);
     } catch (error) {
-      logError(`Error handling ${path}`, error);
-      res.status(500).json({ success: false });
+      res.status(500).json({ success: false, error: error.message }).end();
+      next(error);
     }
   })
 };
@@ -48,7 +48,6 @@ Controller.getAsync('/blocks', async (req, res) => {
       .utc()
       .format('YYYY-MM-DD');
   }
-  // console.log(date);
   const page = parseInt(req.query.page, 10) || 0;
   const blocks = await blocksAggregator.fetch({
     date,

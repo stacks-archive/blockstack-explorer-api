@@ -9,7 +9,7 @@ import {
 import BigNumber from 'bignumber.js';
 import { BitcoreTransaction } from './bitcore-db/queries';
 import { fetchRawTxInfo } from './client/core-api';
-import { btcValueUnsafe } from './utils';
+import { btcValueUnsafe, logError } from './utils';
 
 export const getAddr = (txOutScript: Buffer) => {
   let addr: string | null = null;
@@ -90,7 +90,7 @@ export const decodeTx = async (
   try {
     vin = await Promise.all(fetchVins);
   } catch (error) {
-    console.error('error fetching vins', error);
+    logError('error fetching vins', error);
   }
 
   const format = (out: TxOutput, n: number): FormattedTxOutput => {

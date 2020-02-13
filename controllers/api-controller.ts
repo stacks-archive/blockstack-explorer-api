@@ -1,4 +1,4 @@
-import { Request, Response, Router } from 'express';
+import { Request, Response, Router, NextFunction } from 'express';
 
 import { getTotals, GetGenesisAccountsResult } from '../lib/addresses';
 import {
@@ -18,7 +18,7 @@ import { transactionAggregator } from '../lib/aggregators/transaction';
 import { Json, logError } from '../lib/utils';
 
 const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json) => {
-  return async (req: Request, res?: Response) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await dataFn(req, res);
       if (!data) {
@@ -26,8 +26,8 @@ const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json)
       }
       res.json(data);
     } catch (error) {
-      logError(`Error handling request ${req.originalUrl}`, error);
-      res.status(500).json({ success: false });
+      res.status(500).json({ success: false, error: error.message }).end();
+      next(error);
     }
   }
 };

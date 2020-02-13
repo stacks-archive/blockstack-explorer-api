@@ -24,7 +24,6 @@
     "@types/express": "^4.17.2",
     "@types/jest": "^25.1.1",
     "@types/lodash": "^4.14.123",
-    "@types/morgan": "^1.7.35",
     "@types/node": "^12.12.11",
     "@types/redis": "^2.8.14",
     "@types/request-promise-native": "^1.0.17",
@@ -60,11 +59,11 @@
     "cors": "^2.8.4",
     "dotenv": "^8.2.0",
     "express": "^4.16.4",
+    "express-winston": "^4.0.2",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.13",
     "moment": "^2.22.2",
     "mongodb": "^3.4.1",
-    "morgan": "^1.9.1",
     "ora": "^4.0.2",
     "pg": "^7.11.0",
     "prom-client": "^11.5.3",
@@ -74,6 +73,7 @@
     "split-on-first": "^1.1.0",
     "strict-event-emitter-types": "^2.0.0",
     "ts-node": "^8.6.2",
-    "typescript": "^3.7.5"
+    "typescript": "^3.7.5",
+    "winston": "^3.2.1"
   }
 }

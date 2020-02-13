@@ -80,26 +80,16 @@ export const getTotals = ({ accounts }: { accounts: GenesisAccountInfo[] }) => {
       if (parseInt(block, 10) >= account.lock_send) {
         const previousBlock = parseInt(vestingKeys[i - 1], 10);
         if (i !== 0 && previousBlock < account.lock_send) {
-          // console.log('first vesting block with transfer', i + 1, _.range(i + 1));
           // accumulate all previous blocks
-          // console.log(_.range(0, i));
           const sum = (_sum: number, blk: number) => _sum + account.vesting[vestingKeys[blk]];
           totals.transferrableAtBlocks[date] = _.range(i + 1).reduce(sum, 0);
-          // console.log(_.range(i + 1).reduce(sum, 0));
         } else {
-          // console.log('normal vesting', block);
           totals.transferrableAtBlocks[date] += account.vesting[block];
         }
       }
     });
     const lastGrantBlock = _.last(vestingKeys);
     if (parseInt(lastGrantBlock, 10) < account.lock_send) {
-      console.log(
-        'last grant before lock_send',
-        account.address,
-        account.lock_send,
-        lastGrantBlock
-      );
       const date = blockToTime(account.lock_send);
       totals.transferrableAtBlocks[date] =
         totals.transferrableAtBlocks[date] || 0;

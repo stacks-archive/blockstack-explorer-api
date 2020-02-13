@@ -1,6 +1,7 @@
 import * as moment from 'moment';
 import BigNumber from 'bignumber.js';
 import * as Sentry from '@sentry/node';
+import * as winston from 'winston';
 import * as child_process from 'child_process';
 
 export type Json =
@@ -11,16 +12,60 @@ export type Json =
     | { [property: string]: Json }
     | Json[];
 
+
+export const isDevEnv = process.env.NODE_ENV === 'development';
+
+export const winstonLogger = winston.createLogger({
+  level: isDevEnv ? 'debug' : 'verbose',
+  exitOnError: false,
+  format: winston.format.combine(...[
+    winston.format.timestamp(),
+    winston.format.json(),
+    winston.format.errors({ stack: true })
+  ].concat(isDevEnv ? winston.format.colorize() : winston.format.uncolorize())),
+  transports: [
+    new winston.transports.Console({
+      handleExceptions: true,
+    })
+  ],
+});
+
 export const logError = (message: string, error?: Error) => {
-  console.error(message);
+  if (isDevEnv) {
+    console.error(message);
+    console.error(error);
+  } else {
+    winstonLogger.error(message, error);
+  }
   Sentry.captureMessage(message);
   if (error) {
-    console.error(error);
     Sentry.captureException(error);
+  }
+};
+
+export const logWarning = (message: string) => {
+  if (isDevEnv) {
+    console.error(message);
+  } else {
+    winstonLogger.warn(message);
+  }
+};
+
+export const logDebug = (message: string) => {
+  if (isDevEnv) {
+    console.log(message);
+  } else {
+    winstonLogger.debug(message);
   }
 }
 
-export const isDevEnv = process.env.NODE_ENV === 'development';
+export const logInfo = (message: string) => {
+  if (isDevEnv) {
+    console.log(message);
+  } else {
+    winstonLogger.info(message);
+  }
+}
 
 export const getStopwatch = (): { getElapsedSeconds: () => number } => {
   const hrstart = process.hrtime();
@@ -39,7 +84,7 @@ export const logTime = async <T>(msg: string, action: () => Promise<T>): Promise
   }
   finally {
     const elapsed = stopwatch.getElapsedSeconds();
-    console.log(`[${elapsed.toFixed(3)} seconds] ${msg}`);
+    winstonLogger.debug(`[${elapsed.toFixed(3)} seconds] ${msg}`);
   }
 };
 

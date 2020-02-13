@@ -1,7 +1,8 @@
 import * as express from 'express';
 import * as cors from 'cors';
-import * as morgan from 'morgan';
 import * as Sentry from '@sentry/node';
+import * as expressWinston from 'express-winston';
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
 // @ts-ignore
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
@@ -12,6 +13,7 @@ import { createServer } from '@promster/server';
 import makeAPIController from './controllers/api-controller';
 import V2ApiController from './controllers/v2-controller';
 import { getAccounts } from './lib/addresses';
+import { winstonLogger } from './lib/utils';
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({
@@ -60,17 +62,26 @@ const getApp = async () => {
   }
 
   app.use(cors());
-  app.use(morgan('combined'));
+
+  app.use(expressWinston.logger({
+    winstonInstance: winstonLogger
+  }));
 
   app.use('/api', makeAPIController(Genesis));
   app.use('/api/v2', V2ApiController);
+
+  app.use(expressWinston.errorLogger({
+    winstonInstance: winstonLogger
+  }));
 
   // Optional fallthrough error handler
   app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
     // The error id is attached to `res.sentry` to be returned
     // and optionally displayed to the user for support.
-    res.statusCode = 500;
-    res.end(`Error message: ${err.message}\n`);
+    if (!res.finished) {
+      res.statusCode = 500;
+      res.end(`Error message: ${err.message}\n`);
+    }
     next();
   });
 
