@@ -26,7 +26,6 @@ const respond = (dataFn: (req: Request, res?: Response) => Promise<Json> | Json)
       }
       res.json(data);
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message }).end();
       next(error);
     }
   }

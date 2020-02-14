@@ -27,7 +27,6 @@ const getAsync = (
     try {
       await handler(req, res);
     } catch (error) {
-      res.status(500).json({ success: false, error: error.message }).end();
       next(error);
     }
   })

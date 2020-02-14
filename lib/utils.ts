@@ -22,7 +22,7 @@ export const winstonLogger = winston.createLogger({
     winston.format.timestamp(),
     winston.format.json(),
     winston.format.errors({ stack: true })
-  ].concat(isDevEnv ? winston.format.colorize() : winston.format.uncolorize())),
+  ]),
   transports: [
     new winston.transports.Console({
       handleExceptions: true,
@@ -35,7 +35,12 @@ export const logError = (message: string, error?: Error) => {
     console.error(message);
     console.error(error);
   } else {
-    winstonLogger.error(message, error);
+    if (error) {
+      Object.assign(error, { exception: true });
+      winstonLogger.error(message, error);
+    } else {
+      winstonLogger.error(message, { exception: true });
+    }
   }
   Sentry.captureMessage(message);
   if (error) {
