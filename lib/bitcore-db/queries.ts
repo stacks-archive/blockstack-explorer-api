@@ -1,5 +1,6 @@
 import * as moment from 'moment';
 import { getDB } from './index';
+import { logError } from '../utils';
 
 enum Collections {
   Blocks = 'blocks',
@@ -476,8 +477,8 @@ export const lookupBlockOrTxHash = async (hash: string): Promise<('tx' | 'block'
   if (result.blockHash === hash) {
     return 'block';
   }
-  const error = `Unexpected lookupBlockOrTxHash result: ${JSON.stringify(result)}`;
-  console.error(error);
+  const error = `Unexpected lookupBlockOrTxHash result for ${hash}: ${JSON.stringify(result)}`;
+  logError(error);
   throw new Error(error);
 };
 

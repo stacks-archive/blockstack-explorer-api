@@ -7,7 +7,7 @@ import { Aggregator, AggregatorSetterResult } from './aggregator';
 import {
   network,
 } from '../client/core-api';
-import { stacksValue, blockToTime } from '../utils';
+import { stacksValue, blockToTime, logError } from '../utils';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import {
   getAddressSTXTransactions,
@@ -170,7 +170,7 @@ class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
         } else if (h.historyData.recipient_address === address) {
           operation = 'RECEIVED';
         } else {
-          console.error(`Unexpected stx tx data, not a send or receive: ${JSON.stringify(h)}`)
+          logError(`Unexpected stx tx data, not a send or receive: ${JSON.stringify(h)}`)
           operation = 'UNKNOWN'
         }
         const historyEntry: HistoryRecordWithData = {
@@ -185,8 +185,7 @@ class StacksAddress extends Aggregator<StacksAddressResult, StacksAddressOpts> {
         };
         return historyEntry;
       } catch (error) {
-        console.error(`Error when decoding TX info: ${error.message}`);
-        console.error(error);
+        logError(`Error when decoding TX info: ${error.message}`, error);
         return {
           ...h,
           blockTime

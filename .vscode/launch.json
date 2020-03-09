@@ -45,7 +45,8 @@
       "env": {
         "NODE_ENV": "production",
         "GIT_TAG": "dev-env"
-      }
+      },
+      "outputCapture": "std"
     },
     {
       "type": "node",

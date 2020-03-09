@@ -8,7 +8,7 @@ import {
   getAddressTransactions, BitcoreAddressTxInfo, getAddressBtcBalance, 
   BitcoreAddressBalance,
 } from '../bitcore-db/queries';
-import { getStopwatch, isDevEnv, Json, logError } from '../utils';
+import { getStopwatch, isDevEnv, Json, logError, logWarning, logDebug } from '../utils';
 
 
 dotenv.config();
@@ -112,7 +112,7 @@ const fetchJSON = async <T extends Json>(uri: string, nullOn404 = false): Promis
     return JSON.parse(response.body);
   } catch (e) {
     const errMsg = `Error fetching ${uri}: ${e}`
-    console.error(errMsg);
+    logError(errMsg, e);
     throw new Error(errMsg);
   } finally {
     const elapsed = stopwatch.getElapsedSeconds();
@@ -121,7 +121,7 @@ const fetchJSON = async <T extends Json>(uri: string, nullOn404 = false): Promis
       logError(warning);
     }
     else if (isDevEnv) {
-      console.log(`Core node API fetch took ${elapsed.toFixed(3)} seconds for ${uri}`);
+      logDebug(`Core node API fetch took ${elapsed.toFixed(3)} seconds for ${uri}`);
     }
   }
 };

@@ -1,4 +1,5 @@
 import { MongoClient, Db, Collection } from 'mongodb';
+import { logError } from '../utils';
 
 export class BitcoreDB {
   private readonly db: Db;
@@ -16,8 +17,7 @@ export class BitcoreDB {
         useNewUrlParser: true
       })
     } catch (error) {
-      console.error(error);
-      console.error(`Error connecting to Bitcore MongoDB`);
+      logError(`Error connecting to Bitcore MongoDB`, error);
       throw error;
     }
     const db = client.db('bitcore');

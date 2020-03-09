@@ -2,7 +2,7 @@ import { validateProofs } from 'blockstack/lib/profiles/profileProofs';
 import { Aggregator, AggregatorSetterResult } from './aggregator';
 import { fetchName, FetchNameEntry } from '../client/core-api';
 import { BlockstackApp } from './app-co-apps';
-import { extractRootDomain } from '../utils';
+import { extractRootDomain, logError } from '../utils';
 import { getNameHistory } from '../core-db-pg/queries';
 import { getTimesForBlockHeights } from '../bitcore-db/queries';
 import { getAddr as getBtcAddr } from '../btc-tx-decoder';
@@ -93,7 +93,7 @@ class NameAggregator extends Aggregator<NameAggregatorResult, NameAggregatorInpu
           });
         });
       } catch (error) {
-        console.error(error);
+        logError('Error validating proofs in name aggregator', error);
         // move on
       }
       // userApps = this.getAppsArray(appsList, profile.apps);
