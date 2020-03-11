@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "Describes STX post-condition",
+  "additionalProperties": false,
+  "required": ["assetInfoId", "principal", "conditionCode", "amount"],
+  "properties": {
+    "assetInfoId": {
+      "type": "integer",
+      "const": 0,
+      "description": "0 represents an STX post-condition"
+    },
+    "principal": {
+      "type": "object",
+      "description": "TODO: make schema"
+    },
+    "conditionCode": {
+      "type": "string",
+      "enum": ["0x01", "0x02", "0x03", "0x04", "0x05"],
+      "description": "Fungible condition codes"
+    },
+    "amount": {
+      "type": "string"
+    }
+  }
+}

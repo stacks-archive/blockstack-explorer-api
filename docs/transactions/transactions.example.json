@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "txid": "84ee928fd3b61a9dee390fe62b606d28097cd43179a754100b49a45fb2206999",
+      "sender": "SP2X1KBV41VRZ4X3KMPZA2C53K2N4XX1P4VMKK697",
+      "recipient": "SP1P72Z3704VMT3DMHPP2CB8TGQWGDBHD3RPR9GZS",
+      "type": 0,
+      "fees": {
+        "amount": "12.1830",
+        "currency": "STX"
+      },
+      "block": 1829,
+      "post_conditions": "lskdjfs",
+      "sponsored": false,
+      "state": "success",
+      "timestamp": 1583933098
+    }
+  ]
+}
