@@ -1,0 +1,35 @@
+openapi: '3.0.0'
+info:
+  title: Stacks 2.0 Explorer
+  version: '1.0.0'
+paths:
+  /transactions:
+    get:
+      parameters:
+        - in: query
+          name: query
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: Returns list of most recent transactions
+          content:
+            application/json:
+              schema:
+                $ref: './transactions/transactions.schema.json'
+              example:
+                $ref: './transactions/transactions.example.json'
+  /transactions/{transactionId}:
+    get:
+      responses:
+        200:
+          description: Returns details of requested transaction
+          content:
+            application/json:
+              schema:
+                $ref: './transactions/type-0-transaction.schema.json'
+              example:
+                $ref: './transactions/type-0-transaction.example.json'
+        404:
+          description: Cannot find transaction of given ID

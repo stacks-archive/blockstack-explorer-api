@@ -88,3 +88,7 @@ Fetch the total number of names and subdomains.
 #### /stacks/addresses/:address
 
 Fetch transaction history, balances, and status of a Stacks address.
+
+## Mock server
+
+A primitive mock server can serve example responses using the `yarn mock` script

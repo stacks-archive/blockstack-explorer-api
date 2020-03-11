@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
+  "type": "object",
+  "required": ["type", "txid", "version", "chainId", "sender", "recipient", "block"],
+  "additionalProperties": true,
+  "properties": {
+    "type": {
+      "type": "number",
+      "enum": [0, 1, 2, 3, 4]
+    },
+    "txid": {
+      "type": "string",
+      "maxLength": 64,
+      "minLength": 64
+    },
+    "version": {
+      "type": "integer"
+    },
+    "chainId": {
+      "type": "integer"
+    },
+    "sender": {
+      "type": "string"
+    },
+    "recipient": {
+      "type": "string"
+    },
+    "block": {
+      "type": "number"
+    },
+    "state": {
+      "type": "string",
+      "enum": ["success", "pending", "failed"]
+    }
+  }
+}

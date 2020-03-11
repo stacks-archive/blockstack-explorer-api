@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "Describes Fungible post-condition",
+  "required": ["assetInfoId", "asset", "principal", "conditionCode", "amount"],
+  "additionalProperties": false,
+  "properties": {
+    "assetInfoId": {
+      "type": "integer",
+      "const": 1,
+      "description": "1 represents an Fungible post-condition"
+    },
+    "asset": {
+      "type": "object",
+      "properties": {
+        "contractAddress": {
+          "type": "string",
+          "description": "A Stacks 2.0 address"
+        },
+        "contractName": {
+          "type": "string"
+        },
+        "assetName": {
+          "type": "string"
+        }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "description": "TODO: make schema"
+    },
+    "conditionCode": {
+      "type": "string",
+      "enum": ["0x01", "0x02", "0x03", "0x04", "0x05"],
+      "description": "Fungible condition codes"
+    },
+    "amount": {
+      "type": "string"
+    }
+  }
+}

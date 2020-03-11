@@ -21,9 +21,18 @@ jobs: # a collection of steps
     #   - run: # run tests
     #       name: test
     #       command: yarn test --forceExit --testPathIgnorePatterns bitcore core-db
-      - run: # run lint
-          name: lint
-          command: yarn lint
+      - run:
+          name: ESlint
+          command: yarn lint:eslint
+      - run:
+          name: Lint yaml
+          command: yarn lint:yaml
+      - run:
+          name: Lint json
+          command: yarn lint:json
+      - run:
+          name: Validate schemas
+          command: yarn validate:schemas
       - run:
           name: typecheck
           command: yarn typecheck

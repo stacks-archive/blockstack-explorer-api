@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "description": "Describes post-conditions for transactions on the Stacks 2.0 blockchain https://github.com/blockstack/blockstack-core/blob/master/sip/sip-005-blocks-and-transactions.md#transaction-post-conditions",
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "$ref": "./post-condition-stx.schema.json"
+    },
+    {
+      "$ref": "./post-condition-fungible.schema.json"
+    },
+    {
+      "$ref": "./post-condition-nonfungible.schema.json"
+    }
+  ]
+}
