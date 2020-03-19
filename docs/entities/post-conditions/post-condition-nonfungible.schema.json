@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "title": "PostConditionNonFungible",
   "description": "Describes Non-Fungible post-condition",
   "additionalProperties": false,
   "required": [

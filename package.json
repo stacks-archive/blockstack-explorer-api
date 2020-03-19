@@ -9,6 +9,7 @@
     "prod": "NODE_ENV=production ts-node server.ts",
     "dev": "NODE_ENV=development ts-node server.ts",
     "nodemon": "NODE_ENV=development nodemon -e ts,js -x 'ts-node server.ts' --ignore test/",
+    "deref-schemas": "gulp",
     "test": "NODE_ENV=test jest --verbose=false --collectCoverage=true",
     "test-watch": "NODE_ENV=test jest --verbose=false --watch",
     "seed": "ts-node scripts/seed-db.ts",
@@ -18,6 +19,7 @@
     "lint:fix": "eslint --ext .ts,.js . -f codeframe --fix",
     "lint:yaml": "yamllint docs/**/*.{yml,yaml}",
     "lint:json": "jsonlint-cli docs/**/*.json",
+    "generate:types": "gulp --silent && ./scripts/generate-types.ts",
     "validate:schemas": "gulp --silent && ./scripts/validate-schemas.ts",
     "mock": "prism mock --cors docs/api-spec.yml"
   },
@@ -77,6 +79,7 @@
     "express": "^4.16.4",
     "express-winston": "^4.0.2",
     "fs-extra": "^8.1.0",
+    "json-schema-to-typescript": "^8.2.0",
     "lodash": "^4.17.13",
     "moment": "^2.22.2",
     "mongodb": "^3.4.1",
