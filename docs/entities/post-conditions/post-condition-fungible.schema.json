@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
+  "title": "PostConditionFungible",
   "description": "Describes Fungible post-condition",
   "required": ["assetInfoId", "asset", "principal", "conditionCode", "amount"],
   "additionalProperties": false,
