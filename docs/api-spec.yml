@@ -28,8 +28,8 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './transactions/type-0-transaction.schema.json'
+                $ref: './transactions/transaction-type-0.schema.json'
               example:
-                $ref: './transactions/type-0-transaction.example.json'
+                $ref: './transactions/transaction-type-0.example.json'
         404:
           description: Cannot find transaction of given ID

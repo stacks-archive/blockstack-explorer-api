@@ -19,7 +19,7 @@
     "lint:yaml": "yamllint docs/**/*.{yml,yaml}",
     "lint:json": "jsonlint-cli docs/**/*.json",
     "validate:schemas": "gulp --silent && ./scripts/validate-schemas.ts",
-    "mock": "prism mock docs/api-spec.yml"
+    "mock": "prism mock --cors docs/api-spec.yml"
   },
   "devDependencies": {
     "@blockstack/prettier-config": "^0.0.3",
