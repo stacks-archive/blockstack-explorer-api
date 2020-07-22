@@ -23,8 +23,37 @@
     "validate:schemas": "gulp --silent && ./scripts/validate-schemas.ts",
     "mock": "prism mock --cors docs/api-spec.yml"
   },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/github",
+      "@semantic-release/changelog",
+      "@semantic-release/git",
+      [
+        "semantic-release-slack-bot",
+        {
+          "notifyOnSuccess": true,
+          "notifyOnFail": true,
+          "markdownReleaseNotes": true
+        }
+      ]
+    ]
+  },
   "devDependencies": {
     "@blockstack/prettier-config": "^0.0.3",
+    "@commitlint/cli": "^9.1.1",
+    "@commitlint/config-conventional": "^9.1.1",
     "@stoplight/prism-cli": "^3.3.0",
     "@types/accounting": "^0.4.1",
     "@types/bluebird": "^3.5.29",
@@ -51,6 +80,7 @@
     "gulp": "^4.0.2",
     "gulp-jsonschema-deref": "^0.0.3",
     "gulp-prettier": "^2.3.0",
+    "husky": "^4.2.5",
     "jest": "^25.1.0",
     "jsonlint-cli": "^1.0.1",
     "prettier": "^1.18.2",
