@@ -1,7 +1,4 @@
 name: blockstack-explorer-api
-env:
-  IMAGE_NAME: blockstack/blockstack-explorer-api
-  DOCKER_REGISTRY: quay.io
 
 on:
   push:
@@ -38,7 +35,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SEMANTIC_RELEASE_PACKAGE: gh-actions-test
+          SEMANTIC_RELEASE_PACKAGE: ${{ github.workflow }}
         with:
           extra_plugins: |
             @semantic-release/changelog
@@ -48,7 +45,7 @@ jobs:
       - name: Build/Tag/Push Image
         uses: docker/build-push-action@v1
         with:
-          repository: ${{ env.IMAGE_NAME }}
+          repository: blockstack/${{ github.workflow }}
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
           registry: ${{ env.DOCKER_REGISTRY }}
