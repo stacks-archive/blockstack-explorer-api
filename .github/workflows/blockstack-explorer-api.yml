@@ -3,13 +3,23 @@ env:
   IMAGE_NAME: blockstack/blockstack-explorer-api
   DOCKER_REGISTRY: quay.io
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+    paths-ignore:
+      - '**/CHANGELOG.md'
+  pull_request:
 
 jobs:
   build-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_TOKEN }}
 
       - name: Notify slack start
         if: success()
@@ -26,7 +36,7 @@ jobs:
         uses: cycjimmy/semantic-release-action@v2.5.0
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
           SEMANTIC_RELEASE_PACKAGE: gh-actions-test
         with:
