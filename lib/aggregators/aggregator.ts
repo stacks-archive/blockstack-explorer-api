@@ -208,7 +208,7 @@ export abstract class Aggregator<TResult extends Json, TArgs extends Json | void
   }
 
   expiry(args: TArgs): number | null {
-    return null;
+    return 10 * 60; // 10 minutes
   }
 }
 
