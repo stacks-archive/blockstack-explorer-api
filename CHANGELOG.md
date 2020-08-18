@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/blockstack/blockstack-explorer-api/compare/v2.4.0...v2.5.0) (2020-08-18)
+
+
+### Features
+
+* make default aggregator redis cache 10 minutes as opposed to disabled ([9e39d79](https://github.com/blockstack/blockstack-explorer-api/commit/9e39d79454e238a87650f4633c38013fed2e3b18))
+
 # [2.4.0](https://github.com/blockstack/blockstack-explorer-api/compare/v2.3.3...v2.4.0) (2020-07-23)
 
 
