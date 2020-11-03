@@ -1,3 +1,10 @@
+## [2.5.1](https://github.com/blockstack/blockstack-explorer-api/compare/v2.5.0...v2.5.1) (2020-11-03)
+
+
+### Bug Fixes
+
+* include placeholder addresses in total unlocked supply query ([906e3a5](https://github.com/blockstack/blockstack-explorer-api/commit/906e3a59164dfab55f5a1dfa2e7a24ec480668b2))
+
 # [2.5.0](https://github.com/blockstack/blockstack-explorer-api/compare/v2.4.0...v2.5.0) (2020-08-18)
 
 
