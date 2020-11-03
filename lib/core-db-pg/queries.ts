@@ -411,16 +411,13 @@ export async function getUnlockedSupply(): Promise<UnlockedSupply> {
       SELECT DISTINCT ON (address) credit_value, debit_value 
         FROM accounts 
         WHERE type = 'STACKS' 
-        AND address !~ '(-|_)' 
-        AND length(address) BETWEEN 33 AND 34 
-        AND receive_whitelisted = '1' 
         AND lock_transfer_block_id <= (SELECT * from block_height) 
         ORDER BY address, block_id DESC, vtxindex DESC 
     )
     SELECT (SELECT * from block_height) AS val
     UNION ALL
     SELECT SUM(
-      CAST(totals.credit_value AS bigint) - CAST(totals.debit_value AS bigint)
+      totals.credit_value::numeric - totals.debit_value::numeric
     ) AS val FROM totals`;
   const db = await getDB();
   const rows = await db.query<{val: string}>(sql);
