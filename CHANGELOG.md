@@ -1,3 +1,10 @@
+## [2.5.2](https://github.com/blockstack/blockstack-explorer-api/compare/v2.5.1...v2.5.2) (2020-12-11)
+
+
+### Bug Fixes
+
+* change fee estimate multiple to 1.5 ([371611d](https://github.com/blockstack/blockstack-explorer-api/commit/371611d6e49e7f59ba34bbd04d2b32fd5652a733))
+
 ## [2.5.1](https://github.com/blockstack/blockstack-explorer-api/compare/v2.5.0...v2.5.1) (2020-11-03)
 
 
