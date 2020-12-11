@@ -10,7 +10,7 @@ class FeeEstimator extends Aggregator<number> {
     });
     return {
       shouldCacheValue: true,
-      value: Math.ceil(fastestFee * 1.25),
+      value: Math.ceil(fastestFee * 1.5),
     };
   }
 
