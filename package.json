@@ -116,7 +116,7 @@
     "ora": "^4.0.2",
     "pg": "^7.11.0",
     "prom-client": "^11.5.3",
-    "redis": "^2.8.0",
+    "redis": "^3.1.1",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.8",
     "split-on-first": "^1.1.0",
