@@ -110,7 +110,7 @@
     "express-winston": "^4.0.2",
     "fs-extra": "^8.1.0",
     "json-schema-to-typescript": "^8.2.0",
-    "lodash": "^4.17.13",
+    "lodash": "^4.17.21",
     "moment": "^2.22.2",
     "mongodb": "^3.4.1",
     "ora": "^4.0.2",
